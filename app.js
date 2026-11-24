@@ -58,6 +58,7 @@ async function boot() {
     const was = !!S.session; S.session = session;
     if (!!session !== was) route();
   });
+  window.addEventListener('hashchange', () => { if (!S.session) route(); });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   route();
 }
@@ -372,7 +373,7 @@ async function viewMeals() {
   <div class="wrap">${['midi', 'soir'].map((slot) => {
     const m = meals.find((x) => x.slot === slot && (x.member_id === null || x.member_id === S.me.id));
     const choices = mealChoices(pool, d, slot);
-    if (m?.recipe_id && !choices.some((c) => c.id === m.recipe_id)) { const r = S.recipes.find((x) => x.id === m.recipe_id); if (r) choices.unshift(r); }
+    if (m?.recipe_id && !choices.some((c) => c.id === m.recipe_id)) { const r = S.recipes.find((x) => x.id === m.recipe_id); if (r) { choices.unshift(r); choices.length = Math.min(choices.length, 3); } }
     return `<section class="card white" data-slot="${slot}">
       <div class="row between"><h2>${slot === 'midi' ? 'Midi' : 'Soir'}</h2>${m ? `<span class="pill ${m.status === 'fait' ? 'ok' : ''}">${{ choisi: 'Choisi', fait: 'Fait', remplace: 'Autre chose', saute: 'Sauté' }[m.status]}${m.member_id === null ? ' · nous deux' : ' · moi'}</span>` : ''}</div>
       ${m?.status === 'remplace' ? `<div class="card"><span class="small muted">Vous avez mangé</span><span style="font-weight:600">${esc(m.eaten_text)}</span><span class="small muted">${esc({ maison: 'Fait maison', resto: 'Restaurant', pouce: 'Sur le pouce', livre: 'Livré' }[m.kind] || '')}${m.cheat ? ' · joker' : ''}</span></div>` : ''}
@@ -533,7 +534,7 @@ async function viewTrack() {
     ${(acts || []).map((a) => { const p = people.find((x) => x.id === a.member_id); return `<div class="card"><span class="title">${esc(a.type)}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(a.start_at.slice(0, 10), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${String(a.distance_km).replace('.', ',')} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}</span></div>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
     <div class="row between"><h2>Poids</h2><button class="btn ghost sm" id="addW">+ Pesée</button></div>
     <div class="grid2">${people.map((p) => { const w = lastW(p.id); const diff = w && p.start_weight ? (w.kg - p.start_weight).toFixed(1) : null; return `<div class="card stat"><span class="small" style="color:${colorHex(p.color)};font-weight:600">${esc(p.first_name)}</span><b>${w ? `${String(w.kg).replace('.', ',')} kg` : '—'}</b><span class="muted small">${diff != null ? `${diff > 0 ? '+' : ''}${diff.replace('.', ',')} kg depuis le départ` : ''}${p.goal_weight ? ` · objectif ${String(p.goal_weight).replace('.', ',')}` : ''}</span></div>`; }).join('')}</div>
-    <div class="card white">${weightChart(weights || [], people)}</div>
+    ${people.map((p) => `<div class="card white"><span class="small" style="font-weight:600;color:${colorHex(p.color)}">${esc(p.first_name)}</span>${weightChart((weights || []).filter((w) => w.member_id === p.id), [p])}</div>`).join('')}
   </div>`;
   bindDayNav();
   document.getElementById('m').onsubmit = async (e) => {
