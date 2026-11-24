@@ -415,19 +415,20 @@ function viewOnboarding() {
 const ICONS = {
   today: '<path d="M4 6h16M4 12h16M4 18h10" stroke-width="2" stroke-linecap="round"/>',
   meals: '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 3c-2 2-2 6 0 8v10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  defis: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   journal: '<path d="M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6zM9 8h6M9 12h6" stroke-width="2" stroke-linecap="round"/>',
   track: '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2" stroke-width="2" stroke-linecap="round"/>',
   more: '<circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>',
 };
-const TABS = [['today', 'Aujourd\'hui'], ['meals', 'Repas'], ['journal', 'Journal'], ['track', 'Suivi'], ['more', 'Plus']];
+const TABS = [['today', 'Aujourd\'hui'], ['meals', 'Repas'], ['defis', 'Défis'], ['track', 'Suivi'], ['more', 'Plus']];
 function renderTabs() {
   $tabs.hidden = false;
-  $tabs.innerHTML = TABS.map(([id, l]) => `<button data-tab="${id}" ${S.view === id || (id === 'more' && ['program', 'settings', 'profile', 'account', 'sources'].includes(S.view)) ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="${id === 'more' ? 'currentColor' : 'none'}" stroke="currentColor">${ICONS[id]}</svg>${l}</button>`).join('');
+  $tabs.innerHTML = TABS.map(([id, l]) => `<button data-tab="${id}" ${S.view === id || (id === 'more' && ['program', 'settings', 'profile', 'account', 'sources', 'journal'].includes(S.view)) ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="${id === 'more' ? 'currentColor' : 'none'}" stroke="currentColor">${ICONS[id]}</svg>${l}</button>`).join('');
   $tabs.querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.tab));
 }
 function go(view) { S.view = view; renderTabs(); render(); window.scrollTo(0, 0); }
 async function render() {
-  const views = { today: viewToday, meals: viewMeals, journal: viewJournal, track: viewTrack, more: viewMore, program: viewProgram, settings: viewSettings, profile: viewProfile, account: viewAccount, sources: viewSources };
+  const views = { today: viewToday, meals: viewMeals, journal: viewJournal, defis: viewChallenges, track: viewTrack, more: viewMore, program: viewProgram, settings: viewSettings, profile: viewProfile, account: viewAccount, sources: viewSources };
   try { await (views[S.view] || viewToday)(); } catch (e) { fail(e, 'Affichage impossible'); }
 }
 function header(title, sub = '', withDayNav = false) {
@@ -482,6 +483,8 @@ async function viewToday() {
       const st = { fait: '<span class="pill ok">Fait</span>', remplace: '<span class="pill">Autre chose</span>', saute: '<span class="pill">Sauté</span>', choisi: '<span class="pill">Prévu</span>' }[m?.status] || '';
       return `<button class="card" style="border:0;text-align:left;cursor:pointer" data-go="meals"><span class="small muted" style="font-weight:600">${slot === 'midi' ? 'Midi' : 'Soir'}</span><span style="font-weight:600;line-height:1.3">${esc(label)}</span>${st}</button>`;
     }).join('')}</div>
+    <button class="card" style="border:0;text-align:left;cursor:pointer" data-go="journal"><span class="title">Mon journal du jour</span><span class="muted">Alcool, eau, écarts. Privé ou partagé.</span></button>
+    <button class="card" style="border:0;text-align:left;cursor:pointer" data-go="defis"><span class="title">Défis et badges</span><span class="muted">Paliers de pas, séries, points du mois.</span></button>
   </div>`;
   bindDayNav();
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
@@ -637,37 +640,67 @@ async function viewJournal() {
 }
 
 // ---------- Suivi ----------
+// Chaque mesure : comment l'afficher, et comment l'agréger sur une semaine ou un mois (moyenne, total ou dernière valeur).
+const hmFmt = (h) => `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
+const nf = (v, d = 0) => Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
 const METRICS = {
-  pas: { label: 'Pas', unit: 'pas par jour', key: 'steps', goal: 8000, goalLabel: 'Objectif 8 000', short: (v) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace('.', ',')}k` : String(Math.round(v))), fmt: (v) => Math.round(v).toLocaleString('fr-FR') },
-  activite: { label: 'Activité', unit: 'minutes actives par jour', key: 'act', goal: 30, goalLabel: '30 min', short: (v) => `${Math.round(v)}`, fmt: (v) => `${Math.round(v)} min` },
-  sommeil: { label: 'Sommeil', unit: 'heures par nuit', key: 'sleep', goal: 7, goalLabel: '7 h', short: (v) => `${v.toFixed(1).replace('.', ',')}`, fmt: (v) => `${Math.floor(v)} h ${String(Math.round((v % 1) * 60)).padStart(2, '0')}` },
-  fc: { label: 'FC repos', unit: 'battements par minute', key: 'rhr', goal: null, short: (v) => `${Math.round(v)}`, fmt: (v) => `${Math.round(v)} bpm` },
+  pas: { label: 'Pas', unit: 'pas', key: 'steps', agg: 'mean', total: true, goal: 8000, goalLabel: '8 000', short: (v) => (v >= 1000 ? `${nf(v / 1000, 1)}k` : nf(v)), fmt: (v) => nf(v) },
+  etages: { label: 'Étages', unit: 'étages', key: 'floors', agg: 'mean', total: true, goal: 10, goalLabel: '10', short: (v) => nf(v), fmt: (v) => nf(v) },
+  activite: { label: 'Activité', unit: 'minutes actives', key: 'act', agg: 'mean', total: true, goal: 30, goalLabel: '30 min', short: (v) => nf(v), fmt: (v) => `${nf(v)} min` },
+  distance: { label: 'Distance', unit: 'km en activité', key: 'km', agg: 'sum', goal: null, short: (v) => nf(v, 1), fmt: (v) => `${nf(v, 1)} km` },
+  seances: { label: 'Séances', unit: 'séances et activités', key: 'sessions', agg: 'sum', goal: null, short: (v) => nf(v), fmt: (v) => nf(v) },
+  sommeil: { label: 'Sommeil', unit: 'heures par nuit', key: 'sleep', agg: 'mean', goal: 7, goalLabel: '7 h', short: (v) => nf(v, 1), fmt: hmFmt },
+  fc: { label: 'FC repos', unit: 'bpm', key: 'rhr', agg: 'mean', lowerBetter: true, goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} bpm` },
+  fcmoy: { label: 'FC moyenne', unit: 'bpm', key: 'hr_avg', agg: 'mean', goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} bpm` },
+  vfc: { label: 'VFC', unit: 'ms', key: 'hrv', agg: 'mean', goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} ms` },
+  stress: { label: 'Stress', unit: 'sur 100', key: 'stress', agg: 'mean', lowerBetter: true, goal: null, short: (v) => nf(v), fmt: (v) => nf(v) },
+  poids: { label: 'Poids', unit: 'kg', key: 'kg', agg: 'last', lowerBetter: true, goal: null, short: (v) => nf(v, 1), fmt: (v) => `${nf(v, 1)} kg` },
+  eau: { label: 'Eau', unit: 'verres par jour', key: 'water', agg: 'mean', total: true, goal: 6, goalLabel: '6 verres', short: (v) => nf(v), fmt: (v) => `${nf(v, 1)} verres` },
+  alcool: { label: 'Alcool', unit: 'verres', key: 'drinks', agg: 'sum', lowerBetter: true, goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} verre${v > 1 ? 's' : ''}` },
 };
 const DAILY_DUO_GOAL = 20000;
 const WEEKLY_DUO_GOAL = 120000;
+const mean = (arr) => { const v = arr.filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+const sumOf = (arr) => arr.filter((x) => x != null).reduce((a, b) => a + b, 0);
+function aggregate(M, vals) {
+  const v = vals.filter((x) => x != null);
+  if (!v.length) return null;
+  if (M.agg === 'sum') return sumOf(v);
+  if (M.agg === 'last') return v[v.length - 1];
+  return mean(v);
+}
 
-// Données d'une période : une valeur par personne et par jour (la saisie manuelle prime sur la montre).
+// Données d'une période, fusionnées par personne et par jour (la saisie manuelle prime sur la montre).
 async function loadTrackData(from, to) {
-  const [{ data: metrics }, { data: acts }] = await Promise.all([
+  const [{ data: metrics }, { data: acts }, { data: weights }, { data: journal }, { data: checks }] = await Promise.all([
     sb.from('daily_metrics').select('*').eq('tandem_id', S.me.tandem_id).gte('day', from).lte('day', to),
     sb.from('activities').select('*').eq('tandem_id', S.me.tandem_id).gte('start_at', new Date(`${from}T00:00:00`).toISOString()).lte('start_at', new Date(`${to}T23:59:59`).toISOString()).order('start_at'),
+    sb.from('weights').select('*').eq('tandem_id', S.me.tandem_id).lte('day', to).order('day'),
+    sb.from('journal').select('*').gte('day', from).lte('day', to),
+    sb.from('checks').select('member_id,day,session_key').eq('tandem_id', S.me.tandem_id).gte('day', from).lte('day', to),
   ]);
+  const cache = new Map();
   const merged = (mid, day) => {
+    const ck = `${mid}|${day}`; if (cache.has(ck)) return cache.get(ck);
     const rows = (metrics || []).filter((m) => m.member_id === mid && m.day === day)
       .sort((a, b) => (a.source === 'manuel' ? -1 : 0) - (b.source === 'manuel' ? -1 : 0));
     const o = {};
     for (const k of ['steps', 'floors', 'rhr', 'hr_avg', 'hr_max', 'hrv', 'stress', 'sleep_min', 'active_min']) o[k] = rows.map((r) => r[k]).find((v) => v != null) ?? null;
-    const dayActs = (acts || []).filter((a) => a.member_id === mid && iso(new Date(a.start_at)) === day);
-    const actMin = dayActs.reduce((t, a) => t + (a.duration_min || 0), 0);
-    o.acts = dayActs;
-    o.act = dayActs.length || o.active_min != null ? Math.max(actMin, o.active_min || 0) : null;
+    o.acts = (acts || []).filter((a) => a.member_id === mid && iso(new Date(a.start_at)) === day);
+    const actMin = o.acts.reduce((t, a) => t + (a.duration_min || 0), 0);
+    o.act = o.acts.length || o.active_min != null ? Math.max(actMin, o.active_min || 0) : null;
+    o.km = o.acts.some((a) => a.distance_km) ? o.acts.reduce((t, a) => t + Number(a.distance_km || 0), 0) : null;
+    const ch = (checks || []).filter((c) => c.member_id === mid && c.day === day && c.session_key !== 'respiration').length;
+    o.sessions = o.acts.length || ch ? Math.max(o.acts.length, ch) : null;
     o.sleep = o.sleep_min == null ? null : o.sleep_min / 60;
-    return o;
+    const w = (weights || []).find((x) => x.member_id === mid && x.day === day && x.kg != null);
+    o.kg = w ? Number(w.kg) : null;
+    const j = (journal || []).find((x) => x.member_id === mid && x.day === day);
+    o.water = j ? j.water : null; o.drinks = j ? j.drinks : null; o.journal = j || null;
+    cache.set(ck, o); return o;
   };
-  return { metrics: metrics || [], acts: acts || [], merged };
+  return { merged, acts: acts || [], weights: weights || [], checks: checks || [] };
 }
-const mean = (arr) => { const v = arr.filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
-const sumOf = (arr) => arr.filter((x) => x != null).reduce((a, b) => a + b, 0);
 
 function trackHeader(title, sub) {
   const mode = S.trackMode || 'semaine';
@@ -679,28 +712,49 @@ function trackHeader(title, sub) {
 }
 function metricTabs() {
   const m = S.trackMetric || 'pas';
-  return `<div class="chips" role="tablist">${Object.entries(METRICS).map(([k, x]) => `<button class="chip" role="tab" data-metric="${k}" aria-pressed="${m === k}">${x.label}</button>`).join('')}</div>`;
+  return `<div style="overflow-x:auto;margin:0 -18px;padding:0 18px"><div class="row" role="tablist" style="gap:8px;width:max-content">${Object.entries(METRICS).map(([k, x]) => `<button class="chip" role="tab" data-metric="${k}" aria-pressed="${m === k}">${x.label}</button>`).join('')}</div></div>`;
 }
 function duoBar(title, goal, vals, people) {
   const total = sumOf(vals);
-  return `<div class="card white"><div class="row between"><span class="title">${esc(title)}</span><b>${Math.round(total).toLocaleString('fr-FR')}</b></div>
+  return `<div class="card white"><div class="row between"><span class="title">${esc(title)}</span><b>${nf(total)}</b></div>
     <div style="height:12px;border-radius:99px;background:var(--line);overflow:hidden;display:flex">${people.map((p, i) => `<div style="width:${Math.min(100, ((vals[i] || 0) / goal) * 100).toFixed(1)}%;background:${colorHex(p.color)}"></div>`).join('')}</div>
-    <span class="small muted">${total >= goal ? 'Défi réussi, bravo à vous deux !' : `Encore ${Math.round(goal - total).toLocaleString('fr-FR')} pas à vous deux.`}${vals.every((v) => v != null) && vals.length === 2 ? ` ${vals[0] === vals[1] ? 'Égalité parfaite.' : `${esc((vals[0] > vals[1] ? people[0] : people[1]).first_name)} mène de ${Math.abs(Math.round(vals[0] - vals[1])).toLocaleString('fr-FR')} pas.`}` : ''}</span></div>`;
+    <span class="small muted">${total >= goal ? 'Défi réussi, bravo à vous deux !' : `Encore ${nf(goal - total)} pas à vous deux.`}${vals.length === 2 && vals.every((v) => v != null) ? ` ${vals[0] === vals[1] ? 'Égalité parfaite.' : `${esc((vals[0] > vals[1] ? people[0] : people[1]).first_name)} mène de ${nf(Math.abs(vals[0] - vals[1]))} pas.`}` : ''}</span></div>`;
+}
+function deltaText(M, cur, prev, period) {
+  if (cur == null || prev == null) return '';
+  const d = cur - prev; if (Math.abs(d) < 1e-9) return `= ${period} précédent${period === 'semaine' ? 'e' : ''}`;
+  const good = M.lowerBetter ? d < 0 : d > 0;
+  let txt;
+  if (M.key === 'steps' && prev) txt = `${d > 0 ? '+' : '−'}${Math.abs(Math.round((d / prev) * 100))} %`;
+  else if (M.key === 'sleep') txt = `${d > 0 ? '+' : '−'}${Math.round(Math.abs(d) * 60)} min`;
+  else txt = `${d > 0 ? '+' : '−'}${M.fmt(Math.abs(d))}`;
+  return `<span style="color:${good ? 'var(--ok)' : 'var(--muted)'}">${txt}</span> vs ${period === 'semaine' ? 'semaine précédente' : 'mois précédent'}`;
+}
+function statCards(M, people, cur, prev, period, extra = () => '') {
+  return `<div class="grid2">${people.map((p, i) => {
+    const a = aggregate(M, cur[i]); const tot = M.total ? sumOf(cur[i].filter((x) => x != null)) : null;
+    const label = M.agg === 'sum' ? 'total' : M.agg === 'last' ? 'dernière valeur' : 'moyenne';
+    return `<div class="card stat" style="border-top:3px solid ${colorHex(p.color)}"><span class="small muted">${esc(p.first_name)} · ${label}</span><b>${a == null ? '—' : esc(M.fmt(a))}</b>
+      ${tot ? `<span class="small muted">Total : ${esc(M.fmt(tot))}</span>` : ''}
+      <span class="small muted">${deltaText(M, a, aggregate(M, prev[i]), period)}</span>${extra(p, i)}</div>`;
+  }).join('')}</div>`;
 }
 
 async function viewTrack() {
   S.trackMode = S.trackMode || 'semaine'; S.trackMetric = S.trackMetric || 'pas';
-  const mode = S.trackMode; const people = [S.me, S.partner].filter(Boolean);
-  if (mode === 'jour') return viewTrackDay(people);
-  if (mode === 'mois') return viewTrackMonth(people);
+  const people = [S.me, S.partner].filter(Boolean);
+  if (S.trackMode === 'jour') return viewTrackDay(people);
+  if (S.trackMode === 'mois') return viewTrackMonth(people);
   return viewTrackWeek(people);
 }
 function bindTrackNav(step) {
+  $app.querySelector('[data-metric][aria-pressed=true]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   $app.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { S.trackMode = b.dataset.mode; viewTrack(); });
   $app.querySelectorAll('[data-metric]').forEach((b) => b.onclick = () => { S.trackMetric = b.dataset.metric; viewTrack(); });
   $app.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => { S.day = addDays(S.day, Number(b.dataset.shift) * step); viewTrack(); });
   document.getElementById('manual')?.addEventListener('click', () => manualDayForm(S.day));
   document.getElementById('addAct')?.addEventListener('click', () => activityForm(null, S.day));
+  document.getElementById('addW')?.addEventListener('click', () => weightForm());
 }
 
 async function viewTrackDay(people) {
@@ -708,20 +762,26 @@ async function viewTrackDay(people) {
   const { merged } = await loadTrackData(d, d);
   const v = people.map((p) => merged(p.id, d));
   const cell = (fn) => v.map((x) => `<td>${fn(x) ?? '—'}</td>`).join('');
-  const hm = (min) => (min == null ? null : `${Math.floor(min / 60)} h ${String(Math.round(min % 60)).padStart(2, '0')}`);
+  const hm = (min) => (min == null ? null : hmFmt(min / 60));
   $app.innerHTML = trackHeader('Suivi', esc(cap(fmtDay(d)))) + `<div class="wrap">
-    ${duoBar(`Objectif commun : ${DAILY_DUO_GOAL.toLocaleString('fr-FR')} pas`, DAILY_DUO_GOAL, v.map((x) => x.steps), people)}
+    ${people.length === 2 ? duoBar(`Objectif commun : ${nf(DAILY_DUO_GOAL)} pas`, DAILY_DUO_GOAL, v.map((x) => x.steps), people) : ''}
     <div class="card white"><table class="mini"><tr><th></th>${people.map((p) => `<th style="color:${colorHex(p.color)}">${esc(p.first_name)}</th>`).join('')}</tr>
-      <tr><td>Pas</td>${cell((x) => x.steps?.toLocaleString('fr-FR'))}</tr>
+      <tr><td>Pas</td>${cell((x) => (x.steps != null ? nf(x.steps) : null))}</tr>
       <tr><td>Étages</td>${cell((x) => x.floors)}</tr>
+      <tr><td>Minutes actives</td>${cell((x) => (x.act != null ? `${x.act} min` : null))}</tr>
+      <tr><td>Distance</td>${cell((x) => (x.km != null ? `${nf(x.km, 1)} km` : null))}</tr>
       <tr><td>FC au repos</td>${cell((x) => (x.rhr != null ? `${x.rhr} bpm` : null))}</tr>
       <tr><td>FC moy. / max</td>${cell((x) => (x.hr_avg != null || x.hr_max != null ? `${x.hr_avg ?? '—'} / ${x.hr_max ?? '—'}` : null))}</tr>
-      <tr><td>Stress / VFC</td>${cell((x) => [x.stress != null ? `Stress ${x.stress}` : '', x.hrv != null ? `VFC ${x.hrv} ms` : ''].filter(Boolean).join(' · ') || null)}</tr>
+      <tr><td>Stress</td>${cell((x) => x.stress)}</tr>
+      <tr><td>VFC</td>${cell((x) => (x.hrv != null ? `${x.hrv} ms` : null))}</tr>
       <tr><td>Sommeil</td>${cell((x) => hm(x.sleep_min))}</tr>
-      <tr><td>Activité</td>${cell((x) => (x.acts.length ? x.acts.map((a) => `${esc(a.type)}${a.duration_min ? ` ${a.duration_min} min` : ''}`).join('<br>') : (x.active_min != null ? `${x.active_min} min` : null)))}</tr>
+      <tr><td>Poids</td>${cell((x) => (x.kg != null ? `${nf(x.kg, 1)} kg` : null))}</tr>
+      <tr><td>Eau</td>${cell((x) => (x.water != null ? `${x.water} verre(s)` : null))}</tr>
+      <tr><td>Alcool</td>${cell((x) => (x.drinks != null ? `${x.drinks} verre(s)` : null))}</tr>
+      <tr><td>Activités</td>${cell((x) => (x.acts.length ? x.acts.map((a) => `${esc(a.type)}${a.duration_min ? ` ${a.duration_min} min` : ''}`).join('<br>') : null))}</tr>
     </table></div>
-    <div class="row" style="flex-wrap:wrap"><button class="btn" id="manual">Saisir ma journée à la main</button><button class="btn ghost" id="addAct">+ Activité</button></div>
-    <span class="small muted">Pas de montre ? Pas, étages, fréquence cardiaque, sommeil et séances se saisissent à la main.</span>
+    <div class="row" style="flex-wrap:wrap"><button class="btn" id="manual">Saisir ma journée</button><button class="btn ghost" id="addAct">+ Activité</button><button class="btn ghost" id="addW">+ Pesée</button></div>
+    <span class="small muted">Pas de montre ? Tout se saisit à la main. L'eau et l'alcool se notent dans le Journal.</span>
   </div>`;
   bindTrackNav(1);
 }
@@ -729,57 +789,45 @@ async function viewTrackDay(people) {
 async function viewTrackWeek(people) {
   const monday = mondayOf(S.day); const sunday = addDays(monday, 6); const prevMon = addDays(monday, -7);
   const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i));
-  const prevDays = days.map((x) => addDays(x, -7));
   const M = METRICS[S.trackMetric];
-  const [{ merged, acts }, { data: weights }, { data: checks }] = await Promise.all([
-    loadTrackData(prevMon, sunday),
-    sb.from('weights').select('*').eq('tandem_id', S.me.tandem_id).order('day'),
-    sb.from('checks').select('member_id,day,session_key').eq('tandem_id', S.me.tandem_id).gte('day', monday).lte('day', sunday),
-  ]);
-  const series = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
+  const { merged, acts, weights, checks } = await loadTrackData(prevMon, sunday);
+  const cur = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
+  const prev = people.map((p) => days.map((x) => merged(p.id, addDays(x, -7))[M.key]));
   const planned = days.reduce((t, x) => t + (planDay(x)?.sessions || []).filter((s) => s.key !== 'respiration').length, 0);
-  const done = (mid) => (checks || []).filter((c) => c.member_id === mid && c.session_key !== 'respiration').length;
-  const delta = (p, i) => {
-    const cur = mean(series[i]); const prev = mean(prevDays.map((x) => merged(p.id, x)[M.key]));
-    if (cur == null || prev == null || prev === 0) return '';
-    if (M.key === 'steps') return `${cur >= prev ? '+' : ''}${Math.round(((cur - prev) / prev) * 100)} % vs semaine précédente`;
-    const dlt = cur - prev;
-    if (M.key === 'sleep') return `${dlt >= 0 ? '+' : '−'}${Math.round(Math.abs(dlt) * 60)} min vs semaine précédente`;
-    return `${dlt >= 0 ? '+' : '−'}${Math.round(Math.abs(dlt))} ${M.key === 'rhr' ? 'bpm' : 'min'} vs semaine précédente`;
-  };
+  const done = (mid) => checks.filter((c) => c.member_id === mid && c.day >= monday && c.session_key !== 'respiration').length;
   const stepsWeek = people.map((p) => sumOf(days.map((x) => merged(p.id, x).steps)));
   const pd = planDay(monday);
-  const lastW = (mid) => [...(weights || [])].filter((w) => w.member_id === mid && w.kg != null).pop();
+  const lastW = (mid) => [...weights].filter((w) => w.member_id === mid && w.kg != null).pop();
   const weekActs = acts.filter((a) => a.start_at >= new Date(`${monday}T00:00:00`).toISOString());
   $app.innerHTML = trackHeader('Suivi', `${pd ? `Semaine ${pd.week} · ` : ''}${fmtDay(monday, { day: 'numeric', month: 'short' })} au ${fmtDay(sunday, { day: 'numeric', month: 'short' })}`) + `<div class="wrap">
     ${metricTabs()}
-    <div class="card white">${barChart(people.map((p, i) => ({ color: colorHex(p.color), values: series[i] })), days, M.fmt, M.goal, M.goalLabel)}
-      <div class="row between">${legend(people)}<span class="small muted">${M.unit}</span></div></div>
-    <div class="grid2">${people.map((p, i) => { const a = mean(series[i]); return `<div class="card stat" style="border-top:3px solid ${colorHex(p.color)}"><span class="small muted">${esc(p.first_name)} · moyenne</span><b>${a == null ? '—' : esc(M.fmt(a))}</b><span class="small muted">${esc(delta(p, i))}</span>${planned ? `<span class="small">Séances : ${Math.min(done(p.id), planned)} / ${planned}</span>` : ''}</div>`; }).join('')}</div>
-    ${duoBar(`Défi à deux : ${WEEKLY_DUO_GOAL.toLocaleString('fr-FR')} pas`, WEEKLY_DUO_GOAL, stepsWeek, people)}
+    <div class="card white">${barChart(people.map((p, i) => ({ color: colorHex(p.color), values: cur[i] })), days, M.fmt, M.goal, M.goalLabel)}
+      <div class="row between">${legend(people)}<span class="small muted">${esc(M.unit)}</span></div></div>
+    ${statCards(M, people, cur, prev, 'semaine', (p) => (planned ? `<span class="small">Séances du programme : ${Math.min(done(p.id), planned)} / ${planned}</span>` : ''))}
+    ${people.length === 2 ? duoBar(`Défi à deux : ${nf(WEEKLY_DUO_GOAL)} pas`, WEEKLY_DUO_GOAL, stepsWeek, people) : ''}
     <div class="row between"><h2>Activités</h2><div class="row"><button class="btn ghost sm" id="manual">Saisir un jour</button><button class="btn ghost sm" id="addAct">+ Activité</button></div></div>
-    ${weekActs.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}${a.source !== 'manuel' ? ` <span class="pill">${esc({ garmin: 'Garmin', apple: 'Apple' }[a.source] || a.source)}</span>` : ''}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${String(a.distance_km).replace('.', ',')} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}${a.kcal ? ` · ${a.kcal} kcal` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
+    ${weekActs.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}${a.source !== 'manuel' ? ` <span class="pill">${esc({ garmin: 'Garmin', apple: 'Apple' }[a.source] || a.source)}</span>` : ''}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${nf(a.distance_km, 1)} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}${a.kcal ? ` · ${a.kcal} kcal` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
     <div class="row between"><h2>Poids</h2><div class="row"><button class="btn ghost sm" id="histW">Historique</button><button class="btn ghost sm" id="addW">+ Pesée</button></div></div>
-    <div class="grid2">${people.map((p) => { const w = lastW(p.id); const diff = w && p.start_weight ? (w.kg - p.start_weight).toFixed(1) : null; return `<div class="card stat"><span class="small" style="color:${colorHex(p.color)};font-weight:600">${esc(p.first_name)}</span><b>${w ? `${String(w.kg).replace('.', ',')} kg` : '—'}</b><span class="muted small">${diff != null ? `${diff > 0 ? '+' : ''}${diff.replace('.', ',')} kg depuis le départ` : ''}${p.goal_weight ? ` · objectif ${String(p.goal_weight).replace('.', ',')}` : ''}</span></div>`; }).join('')}</div>
-    ${people.map((p) => `<div class="card white"><span class="small" style="font-weight:600;color:${colorHex(p.color)}">${esc(p.first_name)}</span>${weightChart((weights || []).filter((w) => w.member_id === p.id), [p])}</div>`).join('')}
+    <div class="grid2">${people.map((p) => { const w = lastW(p.id); const diff = w && p.start_weight ? (w.kg - p.start_weight) : null; return `<div class="card stat"><span class="small" style="color:${colorHex(p.color)};font-weight:600">${esc(p.first_name)}</span><b>${w ? `${nf(w.kg, 1)} kg` : '—'}</b><span class="muted small">${diff != null ? `${diff > 0 ? '+' : ''}${nf(diff, 1)} kg depuis le départ` : ''}${p.goal_weight ? ` · objectif ${nf(p.goal_weight, 1)}` : ''}</span></div>`; }).join('')}</div>
   </div>`;
   bindTrackNav(7);
   $app.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => activityForm(weekActs.find((x) => x.id === el.dataset.act), S.day));
-  document.getElementById('histW').onclick = () => weightHistory(weights || []);
-  document.getElementById('addW').onclick = () => weightForm();
+  document.getElementById('histW').onclick = () => weightHistory(weights);
 }
 
 async function viewTrackMonth(people) {
-  const end = S.day; const start = addDays(end, -29);
+  const end = S.day; const start = addDays(end, -29); const prevStart = addDays(start, -30);
   const days = Array.from({ length: 30 }, (_, i) => addDays(start, i));
   const M = METRICS[S.trackMetric];
-  const { merged } = await loadTrackData(start, end);
-  const series = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
+  const { merged } = await loadTrackData(prevStart, end);
+  const cur = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
+  const prev = people.map((p) => days.map((x) => merged(p.id, addDays(x, -30))[M.key]));
+  // Pour les mesures en total (distance, séances, alcool), on trace le cumul par semaine glissante.
   $app.innerHTML = trackHeader('Suivi', `30 jours · ${fmtDay(start, { day: 'numeric', month: 'short' })} au ${fmtDay(end, { day: 'numeric', month: 'short' })}`) + `<div class="wrap">
     ${metricTabs()}
-    <div class="card white">${lineChart(people.map((p, i) => ({ color: colorHex(p.color), values: series[i] })), days, M)}
-      <div class="row between">${legend(people)}<span class="small muted">${M.unit} · trait épais = moyenne sur 7 jours</span></div></div>
-    <div class="grid2">${people.map((p, i) => { const a = mean(series[i]); const best = series[i].filter((x) => x != null); return `<div class="card stat" style="border-top:3px solid ${colorHex(p.color)}"><span class="small muted">${esc(p.first_name)} · moyenne 30 j</span><b>${a == null ? '—' : esc(M.fmt(a))}</b><span class="small muted">${best.length ? `${M.key === 'rhr' ? 'Plus bas' : 'Record'} : ${esc(M.fmt(M.key === 'rhr' ? Math.min(...best) : Math.max(...best)))}` : ''} · ${best.length} jour(s) renseigné(s)</span></div>`; }).join('')}</div>
+    <div class="card white">${lineChart(people.map((p, i) => ({ color: colorHex(p.color), values: cur[i] })), days, M)}
+      <div class="row between">${legend(people)}<span class="small muted">${esc(M.unit)} · trait = ${M.agg === 'sum' ? 'total sur 7 jours' : 'moyenne sur 7 jours'}</span></div></div>
+    ${statCards(M, people, cur, prev, 'mois', (p, i) => { const vals = cur[i].filter((x) => x != null); if (!vals.length || M.agg === 'sum') return `<span class="small muted">${vals.length} jour(s) renseigné(s)</span>`; const best = M.lowerBetter ? Math.min(...vals) : Math.max(...vals); return `<span class="small muted">${M.lowerBetter ? 'Plus bas' : 'Record'} : ${esc(M.fmt(best))} · ${vals.length} jour(s)</span>`; })}
   </div>`;
   bindTrackNav(30);
 }
@@ -787,22 +835,25 @@ async function viewTrackMonth(people) {
 function lineChart(series, days, M) {
   const all = series.flatMap((s) => s.values).filter((v) => v != null);
   if (!all.length) return '<span class="muted">Pas encore de données sur cette période.</span>';
-  const W = 330, H = 190, top = 14, bottom = 24, left = 30, right = 6;
-  let lo = Math.min(...all, M.goal ?? Infinity), hi = Math.max(...all, M.goal ?? -Infinity);
-  if (M.key !== 'rhr') lo = 0;
-  const pad = (hi - lo) * 0.1 || 1; hi += pad; if (M.key === 'rhr') lo -= pad;
+  const roll = (vals, i) => { const w = vals.slice(Math.max(0, i - 6), i + 1); return M.agg === 'sum' ? (w.some((x) => x != null) ? sumOf(w) : null) : mean(w); };
+  const trends = series.map((s) => s.values.map((_, i) => roll(s.values, i)));
+  const pts = M.agg === 'sum' ? trends.flat().filter((v) => v != null) : all;
+  const W = 330, H = 190, top = 14, bottom = 24, left = 32, right = 6;
+  let lo = Math.min(...pts, M.goal ?? Infinity), hi = Math.max(...pts, M.goal ?? -Infinity);
+  const relative = ['rhr', 'kg', 'hr_avg', 'hrv'].includes(M.key);
+  if (!relative) lo = 0;
+  const pad = (hi - lo) * 0.1 || 1; hi += pad; if (relative) lo -= pad;
   const X = (i) => left + (i / (days.length - 1)) * (W - left - right);
   const Y = (v) => top + (1 - (v - lo) / (hi - lo)) * (H - top - bottom);
   let out = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" style="height:200px">`;
   for (const t of [lo, (lo + hi) / 2, hi]) out += `<line x1="${left}" x2="${W - right}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="#E3E6EB"/><text x="${left - 4}" y="${(Y(t) + 3).toFixed(1)}" font-size="9" fill="#5E6573" text-anchor="end">${esc(M.short(t))}</text>`;
-  if (M.goal != null) out += `<line x1="${left}" x2="${W - right}" y1="${Y(M.goal).toFixed(1)}" y2="${Y(M.goal).toFixed(1)}" stroke="#A9B0BC" stroke-dasharray="4 4"/>`;
-  for (const s of series) {
-    const pts = s.values.map((v, i) => (v == null ? null : [X(i), Y(v)]));
-    out += pts.filter(Boolean).map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2" fill="${s.color}" opacity=".55"/>`).join('');
-    const ma = s.values.map((_, i) => mean(s.values.slice(Math.max(0, i - 6), i + 1)));
-    const path = ma.map((v, i) => (v == null ? null : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`)).filter(Boolean);
+  if (M.goal != null && M.agg !== 'sum') out += `<line x1="${left}" x2="${W - right}" y1="${Y(M.goal).toFixed(1)}" y2="${Y(M.goal).toFixed(1)}" stroke="#A9B0BC" stroke-dasharray="4 4"/>`;
+  series.forEach((s, si) => {
+    if (M.agg !== 'sum') out += s.values.map((v, i) => (v == null ? '' : `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.3" fill="${s.color}" opacity=".5"/>`)).join('');
+    const path = trends[si].map((v, i) => (v == null ? null : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`)).filter(Boolean);
     if (path.length > 1) out += `<polyline fill="none" stroke="${s.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${path.join(' ')}"/>`;
-  }
+    else if (path.length === 1) { const [x, y] = path[0].split(','); out += `<circle cx="${x}" cy="${y}" r="4" fill="${s.color}"/>`; }
+  });
   [0, Math.floor((days.length - 1) / 2), days.length - 1].forEach((i) => { out += `<text x="${X(i).toFixed(1)}" y="${H - 6}" font-size="10" fill="#5E6573" text-anchor="${i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'}">${esc(fmtDay(days[i], { day: 'numeric', month: 'short' }))}</text>`; });
   return out + '</svg>';
 }
@@ -811,7 +862,7 @@ async function manualDayForm(day) {
   const { data } = await sb.from('daily_metrics').select('*').eq('member_id', S.me.id).eq('day', day).eq('source', 'manuel').maybeSingle();
   const m = data || {};
   openModal(`<div class="row between"><h2>Ma journée</h2><button class="btn ghost sm" data-close>Fermer</button></div>
-    <span class="muted">${esc(cap(fmtDay(day)))} · ce que tu saisis remplace les chiffres de la montre pour ce jour-là.</span>
+    <span class="muted">Ce que tu saisis ici remplace les chiffres de la montre pour ce jour-là.</span>
     <form id="m" style="display:flex;flex-direction:column;gap:10px" novalidate>
       <label>Jour<input name="day" type="date" value="${day}"></label>
       <div class="grid2">
@@ -830,15 +881,15 @@ async function manualDayForm(day) {
     </form>`, (root) => root.querySelector('#m').onsubmit = async (e) => {
     e.preventDefault(); const v = formData(e.target); const $e = root.querySelector('#merr');
     const sleep = num(v.sleep_h);
-    const checks = [[int(v.steps), 0, 200000, 'Pas'], [sleep, 0, 24, 'Sommeil'], [int(v.rhr), 25, 200, 'FC au repos'], [int(v.stress), 0, 100, 'Stress'], [int(v.active_min), 0, 1440, 'Minutes actives']];
-    for (const [val, lo, hi, l] of checks) if (val != null && (Number.isNaN(val) || val < lo || val > hi)) return ($e.textContent = `${l} : valeur entre ${lo} et ${hi.toLocaleString('fr-FR')}.`);
+    const rules = [[int(v.steps), 0, 200000, 'Pas'], [int(v.floors), 0, 2000, 'Étages'], [sleep, 0, 24, 'Sommeil'], [int(v.rhr), 25, 200, 'FC au repos'], [int(v.hr_avg), 25, 230, 'FC moyenne'], [int(v.hr_max), 25, 240, 'FC max'], [int(v.stress), 0, 100, 'Stress'], [int(v.hrv), 1, 400, 'VFC'], [int(v.active_min), 0, 1440, 'Minutes actives']];
+    for (const [val, lo, hi, l] of rules) if (val != null && (Number.isNaN(val) || val < lo || val > hi)) return ($e.textContent = `${l} : valeur entre ${lo} et ${nf(hi)}.`);
     const { error } = await sb.from('daily_metrics').upsert({
       member_id: S.me.id, tandem_id: S.me.tandem_id, day: v.day || day, source: 'manuel',
       steps: int(v.steps), floors: int(v.floors), rhr: int(v.rhr), hr_avg: int(v.hr_avg), hr_max: int(v.hr_max), stress: int(v.stress), hrv: int(v.hrv), active_min: int(v.active_min),
       sleep_min: sleep != null ? Math.round(sleep * 60) : null, updated_at: new Date().toISOString(),
     });
     if (error) return ($e.textContent = `Enregistrement impossible : ${error.message}`);
-    closeModal(); toast('Journée enregistrée'); viewTrack();
+    closeModal(); toast('Journée enregistrée'); render();
   });
 }
 function weightForm() {
@@ -852,9 +903,115 @@ function weightForm() {
     e.preventDefault(); const v = formData(e.target); const kg = num(v.kg);
     if (kg == null || Number.isNaN(kg) || kg < 30 || kg > 300) return (root.querySelector('#werr').textContent = 'Indique un poids entre 30 et 300 kg.');
     const { error } = await sb.from('weights').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, day: v.date || today(), kg, waist_cm: num(v.waist) });
-    if (error) return fail(error, 'Enregistrement impossible'); closeModal(); viewTrack();
+    if (error) return fail(error, 'Enregistrement impossible'); closeModal(); render();
   });
 }
+
+// ---------- Défis ----------
+// Inspiré des applis de marche (jauge à paliers, séries, badges) : tout est calculé à partir des données existantes.
+const STEP_TIERS = [2500, 5000, 7500, 10000];
+const STREAK_STEPS = 7500;
+function dayPoints(o, ctx) {
+  // ctx : { planKeys, checks:Set, meals, journal, duoOk }
+  const parts = [];
+  const tiers = STEP_TIERS.filter((t) => (o.steps || 0) >= t).length; if (tiers) parts.push(['Paliers de pas', tiers]);
+  const brisk = o.acts.filter((a) => /marche|rando/i.test(a.type) && (a.duration_min || 0) >= 10);
+  const bmax = Math.max(0, ...brisk.map((a) => a.duration_min || 0));
+  if (bmax >= 20) parts.push(['Marche rapide 20 min', 2]); else if (bmax >= 10) parts.push(['Marche rapide 10 min', 1]);
+  const sess = ctx.sessions; if (sess) parts.push(['Séances du programme', sess * 3]);
+  if (ctx.breath) parts.push(['Respiration', 1]);
+  const other = Math.min(2, o.acts.filter((a) => !/marche|rando/i.test(a.type)).length); if (other) parts.push(['Activités', other * 2]);
+  if (ctx.mealsDone) parts.push(['Repas suivis', ctx.mealsDone]);
+  if (o.journal) { parts.push(['Journal rempli', 1]); if (o.journal.drinks === 0) parts.push(['Journée sans alcool', 1]); }
+  if ((o.sleep || 0) >= 7) parts.push(['Nuit de 7 h', 1]);
+  if (ctx.duoOk) parts.push(['Défi du jour à deux', 2]);
+  return { total: parts.reduce((t, [, n]) => t + n, 0), parts };
+}
+
+async function viewChallenges() {
+  const people = [S.me, S.partner].filter(Boolean);
+  const d = S.day; const end = today() < d ? today() : d;
+  const from = addDays(end, -89);
+  const monthStart = `${end.slice(0, 8)}01`;
+  const [{ merged, checks, weights }, { data: meals }, { data: allActs }] = await Promise.all([
+    loadTrackData(from, end),
+    sb.from('meals').select('day,member_id,status').eq('tandem_id', S.me.tandem_id).gte('day', from).lte('day', end),
+    sb.from('activities').select('member_id,distance_km').eq('tandem_id', S.me.tandem_id),
+  ]);
+  const days90 = Array.from({ length: 90 }, (_, i) => addDays(from, i));
+  const ctxFor = (p, day) => {
+    const ch = checks.filter((c) => c.member_id === p.id && c.day === day);
+    const steps = people.map((q) => merged(q.id, day).steps || 0);
+    return {
+      sessions: ch.filter((c) => c.session_key !== 'respiration').length,
+      breath: ch.some((c) => c.session_key === 'respiration'),
+      mealsDone: (meals || []).filter((m) => m.day === day && m.status === 'fait' && (m.member_id === null || m.member_id === p.id)).length,
+      duoOk: people.length === 2 && steps[0] + steps[1] >= DAILY_DUO_GOAL,
+    };
+  };
+  const pts = (p, day) => dayPoints(merged(p.id, day), ctxFor(p, day));
+  const monthDays = days90.filter((x) => x >= monthStart);
+  const monthPts = people.map((p) => sumOf(monthDays.map((x) => pts(p, x).total)));
+  const streak = (pred) => { let n = 0; for (let i = days90.length - 1; i >= 0; i--) { const ok = pred(days90[i]); if (ok) n++; else if (days90[i] === end) continue; else break; } return n; };
+  const stepStreak = people.map((p) => streak((x) => (merged(p.id, x).steps || 0) >= STREAK_STEPS));
+  const duoStreak = people.length === 2 ? streak((x) => people.every((p) => (merged(p.id, x).steps || 0) >= STREAK_STEPS)) : 0;
+  const best = (pred) => { let b = 0, n = 0; for (const x of days90) { if (pred(x)) { n++; b = Math.max(b, n); } else n = 0; } return b; };
+  const me = merged(S.me.id, end); const myPts = pts(S.me, end);
+  const totalKm = (mid) => sumOf((allActs || []).filter((a) => a.member_id === mid).map((a) => Number(a.distance_km || 0)));
+  const weekTotal = (mid, mon) => sumOf([0, 1, 2, 3, 4, 5, 6].map((i) => merged(mid, addDays(mon, i)).steps));
+  const weeksOk = people.length === 2 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].filter((k) => { const mon = addDays(mondayOf(end), -7 * k); return mon >= from && weekTotal(people[0].id, mon) + weekTotal(people[1].id, mon) >= WEEKLY_DUO_GOAL; }).length : 0;
+  const duoDays = days90.filter((x) => ctxFor(S.me, x).duoOk).length;
+  const sessionsDone = (mid) => checks.filter((c) => c.member_id === mid && c.session_key !== 'respiration').length;
+  const lostKg = (p) => { const w = weights.filter((x) => x.member_id === p.id && x.kg != null).pop(); return w && p.start_weight ? p.start_weight - w.kg : 0; };
+  const badges = [
+    ['10 000 pas', 'Une journée à 10 000 pas', days90.some((x) => (merged(S.me.id, x).steps || 0) >= 10000)],
+    ['Série de 7', `7 jours d'affilée à ${nf(STREAK_STEPS)} pas`, best((x) => (merged(S.me.id, x).steps || 0) >= STREAK_STEPS) >= 7],
+    ['Série de 30', `30 jours d'affilée à ${nf(STREAK_STEPS)} pas`, best((x) => (merged(S.me.id, x).steps || 0) >= STREAK_STEPS) >= 30],
+    ['Duo du jour', `Défi des ${nf(DAILY_DUO_GOAL)} pas réussi 5 fois`, duoDays >= 5],
+    ['Semaine en or', `${nf(WEEKLY_DUO_GOAL)} pas à deux en une semaine`, weeksOk >= 1],
+    ['Régulier', '10 séances du programme cochées', sessionsDone(S.me.id) >= 10],
+    ['Assidu', '30 séances du programme cochées', sessionsDone(S.me.id) >= 30],
+    ['100 km', '100 km cumulés en activité', totalKm(S.me.id) >= 100],
+    ['Bien dormi', '7 nuits de 7 h d\'affilée', best((x) => (merged(S.me.id, x).sleep || 0) >= 7) >= 7],
+    ['Zen', '10 séances de respiration', checks.filter((c) => c.member_id === S.me.id && c.session_key === 'respiration').length >= 10],
+    ['Premier kilo', '1 kg de moins depuis le départ', lostKg(S.me) >= 1],
+    ['Cinq kilos', '5 kg de moins depuis le départ', lostKg(S.me) >= 5],
+  ];
+  const tierPct = Math.min(1, (me.steps || 0) / STEP_TIERS[STEP_TIERS.length - 1]);
+  const R = 70, C = Math.PI * R;
+  const gauge = `<svg viewBox="0 0 180 104" style="width:100%;max-width:260px;display:block;margin:0 auto" role="img" aria-label="${nf(me.steps || 0)} pas">
+    <path d="M20 94 A70 70 0 0 1 160 94" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M20 94 A70 70 0 0 1 160 94" fill="none" stroke="var(--me)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(C * tierPct).toFixed(1)} ${C.toFixed(1)}"/>
+    ${STEP_TIERS.map((t) => { const a = Math.PI * (1 - t / STEP_TIERS[STEP_TIERS.length - 1]); const x = 90 + R * Math.cos(a), y = 94 - R * Math.sin(a); const ok = (me.steps || 0) >= t; return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="${ok ? '#fff' : 'var(--line)'}" stroke="${ok ? 'var(--me)' : '#fff'}" stroke-width="3"/>`; }).join('')}
+    <text x="90" y="80" text-anchor="middle" font-size="22" font-weight="700" font-family="Barlow Condensed" fill="var(--ink)">${nf(me.steps || 0)}</text>
+    <text x="90" y="96" text-anchor="middle" font-size="10" fill="#5E6573">pas · ${STEP_TIERS.filter((t) => (me.steps || 0) >= t).length} palier(s) sur 4</text></svg>`;
+  const next = STEP_TIERS.find((t) => (me.steps || 0) < t);
+  const brisk = Math.max(0, ...me.acts.filter((a) => /marche|rando/i.test(a.type)).map((a) => a.duration_min || 0));
+  $app.innerHTML = header('Défis', 'Paliers de pas, séries, points et badges', true) + `<div class="wrap">
+    <div class="card white" style="align-items:center;text-align:center">${gauge}
+      <span class="muted">${next ? `Prochain palier : ${nf(next)} pas, encore ${nf(next - (me.steps || 0))}.` : 'Les 4 paliers sont atteints, bravo !'}</span>
+      <span class="pill ok">+${myPts.total} point${myPts.total > 1 ? 's' : ''} aujourd'hui</span></div>
+    <div class="grid2">
+      <div class="card"><span class="title">Marche rapide</span><span class="muted small">10 ou 20 min de marche d'un bon pas.</span><b style="font:700 22px 'Barlow Condensed'">${brisk >= 20 ? '20 min ✓' : brisk >= 10 ? '10 min ✓' : 'À faire'}</b></div>
+      <div class="card"><span class="title">Série</span><span class="muted small">Jours d'affilée à ${nf(STREAK_STEPS)} pas.</span><b style="font:700 22px 'Barlow Condensed'">${stepStreak[0]} jour${stepStreak[0] > 1 ? 's' : ''}</b>${people.length === 2 ? `<span class="small">À deux : ${duoStreak} jour${duoStreak > 1 ? 's' : ''}</span>` : ''}</div>
+    </div>
+    ${people.length === 2 ? duoBar(`Défi du jour : ${nf(DAILY_DUO_GOAL)} pas à deux`, DAILY_DUO_GOAL, people.map((p) => merged(p.id, end).steps), people) : ''}
+    ${people.length === 2 ? duoBar(`Défi de la semaine : ${nf(WEEKLY_DUO_GOAL)} pas`, WEEKLY_DUO_GOAL, people.map((p) => weekTotal(p.id, mondayOf(end))), people) : ''}
+    <h2>Points du mois</h2>
+    <div class="card white">
+      ${people.map((p, i) => `<div class="row between"><span class="row" style="gap:8px"><span class="avatar" style="background:${colorHex(p.color)};width:32px;height:32px;font-size:15px">${esc(p.first_name[0])}</span><b>${esc(p.first_name)}</b></span><b style="font:700 24px 'Barlow Condensed'">${nf(monthPts[i])} pts</b></div>`).join('')}
+      ${people.length === 2 ? `<span class="small muted">${monthPts[0] === monthPts[1] ? 'Égalité pour l\'instant.' : `${esc((monthPts[0] > monthPts[1] ? people[0] : people[1]).first_name)} mène le duel du mois.`} Ensemble : ${nf(monthPts[0] + monthPts[1])} points.</span>` : ''}
+    </div>
+    <details class="card"><summary class="title" style="cursor:pointer">Mes points d'aujourd'hui</summary>
+      ${myPts.parts.length ? `<table class="mini">${myPts.parts.map(([l, n]) => `<tr><td>${esc(l)}</td><td style="text-align:right">+${n}</td></tr>`).join('')}</table>` : '<span class="muted small">Pas encore de points aujourd\'hui.</span>'}
+      <span class="small muted">Barème : 1 point par palier de pas (2 500, 5 000, 7 500, 10 000) · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</span>
+    </details>
+    <h2>Badges</h2>
+    <div class="grid2">${badges.map(([t, desc, ok]) => `<div class="card" style="${ok ? 'background:var(--okbg)' : 'opacity:.6'}"><span class="title">${ok ? '🏅' : '🔒'} ${esc(t)}</span><span class="small muted">${esc(desc)}</span></div>`).join('')}</div>
+  </div>`;
+  bindDayNav();
+}
+
 const ACT_TYPES = ['Vélo d\'appartement', 'Marche', 'Course', 'Renfo', 'Kettlebell', 'TRX', 'Respiration', 'Étirements', 'Yoga', 'Natation', 'Vélo dehors', 'Randonnée', 'Autre'];
 function activityForm(a, day) {
   const isNew = !a;
@@ -965,7 +1122,7 @@ function weightChart(weights, people) {
 // ---------- Plus ----------
 function viewMore() {
   $app.innerHTML = header('Plus') + `<div class="wrap">
-    ${[['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Garmin, Apple Watch, saisie manuelle'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
+    ${[['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Garmin, Apple Watch, saisie manuelle'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
       .map(([v, t, s]) => `<button class="card" style="border:0;text-align:left;cursor:pointer" data-go="${v}"><span class="title">${t}</span><span class="muted">${s}</span></button>`).join('')}
   </div>`;
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
