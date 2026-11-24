@@ -109,20 +109,30 @@ function draw(name, t, color) {
 
 export const hasAnim = (name) => !!ANIMS[name];
 export function animSvg(name) {
-  return `<svg class="ex-anim" data-anim="${name.replace(/"/g, '&quot;')}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Animation de l'exercice ${name.replace(/"/g, '&quot;')}" style="width:100%;max-width:320px;display:block;margin:0 auto;background:#F3F5F8;border-radius:12px"></svg>`;
+  const n = name.replace(/"/g, '&quot;');
+  return `<div style="position:relative;max-width:320px;margin:0 auto;width:100%">
+    <svg class="ex-anim" data-anim="${n}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Animation de l'exercice ${n}" style="width:100%;display:block;background:#F3F5F8;border-radius:12px;cursor:pointer"></svg>
+    <button type="button" class="anim-toggle" aria-label="Mettre l'animation en pause" style="position:absolute;right:8px;top:8px;border:0;border-radius:99px;min-width:36px;min-height:36px;background:rgba(255,255,255,.9);font-size:14px;cursor:pointer">❚❚</button></div>`;
 }
 let running = false;
 // Anime toutes les silhouettes présentes à l'écran ; s'arrête tout seul quand il n'y en a plus.
+// L'animation tourne toujours (c'est elle qui montre le geste) ; un bouton permet de la mettre en pause.
 export function startAnims(color = '#1F6FB2') {
+  document.querySelectorAll('.anim-toggle').forEach((b) => {
+    if (b.dataset.bound) return; b.dataset.bound = '1';
+    const svg = b.previousElementSibling;
+    const toggle = () => { const p = svg.dataset.paused === '1'; svg.dataset.paused = p ? '0' : '1'; b.textContent = p ? '❚❚' : '▶'; b.setAttribute('aria-label', p ? 'Mettre l\'animation en pause' : 'Relancer l\'animation'); };
+    b.onclick = toggle; svg.onclick = toggle;
+  });
   if (running) return; running = true;
-  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const t0 = performance.now();
   const tick = (now) => {
     const els = document.querySelectorAll('svg.ex-anim');
     if (!els.length) { running = false; return; }
     els.forEach((el) => {
       const def = ANIMS[el.dataset.anim]; if (!def) return;
-      const t = reduce ? 0.5 : (((now - t0) / 1000) * 0.5 * (def.speed || 1)) % 1;
+      if (el.dataset.paused === '1' && el.innerHTML) return;
+      const t = (((now - t0) / 1000) * 0.5 * (def.speed || 1)) % 1;
       el.innerHTML = draw(el.dataset.anim, t, color);
     });
     requestAnimationFrame(tick);
