@@ -97,7 +97,7 @@ async function loadCore() {
   S.tandem = tandem; S.plan = plan || null;
   if (!S.recipes.length) {
     const [{ data: rec }, { data: al }] = await Promise.all([
-      sb.from('recipes').select('id,name,minutes,servings,protein,dish_type,season,is_treat,lunchbox'),
+      sb.from('recipes').select('id,name,minutes,servings,protein,dish_type,season,is_treat,lunchbox,kcal_portion'),
       sb.from('recipe_allergens').select('*'),
     ]);
     S.recipes = rec || [];
@@ -677,7 +677,7 @@ async function viewMeals() {
       ${m?.status === 'remplace' ? `<div class="card"><span class="small muted">Vous avez mangé</span><span style="font-weight:600">${esc(m.eaten_text)}</span><span class="small muted">${esc({ maison: 'Fait maison', resto: 'Restaurant', pouce: 'Sur le pouce', livre: 'Livré' }[m.kind] || '')}${m.cheat ? ' · joker' : ''}</span></div>` : ''}
       ${choices.map((r) => `<button class="choice" data-pick="${r.id}" aria-pressed="${m?.recipe_id === r.id && m.status !== 'remplace'}">
         <span style="font-weight:600">${esc(r.name)}</span>
-        <span class="small muted">${r.minutes ? `${r.minutes} min` : ''}${r.lunchbox ? ' · gamelle' : ''}${r.is_treat ? ' · plaisir' : ''}${(S.allergenMap[r.id]?.allergens || []).length ? ` · ${(S.allergenMap[r.id].allergens).map((a) => (ALLERGENS.find((x) => x[0] === a) || [a, a])[1].toLowerCase()).join(', ')}` : ''}</span>
+        <span class="small muted">${r.minutes ? `${r.minutes} min` : ''}${r.kcal_portion ? ` · ~${r.kcal_portion} kcal` : ''}${r.lunchbox ? ' · gamelle' : ''}${r.is_treat ? ' · plaisir' : ''}${(S.allergenMap[r.id]?.allergens || []).length ? ` · ${(S.allergenMap[r.id].allergens).map((a) => (ALLERGENS.find((x) => x[0] === a) || [a, a])[1].toLowerCase()).join(', ')}` : ''}</span>
       </button>`).join('') || '<span class="muted">Aucune recette compatible avec vos allergies et régimes.</span>'}
       <div class="row" style="flex-wrap:wrap">
         ${m?.recipe_id && m.status !== 'remplace' ? `<button class="btn sm" data-done="${m.status === 'fait' ? 0 : 1}">${m.status === 'fait' ? 'Annuler « fait »' : 'C\'est mangé ✓'}</button><button class="btn soft sm" data-recipe="${m.recipe_id}">Voir la recette</button>` : ''}
@@ -730,19 +730,43 @@ function otherMeal(m, slot, cheats) {
     };
   });
 }
-async function showRecipe(id) {
+// Ajuste la quantité en tête de ligne (« 250 g de riz », « 1/2 concombre ») au nombre de portions choisi.
+function scaleLabel(label, qty, factor) {
+  if (qty == null || factor === 1) return label;
+  const v = Number(qty) * factor;
+  const fmt = v >= 100 ? String(Math.round(v / 5) * 5) : v >= 10 ? String(Math.round(v)) : (Math.round(v * 4) / 4).toString().replace('.', ',').replace(',25', ' ¼').replace(',5', ' ½').replace(',75', ' ¾').replace(/^0 /, '');
+  return label.replace(/^\d+(?:[.,]\d+)?(?:\/\d+)?/, fmt);
+}
+async function showRecipe(id, portions) {
   const r = S.recipes.find((x) => x.id === id);
   const [{ data: full }, { data: ing }] = await Promise.all([
-    sb.from('recipes').select('steps').eq('id', id).single(),
-    sb.from('recipe_ingredients').select('label,position').eq('recipe_id', id).order('position'),
+    sb.from('recipes').select('steps,prep_min,cook_min,tip,variant,storage,nutrition,servings').eq('id', id).single(),
+    sb.from('recipe_ingredients').select('label,position,qty').eq('recipe_id', id).order('position'),
   ]);
+  const base = full?.servings || 4; const n = portions || base; const factor = n / base;
   const al = (S.allergenMap[id]?.allergens || []).map((a) => (ALLERGENS.find((x) => x[0] === a) || [a, a])[1]);
+  const nu = full?.nutrition;
   openModal(`
-    <div class="row between"><h2>${esc(r?.name)}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
-    <span class="muted">${r?.minutes ? `${r.minutes} min · ` : ''}${r?.servings || 4} portions</span>
-    ${al.length ? `<div class="notice">Allergènes : ${esc(al.join(', '))}</div>` : ''}
-    <h3>Ingrédients</h3><ul class="plain">${(ing || []).map((i) => `<li>${esc(i.label)}</li>`).join('')}</ul>
-    <h3>Étapes</h3><ol class="steps">${(full?.steps || []).map((s) => `<li>${esc(s)}</li>`).join('')}</ol>`);
+    <div class="row between" style="align-items:flex-start"><h2>${esc(r?.name)}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      ${full?.prep_min != null ? `<span class="pill">Préparation ${full.prep_min} min</span>` : ''}
+      ${full?.cook_min ? `<span class="pill">Cuisson ${full.cook_min >= 60 ? `${Math.floor(full.cook_min / 60)} h ${String(full.cook_min % 60).padStart(2, '0')}` : `${full.cook_min} min`}</span>` : ''}
+      ${r?.lunchbox ? '<span class="pill ok">Gamelle</span>' : ''}${r?.is_treat ? '<span class="pill warn">Plaisir</span>' : ''}
+    </div>
+    ${al.length ? `<div class="notice">Allergènes : ${esc(al.join(', '))}</div>` : '<div class="small muted">Aucun des 14 allergènes majeurs détecté dans les ingrédients.</div>'}
+    <div class="row between"><h3>Ingrédients</h3>
+      <div class="row" style="gap:6px" aria-label="Nombre de portions"><button class="btn soft sm" data-por="${Math.max(1, n - 1)}" aria-label="Moins de portions">−</button><b>${n} portion${n > 1 ? 's' : ''}</b><button class="btn soft sm" data-por="${Math.min(8, n + 1)}" aria-label="Plus de portions">+</button></div></div>
+    <ul class="plain">${(ing || []).map((i) => `<li>${esc(scaleLabel(i.label, i.qty, factor))}</li>`).join('')}</ul>
+    ${factor !== 1 ? '<span class="small muted">Quantités recalculées et arrondies. Les ingrédients sans quantité sont à doser selon le goût.</span>' : ''}
+    <h3>Étapes</h3><ol class="steps">${(full?.steps || []).map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
+    ${full?.tip ? `<div class="card"><span class="title">L'astuce</span><span class="small">${esc(full.tip)}</span></div>` : ''}
+    ${full?.variant ? `<div class="card"><span class="title">Variante</span><span class="small">${esc(full.variant)}</span></div>` : ''}
+    ${full?.storage ? `<div class="card"><span class="title">Conservation</span><span class="small">${esc(full.storage)}</span></div>` : ''}
+    ${nu ? `<div class="card white"><span class="title">Par portion (estimation)</span>
+      <table class="mini"><tr><td>Énergie</td><td><b>${nu.kcal} kcal</b></td></tr><tr><td>Protéines</td><td>${nu.prot} g</td></tr><tr><td>Glucides</td><td>${nu.gluc} g</td></tr><tr><td>Lipides</td><td>${nu.lip} g</td></tr><tr><td>Fibres</td><td>${nu.fib} g</td></tr></table>
+      <span class="small muted">Calculé à partir des ingrédients pour ${base} portions, avec des valeurs moyennes. C'est un ordre de grandeur, pas une mesure exacte.</span></div>` : ''}`, (root) => {
+    root.querySelectorAll('[data-por]').forEach((b) => b.onclick = () => showRecipe(id, Number(b.dataset.por)));
+  });
 }
 
 // ---------- Journal ----------
