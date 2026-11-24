@@ -673,6 +673,7 @@ async function viewTrack() {
         <label>FC au repos<input name="rhr" inputmode="numeric" value="${esc(todayMine.rhr)}"></label>
         <label>Stress (0–100)<input name="stress" inputmode="numeric" value="${esc(todayMine.stress)}"></label>
         <label>VFC (ms)<input name="hrv" inputmode="numeric" value="${esc(todayMine.hrv)}"></label>
+        <label>Minutes actives<input name="active_min" inputmode="numeric" value="${esc(todayMine.active_min)}"></label>
       </div>
       <button class="btn block">Enregistrer à la main</button>
       <span class="muted small">Ce que tu saisis ici remplace les chiffres de la montre pour ce jour-là.</span>
@@ -686,8 +687,8 @@ async function viewTrack() {
       <tr><td>Activités</td>${people.map((p) => `<td>${(acts || []).filter((a) => a.member_id === p.id).length}</td>`).join('')}</tr>
     </table></div>
     <div class="row between"><h2>Activités</h2><button class="btn ghost sm" id="addAct">+ Ajouter</button></div>
-    ${(acts || []).map((a) => { const p = people.find((x) => x.id === a.member_id); return `<div class="card"><span class="title">${esc(a.type)}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(a.start_at.slice(0, 10), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${String(a.distance_km).replace('.', ',')} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}</span></div>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
-    <div class="row between"><h2>Poids</h2><button class="btn ghost sm" id="addW">+ Pesée</button></div>
+    ${(acts || []).map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}${a.source !== 'manuel' ? ` <span class="pill">${esc({ garmin: 'Garmin', apple: 'Apple' }[a.source] || a.source)}</span>` : ''}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(a.start_at.slice(0, 10), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${String(a.distance_km).replace('.', ',')} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}${a.kcal ? ` · ${a.kcal} kcal` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
+    <div class="row between"><h2>Poids</h2><div class="row"><button class="btn ghost sm" id="histW">Historique</button><button class="btn ghost sm" id="addW">+ Pesée</button></div></div>
     <div class="grid2">${people.map((p) => { const w = lastW(p.id); const diff = w && p.start_weight ? (w.kg - p.start_weight).toFixed(1) : null; return `<div class="card stat"><span class="small" style="color:${colorHex(p.color)};font-weight:600">${esc(p.first_name)}</span><b>${w ? `${String(w.kg).replace('.', ',')} kg` : '—'}</b><span class="muted small">${diff != null ? `${diff > 0 ? '+' : ''}${diff.replace('.', ',')} kg depuis le départ` : ''}${p.goal_weight ? ` · objectif ${String(p.goal_weight).replace('.', ',')}` : ''}</span></div>`; }).join('')}</div>
     ${people.map((p) => `<div class="card white"><span class="small" style="font-weight:600;color:${colorHex(p.color)}">${esc(p.first_name)}</span>${weightChart((weights || []).filter((w) => w.member_id === p.id), [p])}</div>`).join('')}
   </div>`;
@@ -697,27 +698,14 @@ async function viewTrack() {
     const sleep = num(v.sleep_h);
     const { error } = await sb.from('daily_metrics').upsert({
       member_id: S.me.id, tandem_id: S.me.tandem_id, day: d, source: 'manuel',
-      steps: int(v.steps), floors: int(v.floors), rhr: int(v.rhr), stress: int(v.stress), hrv: int(v.hrv),
+      steps: int(v.steps), floors: int(v.floors), rhr: int(v.rhr), stress: int(v.stress), hrv: int(v.hrv), active_min: int(v.active_min),
       sleep_min: sleep != null ? Math.round(sleep * 60) : null, updated_at: new Date().toISOString(),
     });
     if (error) return fail(error, 'Enregistrement impossible'); toast('Journée enregistrée'); viewTrack();
   };
-  document.getElementById('addAct').onclick = () => openModal(`
-    <h2>Nouvelle activité</h2>
-    <form id="a" style="display:flex;flex-direction:column;gap:12px">
-      <label>Type<select name="type">${['Vélo d\'appartement', 'Marche', 'Course', 'Renfo', 'Respiration', 'Étirements', 'Autre'].map((t) => `<option>${t}</option>`).join('')}</select></label>
-      <div class="grid2"><label>Date<input name="date" type="date" value="${d}"></label><label>Durée (min)<input name="duration" inputmode="numeric"></label></div>
-      <div class="grid2"><label>Distance (km)<input name="distance" inputmode="decimal"></label><label>FC moyenne<input name="hr" inputmode="numeric"></label></div>
-      <label>Ressenti<select name="feeling"><option value="">—</option>${[1, 2, 3, 4, 5].map((n) => `<option value="${n}">${n} / 5</option>`).join('')}</select></label>
-      <div class="grid2"><button type="button" class="btn ghost" data-close>Annuler</button><button class="btn">Ajouter</button></div>
-    </form>`, (root) => root.querySelector('#a').onsubmit = async (e) => {
-    e.preventDefault(); const v = formData(e.target);
-    const { error } = await sb.from('activities').insert({
-      member_id: S.me.id, tandem_id: S.me.tandem_id, source: 'manuel', start_at: `${v.date}T12:00:00`, type: v.type,
-      duration_min: int(v.duration), distance_km: num(v.distance), hr_avg: int(v.hr), feeling: int(v.feeling),
-    });
-    if (error) return fail(error, 'Ajout impossible'); closeModal(); viewTrack();
-  });
+  document.getElementById('addAct').onclick = () => activityForm(null, d);
+  $app.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => activityForm((acts || []).find((x) => x.id === el.dataset.act), d));
+  document.getElementById('histW').onclick = () => weightHistory(weights || []);
   document.getElementById('addW').onclick = () => openModal(`
     <h2>Pesée</h2>
     <form id="w" style="display:flex;flex-direction:column;gap:12px">
@@ -730,6 +718,65 @@ async function viewTrack() {
     if (error) return fail(error, 'Enregistrement impossible'); closeModal(); viewTrack();
   });
 }
+const ACT_TYPES = ['Vélo d\'appartement', 'Marche', 'Course', 'Renfo', 'Kettlebell', 'TRX', 'Respiration', 'Étirements', 'Yoga', 'Natation', 'Vélo dehors', 'Randonnée', 'Autre'];
+function activityForm(a, day) {
+  const isNew = !a;
+  const start = a ? new Date(a.start_at) : null;
+  const date = a ? iso(start) : day;
+  const time = a ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}` : '18:00';
+  const known = !a || ACT_TYPES.includes(a.type);
+  openModal(`
+    <div class="row between"><h2>${isNew ? 'Nouvelle activité' : 'Modifier l\'activité'}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    <form id="a" style="display:flex;flex-direction:column;gap:12px" novalidate>
+      <label>Type<select name="type">${ACT_TYPES.map((t) => `<option ${(a?.type === t || (!known && t === 'Autre')) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+      <label>Précision (facultatif)<input name="label" value="${esc(known ? '' : a.type)}" placeholder="ex. sortie longue, circuit jambes"></label>
+      <div class="grid2"><label>Date<input name="date" type="date" value="${date}"></label><label>Heure<input name="time" type="time" value="${time}"></label></div>
+      <div class="grid2"><label>Durée (min)<input name="duration" inputmode="numeric" value="${esc(a?.duration_min)}"></label><label>Distance (km)<input name="distance" inputmode="decimal" value="${esc(a?.distance_km)}"></label></div>
+      <div class="grid2"><label>FC moyenne<input name="hr" inputmode="numeric" value="${esc(a?.hr_avg)}"></label><label>FC max<input name="hrmax" inputmode="numeric" value="${esc(a?.hr_max)}"></label></div>
+      <div class="grid2"><label>Calories<input name="kcal" inputmode="numeric" value="${esc(a?.kcal)}"></label>
+      <label>Ressenti<select name="feeling"><option value="">—</option>${[[1, '1 · très dur'], [2, '2 · dur'], [3, '3 · correct'], [4, '4 · bien'], [5, '5 · super']].map(([n, l]) => `<option value="${n}" ${a?.feeling === n ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+      <label>Note<textarea name="note">${esc(a?.note)}</textarea></label>
+      <p class="err" id="aerr" role="alert" style="margin:0"></p>
+      <button class="btn">${isNew ? 'Ajouter' : 'Enregistrer'}</button>
+      ${isNew ? '' : '<button type="button" class="btn ghost" id="delAct" style="color:var(--danger)">Supprimer cette activité</button>'}
+    </form>`, (root) => {
+    root.querySelector('#a').onsubmit = async (e) => {
+      e.preventDefault(); const v = formData(e.target); const $e = root.querySelector('#aerr');
+      if (!v.date) return ($e.textContent = 'Indique la date.');
+      const dur = int(v.duration);
+      if (dur != null && (dur < 0 || dur > 1440)) return ($e.textContent = 'Durée entre 0 et 1440 minutes.');
+      const startAt = new Date(`${v.date}T${v.time || '12:00'}:00`);
+      const row = {
+        type: (v.label.trim() || v.type).slice(0, 60), start_at: startAt.toISOString(),
+        duration_min: dur, distance_km: num(v.distance), hr_avg: int(v.hr), hr_max: int(v.hrmax), kcal: int(v.kcal),
+        feeling: int(v.feeling), note: v.note.trim() || null,
+      };
+      const { error } = isNew
+        ? await sb.from('activities').insert({ ...row, member_id: S.me.id, tandem_id: S.me.tandem_id, source: 'manuel' })
+        : await sb.from('activities').update(row).eq('id', a.id);
+      if (error) return ($e.textContent = `Enregistrement impossible : ${error.message}`);
+      closeModal(); viewTrack();
+    };
+    root.querySelector('#delAct')?.addEventListener('click', async () => {
+      if (!confirm('Supprimer cette activité ?')) return;
+      const { error } = await sb.from('activities').delete().eq('id', a.id);
+      if (error) return fail(error, 'Suppression impossible'); closeModal(); viewTrack();
+    });
+  });
+}
+function weightHistory(weights) {
+  const mine = weights.filter((w) => w.member_id === S.me.id).sort((x, y) => (x.day < y.day ? 1 : -1));
+  openModal(`<div class="row between"><h2>Mes pesées</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    ${mine.length ? `<table class="mini">${mine.map((w) => `<tr><td>${esc(fmtDay(w.day, { day: 'numeric', month: 'short', year: 'numeric' }))}</td><td>${w.kg != null ? `${String(w.kg).replace('.', ',')} kg` : '—'}</td><td>${w.waist_cm != null ? `${String(w.waist_cm).replace('.', ',')} cm` : ''}</td><td style="text-align:right"><button class="link" data-delw="${w.day}" style="color:var(--danger)">Supprimer</button></td></tr>`).join('')}</table>` : '<span class="muted">Aucune pesée pour l\'instant.</span>'}
+    <span class="small muted">Pour corriger une pesée, ajoute-en une nouvelle à la même date : elle remplace l'ancienne.</span>`, (root) => {
+    root.querySelectorAll('[data-delw]').forEach((b) => b.onclick = async () => {
+      if (!confirm('Supprimer cette pesée ?')) return;
+      const { error } = await sb.from('weights').delete().match({ member_id: S.me.id, day: b.dataset.delw });
+      if (error) return fail(error, 'Suppression impossible'); closeModal(); viewTrack();
+    });
+  });
+}
+
 function legend(people) {
   return `<div class="row small" style="gap:14px">${people.map((p) => `<span class="row" style="gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:${colorHex(p.color)}"></span>${esc(p.first_name)}</span>`).join('')}</div>`;
 }
