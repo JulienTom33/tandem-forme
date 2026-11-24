@@ -108,7 +108,7 @@ function authMessage(error) {
   const code = error?.code || ''; const msg = error?.message || '';
   if (code === 'invalid_credentials' || /Invalid login credentials/i.test(msg)) return 'E-mail ou mot de passe incorrect.';
   if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit' || /rate limit|security purposes/i.test(msg)) return 'Trop de demandes d\'affilée. Patiente une minute puis réessaie.';
-  if (code === 'otp_disabled' || code === 'signup_disabled' || code === 'user_not_found' || /Signups not allowed|not found/i.test(msg)) return 'Adresse inconnue. Inscris-toi d\'abord avec un code d\'invitation.';
+  if (code === 'otp_disabled' || code === 'signup_disabled' || code === 'user_not_found' || /Signups not allowed|not found/i.test(msg)) return 'Adresse inconnue. Inscris d\'abord votre tandem.';
   if (code === 'otp_expired' || /expired|invalid/i.test(msg)) return 'Code ou lien incorrect ou expiré. Demande-en un nouveau.';
   if (code === 'weak_password') return 'Mot de passe trop faible : 12 caractères minimum, avec minuscule, majuscule, chiffre et caractère spécial.';
   if (code === 'same_password') return 'Choisis un mot de passe différent de l\'ancien.';
@@ -152,7 +152,7 @@ function viewLogin(step = 'password', err = '') {
       <button class="btn block">Se connecter</button>
       <button type="button" class="link" id="forgot">Mot de passe oublié ? Recevoir un lien de connexion</button>
     </form>
-    <div class="card"><span class="title">Nouveau tandem ?</span><span class="muted">L'un de vous deux inscrit le couple avec un code d'invitation.</span>
+    <div class="card"><span class="title">Nouveau tandem ?</span><span class="muted">L'un de vous deux inscrit le couple : chacun reçoit un lien par e-mail.</span>
       <a class="btn ghost" href="#inscription">S'inscrire à deux</a></div>` : step === 'email' ? `
     <form id="f" class="card white" novalidate>
       <h2>Mot de passe oublié</h2>
@@ -263,17 +263,17 @@ function viewRegister(err = '') {
   $app.innerHTML = `
   <div class="hero"><div class="inner"><h1>Inscrire notre tandem</h1><small>Une personne inscrit les deux. Chacun reçoit un lien par e-mail pour créer son mot de passe et remplir son profil.</small></div></div>
   <div class="wrap">
-    <form id="f" class="card white">
-      <label>Code d'invitation<input name="code" required placeholder="TF-XXXX-XXXX" autocapitalize="characters"></label>
-      <div class="sep"></div><h3>Toi</h3>
+    <form id="f" class="card white" novalidate>
+      <h3>Toi</h3>
+      <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
       <div class="grid2"><label>Prénom<input name="me_first" required autocomplete="given-name"></label><label>Nom<input name="me_last" autocomplete="family-name"></label></div>
       <label>E-mail<input name="me_email" type="email" required autocomplete="email"></label>
       <div class="sep"></div><h3>Ton ou ta partenaire</h3>
       <div class="grid2"><label>Prénom<input name="p_first" required></label><label>Nom<input name="p_last"></label></div>
       <label>E-mail<input name="p_email" type="email" required></label>
       <p class="muted small" style="margin:0">L'e-mail sert à vous connecter et à récupérer l'accès si vous oubliez votre mot de passe. Vous pourrez supprimer vos comptes à tout moment.</p>
-      <button class="btn block">Créer le tandem</button>
-      ${err ? `<p class="err">${esc(err)}</p>` : ''}
+      <p class="err" id="rerr" role="alert" style="margin:0">${esc(err)}</p>
+      <button class="btn block">Envoyer les invitations</button>
     </form>
     <a href="#" class="link" id="toLogin">J'ai déjà un compte</a>
   </div>`;
@@ -281,18 +281,24 @@ function viewRegister(err = '') {
   const f = document.getElementById('f');
   f.onsubmit = async (e) => {
     e.preventDefault();
-    const v = formData(f); const btn = f.querySelector('.btn'); btn.disabled = true; btn.textContent = 'Création…';
+    const v = formData(f); const btn = f.querySelector('.btn.block'); const $e = document.getElementById('rerr');
+    const stop = (m) => { $e.textContent = m; btn.disabled = false; btn.textContent = 'Envoyer les invitations'; };
+    const em = (x) => /^\S+@\S+\.\S+$/.test((x || '').trim());
+    if (!v.me_first.trim() || !v.p_first.trim()) return stop('Indique vos deux prénoms.');
+    if (!em(v.me_email) || !em(v.p_email)) return stop('Vérifie les deux adresses e-mail.');
+    if (v.me_email.trim().toLowerCase() === v.p_email.trim().toLowerCase()) return stop('Les deux adresses doivent être différentes.');
+    $e.textContent = ''; btn.disabled = true; btn.textContent = 'Envoi…';
     const { data, error } = await sb.functions.invoke('register', {
       body: {
-        code: v.code, redirect: location.origin,
+        website: v.website, redirect: location.origin,
         me: { first_name: v.me_first, last_name: v.me_last, email: v.me_email },
         partner: { first_name: v.p_first, last_name: v.p_last, email: v.p_email },
       },
     });
     if (error) {
       let msg = 'Inscription impossible';
-      try { msg = (await error.context.json()).error || msg; } catch {}
-      return viewRegister(msg);
+      try { msg = (await error.context.json()).error || msg; } catch { if (/fetch/i.test(error.message)) msg = 'Pas de connexion internet.'; }
+      return stop(msg);
     }
     S.loginEmail = v.me_email.trim().toLowerCase();
     history.replaceState(null, '', location.pathname);
