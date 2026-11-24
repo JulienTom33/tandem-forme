@@ -816,13 +816,59 @@ function viewProfile() {
   };
 }
 
-function viewSources() {
-  $app.innerHTML = header('Montres et sources', 'Tout est facultatif.') + `<div class="wrap">
-    <div class="card"><span class="title">Saisie manuelle</span><span class="muted">Toujours disponible dans l'onglet Suivi : pas, sommeil, fréquence cardiaque, activités, pesées.</span><button class="btn ghost" data-go="track">Aller au suivi</button></div>
-    <div class="card"><span class="title">Garmin</span><span class="muted">Connexion automatique en préparation. En attendant, saisis tes chiffres à la main.</span><span class="pill">Bientôt</span></div>
-    <div class="card"><span class="title">Apple Watch et Apple Santé</span><span class="muted">Un raccourci iOS enverra chaque soir tes pas, ton sommeil et ta VFC, y compris les séances Decathlon Coach ou Kinomap enregistrées dans Santé.</span><span class="pill">Bientôt</span></div>
+async function viewSources(newToken = '') {
+  const { data: conns } = await sb.from('connections').select('*').eq('member_id', S.me.id);
+  const apple = (conns || []).find((c) => c.provider === 'apple');
+  const since = (t) => t ? new Date(t).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const url = `${SUPABASE_URL}/functions/v1/ingest`;
+  $app.innerHTML = header('Montres et sources', 'Tout est facultatif : la saisie à la main reste toujours possible.') + `<div class="wrap">
+    <div class="card white">
+      <div class="row between"><span class="title">Apple Watch et Apple Santé</span>${apple ? `<span class="pill ${apple.status === 'actif' ? 'ok' : 'warn'}">${apple.status === 'actif' ? 'Connecté' : 'En attente du 1er envoi'}</span>` : ''}</div>
+      <span class="muted">Un raccourci iPhone envoie chaque soir tes pas, étages, fréquence cardiaque au repos, VFC et sommeil. Les séances Decathlon Coach ou Kinomap enregistrées dans Santé sont comptées dans tes données.</span>
+      ${apple?.last_sync ? `<span class="small">Dernier envoi : ${esc(since(apple.last_sync))}</span>` : ''}
+      ${newToken ? `
+        <div class="notice"><b>Ton jeton personnel</b> (il ne sera plus affiché, copie-le maintenant) :
+          <div style="font-family:monospace;word-break:break-all;margin:6px 0">${esc(newToken)}</div>
+          <button class="btn sm" id="copyTok">Copier le jeton</button></div>
+        <details class="card" open><summary class="title" style="cursor:pointer">Créer le raccourci (5 minutes)</summary>
+          <ol class="steps small">
+            <li>Ouvre l'app <b>Raccourcis</b>, touche <b>+</b>, nomme-le « Tandem Forme ».</li>
+            <li>Ajoute <b>Rechercher des échantillons de santé</b> : type <b>Pas</b>, date de début <b>est aujourd'hui</b>. Puis <b>Calculer les statistiques</b> : <b>Somme</b>.</li>
+            <li>Même chose pour <b>Étages montés</b> (Somme), <b>Variabilité de la fréquence cardiaque</b> (Moyenne) et <b>Fréquence cardiaque au repos</b> (Moyenne).</li>
+            <li>Sommeil (facultatif) : <b>Analyse du sommeil</b> sur les <b>12 dernières heures</b>, valeur <b>n'est pas</b> « Au lit » ni « Éveillé », puis <b>Obtenir les détails</b> : <b>Durée</b>, puis <b>Calculer les statistiques</b> : <b>Somme</b> (en heures).</li>
+            <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec l'adresse ci-dessous. Méthode <b>POST</b>. En-tête <b>x-tandem-token</b> = ton jeton. Corps <b>JSON</b> avec les champs : <code>steps</code>, <code>floors</code>, <code>hrv</code>, <code>resting_hr</code>, <code>sleep_hours</code> (chacun = le résultat correspondant).</li>
+            <li>Lance le raccourci une fois : l'appli doit afficher « Connecté ».</li>
+            <li>Dans l'onglet <b>Automatisation</b> : <b>Heure de la journée</b>, 21:30, tous les jours, <b>Exécuter immédiatement</b>, et choisis « Tandem Forme ».</li>
+          </ol>
+          <span class="small">Adresse :</span>
+          <div style="font-family:monospace;word-break:break-all" class="small">${esc(url)}</div>
+          <button class="btn ghost sm" id="copyUrl">Copier l'adresse</button>
+        </details>` : `
+        <div class="row" style="flex-wrap:wrap">
+          <button class="btn ${apple ? 'ghost' : ''}" id="appleTok">${apple ? 'Générer un nouveau jeton' : 'Connecter mon Apple Watch'}</button>
+          ${apple ? '<button class="btn ghost" id="appleOff">Déconnecter</button>' : ''}
+        </div>`}
+    </div>
+    <div class="card"><div class="row between"><span class="title">Garmin</span><span class="pill">Bientôt</span></div><span class="muted">Connexion automatique via l'accès personnel Garmin Connect, en cours de préparation. En attendant, saisis tes chiffres dans Suivi.</span></div>
+    <div class="card"><div class="row between"><span class="title">Polar</span><span class="pill">Bientôt</span></div><span class="muted">Connexion automatique via Polar Flow, en cours de préparation.</span></div>
+    <div class="card"><span class="title">Saisie manuelle</span><span class="muted">Pas, sommeil, fréquence cardiaque, activités, pesées.</span><button class="btn ghost" data-go="track">Aller au suivi</button></div>
   </div>`;
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
+  const copy = async (t, msg) => { try { await navigator.clipboard.writeText(t); toast(msg); } catch { toast('Copie impossible : sélectionne le texte à la main'); } };
+  document.getElementById('copyTok')?.addEventListener('click', () => copy(newToken, 'Jeton copié'));
+  document.getElementById('copyUrl')?.addEventListener('click', () => copy(url, 'Adresse copiée'));
+  document.getElementById('appleTok')?.addEventListener('click', async () => {
+    if (apple && !confirm('Le jeton actuel cessera de fonctionner. Il faudra le remplacer dans ton raccourci. Continuer ?')) return;
+    const { data, error } = await sb.rpc('create_ingest_token', { p_provider: 'apple' });
+    if (error) return fail(error, 'Création du jeton impossible');
+    viewSources(data);
+  });
+  document.getElementById('appleOff')?.addEventListener('click', async () => {
+    if (!confirm('Déconnecter Apple Santé ? Les données déjà reçues sont conservées.')) return;
+    const { error } = await sb.rpc('revoke_ingest_token', { p_provider: 'apple' });
+    if (error) return fail(error, 'Déconnexion impossible');
+    toast('Apple Santé déconnecté'); viewSources();
+  });
 }
 
 function viewAccount() {
