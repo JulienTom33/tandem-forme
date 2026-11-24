@@ -156,7 +156,7 @@ function viewLogin(step = 'password', err = '') {
       <a class="btn ghost" href="#inscription">S'inscrire à deux</a></div>` : step === 'email' ? `
     <form id="f" class="card white" novalidate>
       <h2>Mot de passe oublié</h2>
-      <p class="muted" style="margin:0">On t'envoie un lien de connexion et un code à 6 chiffres. Une fois connecté, tu choisiras un nouveau mot de passe.</p>
+      <p class="muted" style="margin:0">On t'envoie un lien de connexion et un code. Une fois connecté, tu choisiras un nouveau mot de passe.</p>
       <label>E-mail<input name="email" type="email" autocomplete="email" required value="${esc(S.loginEmail)}"></label>
       <p class="err" id="err" role="alert" style="margin:0">${esc(err)}</p>
       <button class="btn block">Recevoir le lien</button>
@@ -164,8 +164,8 @@ function viewLogin(step = 'password', err = '') {
     </form>` : `
     <form id="f" class="card white" novalidate>
       <h2>Regarde tes e-mails</h2>
-      <p class="muted" style="margin:0">Touche le lien envoyé à ${esc(S.loginEmail)}, ou saisis le code à 6 chiffres ici.</p>
-      <input name="token" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required aria-label="Code à 6 chiffres">
+      <p class="muted" style="margin:0">Touche le lien envoyé à ${esc(S.loginEmail)}, ou saisis le code reçu ici.</p>
+      <input name="token" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required aria-label="Code reçu par e-mail">
       <p class="err" id="err" role="alert" style="margin:0">${esc(err)}</p>
       <button class="btn block">Valider</button>
       <button type="button" class="link" id="resend">Renvoyer un e-mail</button>
@@ -204,7 +204,7 @@ function viewLogin(step = 'password', err = '') {
       viewLogin('code');
     } else {
       const token = (v.token || '').replace(/\D/g, '');
-      if (token.length !== 6) return showErr('Le code fait 6 chiffres.');
+      if (token.length < 6 || token.length > 10) return showErr('Saisis le code complet reçu par e-mail.');
       const { error } = await sb.auth.verifyOtp({ email: S.loginEmail, token, type: 'email' });
       if (error) return showErr(authMessage(error));
     }
@@ -315,7 +315,7 @@ function viewRegistered(partnerFirst, failed) {
     <div class="card"><span class="title">2. Touche « Ouvrir l'appli »</span><span class="muted">Tu crées ton mot de passe, puis tu remplis ton profil.</span></div>
     <div class="card"><span class="title">3. ${esc(partnerFirst)} fait pareil sur son téléphone</span><span class="muted">Son e-mail est parti en même temps.</span></div>
     ${failed ? '<div class="notice">Un des e-mails n\'a pas pu partir. Utilisez « Mot de passe oublié » sur l\'écran de connexion pour en recevoir un nouveau.</div>' : ''}
-    <button class="btn ghost" id="code">J'ai un code à 6 chiffres</button>
+    <button class="btn ghost" id="code">J'ai reçu un code</button>
   </div>`;
   document.getElementById('code').onclick = () => viewLogin('code');
 }
