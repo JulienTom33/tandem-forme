@@ -3,6 +3,7 @@ import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
   iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices,
 } from './program.js';
+import { EXERCISES, SESSIONS, videoUrl } from './exercises.js';
 
 const SUPABASE_URL = 'https://ktrsvnminsogkbxlxjpb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_KuNRSgfDThA_k2v7eatfUQ_ueIhzOyb';
@@ -626,7 +627,8 @@ async function viewToday() {
     ${(pd?.sessions || []).map((s) => `
       <div class="card">
         <div><span class="title">${esc(s.title)}</span><div class="muted">${esc(s.detail)}</div></div>
-        ${s.per ? people.map((p) => s.per[p.id] ? `<div class="small"><b>${esc(p.first_name)} :</b> ${s.per[p.id].map(esc).join(' · ')}</div>` : '').join('') : ''}
+        ${s.per ? people.map((p) => s.per[p.id] ? `<div class="small"><b>${esc(p.first_name)} :</b> ${s.per[p.id].map((n) => `<button class="link small" data-ex="${esc(n)}" style="font-weight:500">${esc(n)}</button>`).join(' · ')}</div>` : '').join('') : ''}
+        <button class="btn ghost sm" data-howto="${esc(s.key)}|${esc(s.title)}">Comment faire ?</button>
         <div class="grid2">${people.map((p) => {
           const on = has(p.id, s.key); const mine = p.id === S.me.id;
           return `<button class="toggle" style="--c:${colorHex(p.color)}" aria-pressed="${on}" ${mine ? `data-check="${s.key}"` : 'disabled'}>${esc(p.first_name)} · ${on ? 'fait ✓' : (mine ? 'à faire' : 'pas encore')}</button>`;
@@ -646,6 +648,8 @@ async function viewToday() {
   </div>`;
   bindDayNav();
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
+  $app.querySelectorAll('[data-ex]').forEach((b) => b.onclick = () => showExercise(b.dataset.ex));
+  $app.querySelectorAll('[data-howto]').forEach((b) => b.onclick = () => { const [key, title] = b.dataset.howto.split('|'); showSession((pd?.sessions || []).find((x) => x.key === key && x.title === title)); });
   $app.querySelectorAll('[data-check]').forEach((b) => b.onclick = async () => {
     b.disabled = true;
     const key = b.dataset.check; const on = b.getAttribute('aria-pressed') === 'true';
@@ -1323,8 +1327,46 @@ function viewProgram() {
   const DN = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   $app.innerHTML = header('Programme', `${p.weeks} semaines à partir du ${fmtDay(p.start_date, { day: 'numeric', month: 'long' })}`) + `<div class="wrap">
     ${weeks.map((days, i) => `<details class="card white" ${days.some(([d]) => d === today()) ? 'open' : ''}><summary class="title" style="cursor:pointer">Semaine ${i + 1}</summary>
-      <table class="mini">${days.map(([d, v], k) => `<tr><td style="width:44px;font-weight:600">${DN[k]}</td><td>${v.sessions.filter((s) => s.key !== 'respiration').map((s) => esc(s.title)).join(' · ') || 'Repos'}</td></tr>`).join('')}</table></details>`).join('')}
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${days.map(([d, v], k) => `<button class="card" data-pday="${d}" style="border:0;text-align:left;cursor:pointer;padding:10px 12px"><span class="small muted">${DN[k]} ${esc(fmtDay(d, { day: 'numeric', month: 'short' }))}</span><span style="font-weight:600">${v.sessions.filter((s) => s.key !== 'respiration').map((s) => esc(s.title)).join(' · ') || 'Repos'}</span><span class="small" style="color:var(--me)">Voir le détail ›</span></button>`).join('')}</div></details>`).join('')}
   </div>`;
+  $app.querySelectorAll('[data-pday]').forEach((b) => b.onclick = () => showDay(b.dataset.pday));
+}
+// Détail d'une journée du programme : chaque séance avec ses exercices.
+function showDay(day) {
+  const pd = planDay(day); if (!pd) return;
+  openModal(`<div class="row between"><h2>${esc(cap(fmtDay(day)))}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    ${pd.sessions.map((s, i) => `<button class="card" data-si="${i}" style="border:0;text-align:left;cursor:pointer"><span class="title">${esc(s.title)}</span><span class="small muted">${esc(s.detail)}</span><span class="small" style="color:var(--me)">Comment faire ›</span></button>`).join('')}`, (root) => {
+    root.querySelectorAll('[data-si]').forEach((b) => b.onclick = () => showSession(pd.sessions[Number(b.dataset.si)]));
+  });
+}
+function exerciseHtml(name, open = false) {
+  const e = EXERCISES[name];
+  if (!e) return `<div class="card"><span class="title">${esc(name)}</span></div>`;
+  return `<details class="card white" ${open ? 'open' : ''}><summary class="title" style="cursor:pointer">${esc(name)}</summary>
+    <div class="small" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <span class="muted">${esc(e.muscles)}</span>
+      <b>Comment faire</b><ol class="steps">${e.how.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
+      <b>Points clés</b><ul class="plain">${e.keys.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      <span><b>Plus facile :</b> ${esc(e.easier)}</span>
+      <a class="btn ghost sm" href="${videoUrl(e.video)}" target="_blank" rel="noopener">▶ Voir des vidéos du geste</a>
+    </div></details>`;
+}
+function showExercise(name) {
+  openModal(`<div class="row between"><h2>Exercice</h2><button class="btn ghost sm" data-close>Fermer</button></div>${exerciseHtml(name, true)}`);
+}
+function showSession(s) {
+  if (!s) return;
+  const info = SESSIONS[s.key] || {};
+  const people = [S.me, S.partner].filter(Boolean);
+  const mine = s.per?.[S.me.id] || [];
+  const theirs = S.partner && s.per?.[S.partner.id] ? s.per[S.partner.id].filter((n) => !mine.includes(n)) : [];
+  openModal(`<div class="row between"><h2>${esc(s.title)}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    <div class="card"><span class="title">Au programme</span><span class="small">${esc(s.detail)}</span></div>
+    ${info.intro ? `<p class="small" style="margin:0">${esc(info.intro)}</p>` : ''}
+    ${info.tips ? `<ul class="plain small">${info.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${info.video ? `<a class="btn ghost sm" href="${videoUrl(info.video)}" target="_blank" rel="noopener">▶ Voir des vidéos</a>` : ''}
+    ${mine.length ? `<h3>${people.length > 1 ? 'Tes exercices' : 'Les exercices'}</h3>${mine.map((n, i) => exerciseHtml(n, i === 0)).join('')}` : ''}
+    ${theirs.length ? `<h3>Différents pour ${esc(S.partner.first_name)}</h3><span class="small muted">Adaptés à ses zones fragiles.</span>${theirs.map((n) => exerciseHtml(n)).join('')}` : ''}`);
 }
 
 async function viewSettings() {
@@ -1460,21 +1502,24 @@ async function viewSources(newToken = '') {
     </div>
     <div class="card white">
       <div class="row between"><span class="title">Apple Watch et Apple Santé</span>${pill(apple)}</div>
-      <span class="muted small">Apple ne permet pas aux sites web de lire Santé. On passe par l'app gratuite à télécharger <b>Health Auto Export</b> : elle envoie tes données à Tandem Forme en arrière-plan, avec ta clé personnelle.</span>
+      <span class="muted small">Apple ne permet pas aux sites web de lire Santé. On passe par l'app <b>Health Auto Export</b>, qui envoie tes données à Tandem Forme avec ta clé personnelle : pas, étages, fréquence cardiaque, VFC, sommeil, minutes d'exercice et séances de l'Apple Watch.</span>
       ${apple?.last_sync ? `<span class="small">Dernier envoi : ${esc(since(apple.last_sync))}</span>` : ''}
-      ${newToken ? `
-        <div class="notice"><b>Ta clé Apple Santé</b> : c'est une adresse à coller dans Health Auto Export. Copie-la maintenant, elle ne sera plus affichée.
-          <div style="font-family:monospace;word-break:break-all;margin:6px 0;font-size:12px">${esc(appleUrl)}</div>
-          <button class="btn sm" id="copyUrl">Copier ma clé</button></div>
-        <ol class="steps small">
-          <li>Installe <a href="https://apps.apple.com/app/id1115567069" target="_blank" rel="noopener">Health Auto Export</a> et autorise l'accès à Santé.</li>
-          <li>Onglet <b>Automations</b>, <b>+</b>, type <b>REST API</b>.</li>
-          <li><b>URL</b> : colle ta clé. Format <b>JSON</b>, version <b>2</b>.</li>
-          <li><b>Data Type</b> : Health Metrics et Workouts. Métriques : Step Count, Flights Climbed, Resting Heart Rate, Heart Rate Variability, Heart Rate, Apple Exercise Time, Sleep Analysis.</li>
-          <li><b>Période</b> : « Since last sync », <b>Aggregation</b> : Days. Active l'automatisation.</li>
-          <li>Touche <b>Manual Export</b> une fois : l'appli doit afficher « Connecté ».</li>
+      <details class="card" ${apple?.status === 'actif' ? '' : 'open'}><summary class="title" style="cursor:pointer">Ce qu'il faut faire (5 minutes, une seule fois)</summary>
+        <ol class="steps small" style="margin-top:8px">
+          <li><b>Installe l'app</b> <a href="https://apps.apple.com/app/id1115567069" target="_blank" rel="noopener">Health Auto Export</a> sur ton iPhone, ouvre-la et autorise l'accès à Santé (active tout).</li>
+          <li><b>Obtiens ta clé</b> avec le bouton ci-dessous, puis « Copier ma clé ». C'est une adresse personnelle.</li>
+          <li>Dans Health Auto Export, onglet <b>Automations</b>, touche <b>+</b> puis <b>REST API</b>.</li>
+          <li>Dans <b>URL</b>, colle ta clé. Laisse <b>Export Format</b> sur <b>JSON</b> et choisis la version <b>2</b>.</li>
+          <li><b>Data Type</b> : coche <b>Health Metrics</b>, puis sélectionne Step Count, Flights Climbed, Resting Heart Rate, Heart Rate Variability, Heart Rate, Apple Exercise Time et Sleep Analysis. Ajoute aussi <b>Workouts</b> pour tes séances.</li>
+          <li><b>Date Range</b> : « Since Last Sync ». <b>Aggregation</b> : <b>Days</b>. Active l'automatisation (interrupteur en haut).</li>
+          <li>Touche <b>Manual Export</b> pour un premier envoi : ici, le statut passe à « Connecté ».</li>
         </ol>
-        <span class="small muted">L'envoi automatique en arrière-plan demande l'option Premium de Health Auto Export (achat dans l'app). Sans elle, tu peux faire l'envoi à la main depuis l'app, ou tout saisir dans Suivi.</span>` : `
+        <span class="small muted">L'envoi automatique en arrière-plan fait partie de l'option Premium de Health Auto Export (achat dans l'app, prix affiché dans l'App Store). Sans elle, tu peux lancer l'envoi à la main avec « Manual Export », ou tout saisir dans Suivi.</span>
+      </details>
+      ${newToken ? `
+        <div class="notice"><b>Ta clé Apple Santé</b> (elle ne sera plus affichée, copie-la maintenant) :
+          <div style="font-family:monospace;word-break:break-all;margin:6px 0;font-size:12px">${esc(appleUrl)}</div>
+          <button class="btn sm" id="copyUrl">Copier ma clé</button></div>` : `
         <div class="row" style="flex-wrap:wrap"><button class="btn ${apple ? 'ghost' : ''}" id="appleTok">${apple ? 'Générer une nouvelle clé' : 'Obtenir ma clé Apple Santé'}</button>
         ${apple ? '<button class="btn ghost" data-off="apple">Déconnecter</button>' : ''}</div>`}
     </div>
