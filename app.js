@@ -643,14 +643,29 @@ async function viewTrack() {
     sb.from('weights').select('*').eq('tandem_id', S.me.tandem_id).order('day'),
     sb.from('activities').select('*').eq('tandem_id', S.me.tandem_id).gte('start_at', `${monday}T00:00:00`).lte('start_at', `${sunday}T23:59:59`).order('start_at'),
   ]);
-  const todayMine = (metrics || []).find((m) => m.member_id === S.me.id && m.day === d) || {};
-  const avg = (mid, k) => { const v = (metrics || []).filter((m) => m.member_id === mid && m[k] != null).map((m) => m[k]); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; };
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i));
+  // Une valeur par personne et par jour : la saisie manuelle prime, sinon la montre.
+  const merged = (mid, day) => {
+    const rows = (metrics || []).filter((m) => m.member_id === mid && m.day === day)
+      .sort((a, b) => (a.source === 'manuel' ? -1 : 0) - (b.source === 'manuel' ? -1 : 0));
+    const out = {};
+    for (const k of ['steps', 'floors', 'rhr', 'hrv', 'stress', 'sleep_min', 'active_min']) out[k] = rows.map((r) => r[k]).find((v) => v != null) ?? null;
+    return out;
+  };
+  const todayMine = (metrics || []).find((m) => m.member_id === S.me.id && m.day === d && m.source === 'manuel') || merged(S.me.id, d);
+  const avg = (mid, k) => { const v = days.map((day) => merged(mid, day)[k]).filter((x) => x != null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; };
   const hm = (min) => (min == null ? '—' : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`);
   const lastW = (mid) => [...(weights || [])].filter((w) => w.member_id === mid && w.kg != null).pop();
   $app.innerHTML = header('Suivi', `Semaine du ${fmtDay(monday, { day: 'numeric', month: 'long' })}`, true) + `
   <div class="wrap">
-    <h2>Ma journée</h2>
-    <form id="m" class="card white">
+    <h2>Pas</h2>
+    <div class="card white">${barChart(people.map((p) => ({ color: colorHex(p.color), values: days.map((day) => merged(p.id, day).steps) })), days, (v) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace('.', ',')}k` : String(v)), 8000, 'Objectif 8 000')}${legend(people)}</div>
+    <h2>Sommeil</h2>
+    <div class="card white">${barChart(people.map((p) => ({ color: colorHex(p.color), values: days.map((day) => { const m = merged(p.id, day).sleep_min; return m == null ? null : m / 60; }) })), days, (v) => `${v.toFixed(1).replace('.', ',')} h`, 7, '7 h')}${legend(people)}</div>
+    <h2>Fréquence cardiaque au repos</h2>
+    <div class="card white">${barChart(people.map((p) => ({ color: colorHex(p.color), values: days.map((day) => merged(p.id, day).rhr) })), days, (v) => String(Math.round(v)))}${legend(people)}</div>
+    <details class="card white" ${(metrics || []).some((m) => m.member_id === S.me.id && m.day === d) ? '' : 'open'}><summary class="title" style="cursor:pointer">Saisir ma journée à la main</summary>
+    <form id="m" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
       <div class="grid2">
         <label>Pas<input name="steps" inputmode="numeric" value="${esc(todayMine.steps)}"></label>
         <label>Étages<input name="floors" inputmode="numeric" value="${esc(todayMine.floors)}"></label>
@@ -660,9 +675,9 @@ async function viewTrack() {
         <label>VFC (ms)<input name="hrv" inputmode="numeric" value="${esc(todayMine.hrv)}"></label>
       </div>
       <button class="btn block">Enregistrer à la main</button>
-      <span class="muted small">Les montres sont facultatives : tu peux toujours tout saisir ici.</span>
-    </form>
-    <h2>La semaine</h2>
+      <span class="muted small">Ce que tu saisis ici remplace les chiffres de la montre pour ce jour-là.</span>
+    </form></details>
+    <h2>Moyennes de la semaine</h2>
     <div class="card white"><table class="mini"><tr><th></th>${people.map((p) => `<th style="color:${colorHex(p.color)}">${esc(p.first_name)}</th>`).join('')}</tr>
       <tr><td>Pas / jour</td>${people.map((p) => `<td>${avg(p.id, 'steps')?.toLocaleString('fr-FR') ?? '—'}</td>`).join('')}</tr>
       <tr><td>Sommeil</td>${people.map((p) => `<td>${hm(avg(p.id, 'sleep_min'))}</td>`).join('')}</tr>
@@ -715,6 +730,33 @@ async function viewTrack() {
     if (error) return fail(error, 'Enregistrement impossible'); closeModal(); viewTrack();
   });
 }
+function legend(people) {
+  return `<div class="row small" style="gap:14px">${people.map((p) => `<span class="row" style="gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:${colorHex(p.color)}"></span>${esc(p.first_name)}</span>`).join('')}</div>`;
+}
+// Barres groupées : une couleur par personne, un groupe par jour de la semaine.
+function barChart(series, days, fmt, goal = null, goalLabel = '') {
+  const all = series.flatMap((s) => s.values).filter((v) => v != null);
+  if (!all.length) return '<span class="muted">Pas encore de données cette semaine. Elles arrivent avec la montre ou la saisie à la main.</span>';
+  const W = 330, H = 170, top = 18, bottom = 24, left = 4;
+  const max = Math.max(...all, goal || 0) * 1.12 || 1;
+  const gw = (W - left) / 7; const bw = Math.min(16, (gw - 8) / series.length);
+  const Y = (v) => top + (1 - v / max) * (H - top - bottom);
+  const DN = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  let out = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" style="height:180px">`;
+  if (goal) out += `<line x1="${left}" x2="${W}" y1="${Y(goal).toFixed(1)}" y2="${Y(goal).toFixed(1)}" stroke="#A9B0BC" stroke-dasharray="4 4"/><text x="${W - 2}" y="${(Y(goal) - 4).toFixed(1)}" font-size="10" fill="#5E6573" text-anchor="end">${esc(goalLabel)}</text>`;
+  days.forEach((day, i) => {
+    const gx = left + i * gw + (gw - bw * series.length) / 2;
+    series.forEach((s, j) => {
+      const v = s.values[i]; if (v == null) return;
+      const x = gx + j * bw; const y = Y(v);
+      out += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${(H - bottom - y).toFixed(1)}" rx="3" fill="${s.color}"><title>${esc(fmt(v))}</title></rect>`;
+    });
+    const isToday = day === iso(new Date());
+    out += `<text x="${(left + i * gw + gw / 2).toFixed(1)}" y="${H - 6}" font-size="11" text-anchor="middle" fill="${isToday ? '#16181D' : '#5E6573'}" font-weight="${isToday ? 700 : 400}">${DN[i]}</text>`;
+  });
+  return out + '</svg>';
+}
+
 function weightChart(weights, people) {
   const pts = weights.filter((w) => w.kg != null);
   if (pts.length < 2) return '<span class="muted">La courbe apparaîtra après deux pesées.</span>';
