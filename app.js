@@ -2,8 +2,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
   iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices,
+  WEEKDAYS, availOf,
 } from './program.js';
 import { EXERCISES, SESSIONS, videoUrl } from './exercises.js';
+import { animSvg, hasAnim, startAnims } from './animations.js';
 
 const SUPABASE_URL = 'https://ktrsvnminsogkbxlxjpb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_KuNRSgfDThA_k2v7eatfUQ_ueIhzOyb';
@@ -276,7 +278,7 @@ function viewRegister(err = '') {
       <ol class="steps small">
         <li>Tu remplis tes infos et celles de ton ou ta partenaire, puis tu envoies.</li>
         <li>Vous recevez chacun un e-mail avec un lien (pensez aux spams).</li>
-        <li>Chacun ouvre son lien sur son téléphone, crée son mot de passe et remplit son profil en 3 minutes, avec des explications à chaque étape.</li>
+        <li>Chacun ouvre son lien sur son téléphone, crée son mot de passe et remplit son profil en 3 minutes : couleur, infos, <b>jours et nombre de séances de sport selon ses disponibilités</b>, santé et alimentation.</li>
       </ol>
       <span class="small">Tu deviens le <b>capitaine</b> : c'est toi qui régleras le matériel et le programme pour vous deux.</span></div>
     <form id="f" class="card white" novalidate>
@@ -358,6 +360,14 @@ function profileForm(m, takenColor) {
     <div class="grid2"><label>Taille (cm)<input name="height_cm" inputmode="decimal" value="${esc(m.height_cm)}"></label><label>Poids de départ (kg)<input name="start_weight" inputmode="decimal" value="${esc(m.start_weight)}"></label></div>
     <label>Poids objectif (kg)<input name="goal_weight" inputmode="decimal" value="${esc(m.goal_weight)}"></label>
   </div>
+  <div class="card white"><h3>Ton temps pour le sport</h3>
+    <span class="muted">Jours où tu peux faire du sport</span>
+    <div class="chips" data-multi="days">${WEEKDAYS.map((l, i) => `<button type="button" class="chip" data-v="${i}" aria-pressed="${availOf(m).days.includes(i)}">${l}</button>`).join('')}</div>
+    <span class="muted">Nombre de séances par semaine</span>
+    <div class="chips" data-single="sessions">${[2, 3, 4, 5, 6].map((n) => `<button type="button" class="chip" data-v="${n}" aria-pressed="${availOf(m).sessions === n}">${n}</button>`).join('')}</div>
+    <span class="muted">Durée d'une séance</span>
+    <div class="chips" data-single="minutes">${[20, 30, 45, 60].map((n) => `<button type="button" class="chip" data-v="${n}" aria-pressed="${availOf(m).minutes === n}">${n} min</button>`).join('')}</div>
+  </div>
   <div class="card white"><h3>Santé</h3>
     <p class="muted" style="margin:0">Les zones fragiles servent à écarter les exercices à risque de ton programme.</p>
     <div id="zones">${zones.map(zoneRow).join('')}</div>
@@ -389,6 +399,7 @@ function bindProfile(root) {
     document.documentElement.style.setProperty('--me', colorHex(b.dataset.color));
   });
   root.querySelectorAll('[data-multi] .chip').forEach((b) => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
+  root.querySelectorAll('[data-single] .chip').forEach((b) => b.onclick = () => { b.parentElement.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); });
   root.querySelector('#addZone').onclick = () => root.querySelector('#zones').insertAdjacentHTML('beforeend', zoneRow());
   root.addEventListener('click', (e) => { if (e.target.matches('[data-rmzone]')) e.target.closest('.zone').remove(); });
 }
@@ -406,6 +417,11 @@ function readProfile(root) {
     height_cm: num(v.height_cm), start_weight: num(v.start_weight), goal_weight: num(v.goal_weight),
     health: { zones, note: v.health_note.trim() },
     nutrition: { allergens: multi('allergens'), diets: multi('diets'), dislikes: v.dislikes.trim() },
+    availability: {
+      days: multi('days').map(Number),
+      sessions: Number(root.querySelector('[data-single=sessions] .chip[aria-pressed=true]')?.dataset.v || 4),
+      minutes: Number(root.querySelector('[data-single=minutes] .chip[aria-pressed=true]')?.dataset.v || 30),
+    },
   };
 }
 
@@ -425,16 +441,20 @@ function viewOnboarding(step = 0) {
         </ul></div>
       <div class="card"><span class="title">${captain ? 'Tu es le capitaine du tandem' : `${esc(partner)} est le capitaine du tandem`}</span>
         <span class="small">${captain ? `C'est toi qui règles le matériel et la durée du programme, pour vous deux. ${esc(partner)} pourra te faire des suggestions.` : `C'est ${esc(partner)} qui règle le matériel et la durée du programme. Toi, tu peux lui envoyer des suggestions depuis l'appli.`}</span></div>
-      <div class="card"><span class="title">Ça prend 3 minutes</span><span class="small">5 petites étapes. Tout reste modifiable plus tard dans « Mon profil ».</span></div>` },
+      <div class="card"><span class="title">Ça prend 3 minutes</span><span class="small">6 petites étapes. Tout reste modifiable plus tard dans « Mon profil ».</span></div>` },
     { title: 'Ta couleur', sub: 'Elle sert à te reconnaître partout : boutons, graphiques, défis.', body: `${cards[0]}<p class="small muted">La couleur déjà choisie par ${esc(partner)} est grisée.</p>` },
     { title: 'Toi', sub: 'Pour personnaliser tes objectifs et suivre tes progrès.', body: `${cards[1]}
       <div class="card"><span class="small"><b>Pourquoi ces infos ?</b> L'âge et la taille aident à fixer des objectifs réalistes. Le poids de départ sert de point de comparaison dans tes courbes, et l'objectif t'indique le chemin restant. Seul le prénom est obligatoire.</span>
       <span class="small"><b>Qui les voit ?</b> Toi et ${esc(partner)} uniquement.</span></div>` },
-    { title: 'Ta santé', sub: 'Pour que le programme évite les mouvements qui te font mal.', body: `${cards[2]}
+    { title: 'Ton temps pour le sport', sub: 'Pour que le programme tienne dans ta semaine.', body: `${cards[2]}
+      <div class="card"><span class="small"><b>Comment ça marche ?</b> Coche les jours où tu peux faire du sport, combien de séances tu vises par semaine et combien de temps tu as. Le programme place tes séances sur ces jours en les espaçant, en alternant renfo et cardio, avec la sortie la plus longue en fin de semaine.</span>
+      <span class="small"><b>Conseil pour démarrer :</b> 3 séances de 30 min, c'est déjà très bien. Mieux vaut peu et régulier que trop et abandonner.</span>
+      <span class="small">Si vous avez des jours en commun avec ${esc(partner)}, vos séances tombent ensemble quand c'est possible. Une respiration de 5 min est proposée chaque soir, en bonus.</span></div>` },
+    { title: 'Ta santé', sub: 'Pour que le programme évite les mouvements qui te font mal.', body: `${cards[3]}
       <div class="card"><span class="small"><b>Comment ça marche ?</b> Ajoute une zone fragile (épaule, nuque, genou…) : les exercices qui la sollicitent sont retirés de ton programme, et des exercices doux de renforcement peuvent être ajoutés. Exemple : une tendinite à l'épaule retire les pompes et le kettlebell swing.</span>
       <span class="small"><b>Rien à signaler ?</b> Passe simplement à l'étape suivante.</span>
       <span class="small muted">L'appli ne remplace pas un avis médical : en cas de douleur vive, arrête et consulte.</span></div>` },
-    { title: 'Ton alimentation', sub: 'Pour que les recettes proposées conviennent à vous deux.', body: `${cards[3]}
+    { title: 'Ton alimentation', sub: 'Pour que les recettes proposées conviennent à vous deux.', body: `${cards[4]}
       <div class="card"><span class="small"><b>Comment ça marche ?</b> Les allergies et régimes de vous deux sont combinés : une recette n'est proposée que si elle convient à chacun. Les allergènes sont calculés à partir des ingrédients et affichés sur chaque recette.</span>
       <span class="small"><b>Ce que tu n'aimes pas</b> : écris quelques mots séparés par des virgules (ex. « chou-fleur, lentilles »), les recettes qui en contiennent seront écartées.</span></div>` },
     { title: 'C\'est prêt !', sub: 'Voici comment démarrer.', body: `
@@ -471,6 +491,10 @@ function viewOnboarding(step = 0) {
       if (bad) return ($e.textContent = `${bad[3]} : entre ${bad[1]} et ${bad[2]}.`);
       if (p.birth_date && (p.birth_date > addDays(today(), -365 * 16) || p.birth_date < '1920-01-01')) return ($e.textContent = 'Vérifie ta date de naissance.');
     }
+    if (step === 3) {
+      if (!p.availability.days.length) return ($e.textContent = 'Coche au moins un jour.');
+      if (p.availability.sessions > p.availability.days.length) return ($e.textContent = `Tu as choisi ${p.availability.sessions} séances mais seulement ${p.availability.days.length} jour(s) : ajoute des jours ou réduis le nombre de séances.`);
+    }
     if (step < n - 1) return goStep(step + 1);
     const btn = document.getElementById('next'); btn.disabled = true; btn.textContent = 'Enregistrement…';
     const { error } = await sb.from('members').update({ ...p, onboarded_at: new Date().toISOString() }).eq('id', S.me.id);
@@ -483,13 +507,14 @@ function viewOnboarding(step = 0) {
 function snapshot(f) {
   return {
     values: Object.fromEntries([...f.querySelectorAll('input[name],select[name],textarea[name]')].filter((i) => !i.name.startsWith('z_')).map((i) => [i.name, i.value])),
-    pressed: [...f.querySelectorAll('[data-multi] .chip[aria-pressed=true]')].map((b) => `${b.closest('[data-multi]').dataset.multi}:${b.dataset.v}`),
+    pressed: [...f.querySelectorAll('[data-multi] .chip[aria-pressed=true], [data-single] .chip[aria-pressed=true]')].map((b) => `${(b.closest('[data-multi]') || b.closest('[data-single]')).dataset.multi || b.closest('[data-single]').dataset.single}:${b.dataset.v}`),
     zones: [...f.querySelectorAll('.zone')].map((z) => ({ zone: z.querySelector('[name=z_zone]').value, side: z.querySelector('[name=z_side]').value, type: z.querySelector('[name=z_type]').value, intensity: z.querySelector('[name=z_int]').value, avoid: z.querySelector('[name=z_avoid]').value })),
   };
 }
 function restoreDraft(f, d) {
   for (const [k, v] of Object.entries(d.values)) { const el = f.querySelector(`[name="${k}"]`); if (el) el.value = v; }
   f.querySelectorAll('[data-multi] .chip').forEach((b) => b.setAttribute('aria-pressed', d.pressed.includes(`${b.closest('[data-multi]').dataset.multi}:${b.dataset.v}`)));
+  f.querySelectorAll('[data-single] .chip').forEach((b) => b.setAttribute('aria-pressed', d.pressed.includes(`${b.closest('[data-single]').dataset.single}:${b.dataset.v}`)));
   f.querySelectorAll('.swatch').forEach((b) => b.setAttribute('aria-pressed', b.dataset.color === d.values.color));
   if (d.values.color) document.documentElement.style.setProperty('--me', colorHex(d.values.color));
   f.querySelector('#zones').innerHTML = d.zones.map(zoneRow).join('');
@@ -599,6 +624,13 @@ function bindDayNav() {
   $app.querySelectorAll('[data-day]').forEach((b) => b.onclick = () => { S.day = addDays(S.day, Number(b.dataset.day)); render(); });
 }
 const planDay = (d) => S.plan?.data?.days?.[d];
+// À qui s'adresse une séance (les anciens programmes n'ont pas ce champ : pour tout le monde).
+const forOf = (s) => s.for || [S.me?.id, S.partner?.id].filter(Boolean);
+const countable = (s) => s.key !== 'respiration' && !s.optional;
+function plannedFor(mid, fromDay, n = 7) {
+  let t = 0; for (let i = 0; i < n; i++) t += (planDay(addDays(fromDay, i))?.sessions || []).filter((s) => countable(s) && forOf(s).includes(mid)).length;
+  return t;
+}
 function weekLabel(d) {
   const pd = planDay(d);
   return pd ? `Semaine ${pd.week} sur ${S.plan.data.weeks}` : (S.plan ? 'Hors programme' : 'Pas encore de programme');
@@ -614,26 +646,26 @@ async function viewToday() {
     loadTrackData(d, d),
   ]);
   const has = (mid, key, day = d) => (checks || []).some((c) => c.member_id === mid && c.session_key === key && c.day === day);
-  const weekTotal = (() => { let n = 0; for (let i = 0; i < 7; i++) n += (planDay(addDays(monday, i))?.sessions || []).filter((s) => s.key !== 'respiration').length; return n; })();
-  const doneBy = (mid) => (checks || []).filter((c) => c.member_id === mid && c.session_key !== 'respiration').length;
+  const weekTotal = Math.max(...[S.me, S.partner].filter(Boolean).map((p) => plannedFor(p.id, monday)), 0);
+  const doneBy = (mid) => (checks || []).filter((c) => c.member_id === mid && c.session_key !== 'respiration' && c.session_key !== 'mobilite').length;
   const people = [S.me, S.partner].filter(Boolean);
   $app.innerHTML = header(`Bonjour ${S.me.first_name}`, esc(weekLabel(d)), true) + `
   <div class="wrap">
     ${S.partner && !S.partner.user_id ? `<div class="notice row between"><span>${esc(S.partner.first_name)} n'a pas encore rejoint le tandem.</span><button class="btn ghost sm" id="resend">Renvoyer le code</button></div>` : ''}
-    ${weekTotal ? `<div class="grid2">${people.map((p) => `<div class="card"><span class="small">${esc(p.first_name)} · ${Math.min(doneBy(p.id), weekTotal)} / ${weekTotal} séances cette semaine</span><div class="bar" style="background:var(--line)"><div style="width:${Math.round(Math.min(1, doneBy(p.id) / weekTotal) * 100)}%;background:${colorHex(p.color)}"></div></div></div>`).join('')}</div>` : ''}
+    ${weekTotal ? `<div class="grid2">${people.map((p) => { const tot = plannedFor(p.id, monday) || 1; return `<div class="card"><span class="small">${esc(p.first_name)} · ${Math.min(doneBy(p.id), tot)} / ${tot} séances cette semaine</span><div class="bar" style="background:var(--line)"><div style="width:${Math.round(Math.min(1, doneBy(p.id) / tot) * 100)}%;background:${colorHex(p.color)}"></div></div></div>`; }).join('')}</div>` : ''}
     ${people.length === 2 ? duoBar(`Défi du jour : ${DAILY_DUO_GOAL.toLocaleString('fr-FR')} pas à deux`, DAILY_DUO_GOAL, people.map((p) => track.merged(p.id, d).steps), people) : ''}
     <h2>Sport du jour</h2>
     ${!S.plan ? `<div class="card"><span class="title">Pas encore de programme</span><span class="muted">${isCaptain() ? 'Règle le matériel et la durée, puis génère le programme.' : `${esc(S.partner?.first_name || 'Le capitaine')} règle le matériel et génère le programme.`}</span>${isCaptain() ? '<button class="btn" data-go="settings">Créer le programme</button>' : ''}</div>` : ''}
-    ${(pd?.sessions || []).map((s) => `
+    ${(pd?.sessions || []).map((s) => { const who = people.filter((p) => forOf(s).includes(p.id)); return `
       <div class="card">
-        <div><span class="title">${esc(s.title)}</span><div class="muted">${esc(s.detail)}</div></div>
+        <div><span class="title">${esc(s.title)}</span>${who.length < people.length ? ` <span class="pill">Pour ${esc(who.map((p) => p.first_name).join(' et '))}</span>` : ''}${s.optional && s.key !== 'respiration' ? ' <span class="pill">Facultatif</span>' : ''}<div class="muted">${esc(s.detail)}</div></div>
         ${s.per ? people.map((p) => s.per[p.id] ? `<div class="small"><b>${esc(p.first_name)} :</b> ${s.per[p.id].map((n) => `<button class="link small" data-ex="${esc(n)}" style="font-weight:500">${esc(n)}</button>`).join(' · ')}</div>` : '').join('') : ''}
         <button class="btn ghost sm" data-howto="${esc(s.key)}|${esc(s.title)}">Comment faire ?</button>
-        <div class="grid2">${people.map((p) => {
+        <div class="grid2">${who.map((p) => {
           const on = has(p.id, s.key); const mine = p.id === S.me.id;
           return `<button class="toggle" style="--c:${colorHex(p.color)}" aria-pressed="${on}" ${mine ? `data-check="${s.key}"` : 'disabled'}>${esc(p.first_name)} · ${on ? 'fait ✓' : (mine ? 'à faire' : 'pas encore')}</button>`;
         }).join('')}</div>
-      </div>`).join('')}
+      </div>`; }).join('')}
     ${S.plan && !pd ? '<div class="card"><span class="muted">Aucune séance prévue ce jour-là.</span></div>' : ''}
     <h2>Repas</h2>
     <div class="grid2">${['midi', 'soir'].map((slot) => {
@@ -985,8 +1017,8 @@ async function viewTrackWeek(people) {
   const { merged, acts, weights, checks } = await loadTrackData(prevMon, sunday);
   const cur = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
   const prev = people.map((p) => days.map((x) => merged(p.id, addDays(x, -7))[M.key]));
-  const planned = days.reduce((t, x) => t + (planDay(x)?.sessions || []).filter((s) => s.key !== 'respiration').length, 0);
-  const done = (mid) => checks.filter((c) => c.member_id === mid && c.day >= monday && c.session_key !== 'respiration').length;
+  const planned = (mid) => plannedFor(mid, monday);
+  const done = (mid) => checks.filter((c) => c.member_id === mid && c.day >= monday && c.session_key !== 'respiration' && c.session_key !== 'mobilite').length;
   const stepsWeek = people.map((p) => sumOf(days.map((x) => merged(p.id, x).steps)));
   const pd = planDay(monday);
   const lastW = (mid) => [...weights].filter((w) => w.member_id === mid && w.kg != null).pop();
@@ -995,7 +1027,7 @@ async function viewTrackWeek(people) {
     ${metricTabs()}
     <div class="card white">${barChart(people.map((p, i) => ({ color: colorHex(p.color), values: cur[i] })), days, M.fmt, M.goal, M.goalLabel)}
       <div class="row between">${legend(people)}<span class="small muted">${esc(M.unit)}</span></div></div>
-    ${statCards(M, people, cur, prev, 'semaine', (p) => (planned ? `<span class="small">Séances du programme : ${Math.min(done(p.id), planned)} / ${planned}</span>` : ''))}
+    ${statCards(M, people, cur, prev, 'semaine', (p) => (planned(p.id) ? `<span class="small">Séances du programme : ${Math.min(done(p.id), planned(p.id))} / ${planned(p.id)}</span>` : ''))}
     ${people.length === 2 ? duoBar(`Défi à deux : ${nf(WEEKLY_DUO_GOAL)} pas`, WEEKLY_DUO_GOAL, stepsWeek, people) : ''}
     <div class="row between"><h2>Activités</h2><div class="row"><button class="btn ghost sm" id="manual">Saisir un jour</button><button class="btn ghost sm" id="addAct">+ Activité</button></div></div>
     ${weekActs.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}${a.source !== 'manuel' ? ` <span class="pill">${esc({ garmin: 'Garmin', apple: 'Apple' }[a.source] || a.source)}</span>` : ''}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${nf(a.distance_km, 1)} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}${a.kcal ? ` · ${a.kcal} kcal` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
@@ -1327,7 +1359,7 @@ function viewProgram() {
   const DN = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   $app.innerHTML = header('Programme', `${p.weeks} semaines à partir du ${fmtDay(p.start_date, { day: 'numeric', month: 'long' })}`) + `<div class="wrap">
     ${weeks.map((days, i) => `<details class="card white" ${days.some(([d]) => d === today()) ? 'open' : ''}><summary class="title" style="cursor:pointer">Semaine ${i + 1}</summary>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${days.map(([d, v], k) => `<button class="card" data-pday="${d}" style="border:0;text-align:left;cursor:pointer;padding:10px 12px"><span class="small muted">${DN[k]} ${esc(fmtDay(d, { day: 'numeric', month: 'short' }))}</span><span style="font-weight:600">${v.sessions.filter((s) => s.key !== 'respiration').map((s) => esc(s.title)).join(' · ') || 'Repos'}</span><span class="small" style="color:var(--me)">Voir le détail ›</span></button>`).join('')}</div></details>`).join('')}
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${days.map(([d, v], k) => `<button class="card" data-pday="${d}" style="border:0;text-align:left;cursor:pointer;padding:10px 12px"><span class="small muted">${DN[k]} ${esc(fmtDay(d, { day: 'numeric', month: 'short' }))}</span><span style="font-weight:600">${v.sessions.filter((s) => s.key !== 'respiration').map((s) => `${esc(s.title)}${forOf(s).length < [S.me, S.partner].filter(Boolean).length ? ` (${esc([S.me, S.partner].filter((p) => p && forOf(s).includes(p.id)).map((p) => p.first_name).join(', '))})` : ''}`).join(' · ') || 'Repos'}</span><span class="small" style="color:var(--me)">Voir le détail ›</span></button>`).join('')}</div></details>`).join('')}
   </div>`;
   $app.querySelectorAll('[data-pday]').forEach((b) => b.onclick = () => showDay(b.dataset.pday));
 }
@@ -1344,21 +1376,23 @@ function exerciseHtml(name, open = false) {
   if (!e) return `<div class="card"><span class="title">${esc(name)}</span></div>`;
   return `<details class="card white" ${open ? 'open' : ''}><summary class="title" style="cursor:pointer">${esc(name)}</summary>
     <div class="small" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      ${hasAnim(name) ? animSvg(name) : ''}
       <span class="muted">${esc(e.muscles)}</span>
       <b>Comment faire</b><ol class="steps">${e.how.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
       <b>Points clés</b><ul class="plain">${e.keys.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
       <span><b>Plus facile :</b> ${esc(e.easier)}</span>
-      <a class="btn ghost sm" href="${videoUrl(e.video)}" target="_blank" rel="noopener">▶ Voir des vidéos du geste</a>
+      <a class="link small" href="${videoUrl(e.video)}" target="_blank" rel="noopener">Voir aussi des vidéos sur YouTube ›</a>
     </div></details>`;
 }
 function showExercise(name) {
   openModal(`<div class="row between"><h2>Exercice</h2><button class="btn ghost sm" data-close>Fermer</button></div>${exerciseHtml(name, true)}`);
+  startAnims(meColor());
 }
 function showSession(s) {
   if (!s) return;
   const info = SESSIONS[s.key] || {};
   const people = [S.me, S.partner].filter(Boolean);
-  const mine = s.per?.[S.me.id] || [];
+  const mine = s.per?.[S.me.id] || (S.partner && s.per?.[S.partner.id]) || [];
   const theirs = S.partner && s.per?.[S.partner.id] ? s.per[S.partner.id].filter((n) => !mine.includes(n)) : [];
   openModal(`<div class="row between"><h2>${esc(s.title)}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
     <div class="card"><span class="title">Au programme</span><span class="small">${esc(s.detail)}</span></div>
@@ -1367,6 +1401,7 @@ function showSession(s) {
     ${info.video ? `<a class="btn ghost sm" href="${videoUrl(info.video)}" target="_blank" rel="noopener">▶ Voir des vidéos</a>` : ''}
     ${mine.length ? `<h3>${people.length > 1 ? 'Tes exercices' : 'Les exercices'}</h3>${mine.map((n, i) => exerciseHtml(n, i === 0)).join('')}` : ''}
     ${theirs.length ? `<h3>Différents pour ${esc(S.partner.first_name)}</h3><span class="small muted">Adaptés à ses zones fragiles.</span>${theirs.map((n) => exerciseHtml(n)).join('')}` : ''}`);
+  startAnims(meColor());
 }
 
 async function viewSettings() {
@@ -1383,9 +1418,13 @@ async function viewSettings() {
         <li><b>Durée</b> : de 2 à 12 semaines. Les séances deviennent un peu plus longues et plus intenses au fil des semaines.</li>
         <li><b>Début</b> : toujours un lundi.</li>
         <li><b>Course</b> : si « Course dehors » est cochée, choisis la semaine où elle reprend. Avant, le samedi reste une grande balade.</li>
+        <li><b>Disponibilités</b> : chacun choisit ses jours, son nombre de séances et leur durée dans « Mon profil ». Le programme s'y adapte pour chacun.</li>
         <li><b>Santé</b> : les zones fragiles de chacun (dans « Mon profil ») retirent les exercices à risque, pour lui ou elle seulement.</li>
         <li>Tu peux <b>régénérer</b> le programme à tout moment : les séances déjà cochées restent enregistrées.</li>
       </ul></details>
+    <div class="card white"><h3>Disponibilités</h3>
+      ${[S.me, S.partner].filter(Boolean).map((p) => { const a = availOf(p); return `<span class="small"><b style="color:${colorHex(p.color)}">${esc(p.first_name)}</b> : ${a.sessions} séance(s) de ${a.minutes} min par semaine, le ${a.days.map((d) => WEEKDAYS[d].toLowerCase()).join(', ')}.</span>`; }).join('')}
+      <span class="small muted">À modifier par chacun dans Plus, puis « Mon profil ». Régénère ensuite le programme.</span></div>
     ${EQUIPMENT.map(([g, items]) => `<div class="card white"><h3>${g}</h3><div class="chips">${items.map(([v, l]) => `<button type="button" class="chip" data-eq="${v}" aria-pressed="${eq.has(v)}" ${capt ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>`).join('')}
     <div class="card white"><h3>Programme</h3>
       <span class="muted">Durée</span>
@@ -1433,9 +1472,12 @@ function viewProfile() {
   f.onsubmit = async (e) => {
     e.preventDefault(); const p = readProfile(f);
     if (S.partner && p.color === S.partner.color) return toast(`Couleur déjà prise par ${S.partner.first_name}`);
+    if (!p.availability.days.length) return toast('Coche au moins un jour de sport');
+    const changedAvail = JSON.stringify(availOf(S.me)) !== JSON.stringify(availOf(p));
     const { error } = await sb.from('members').update(p).eq('id', S.me.id);
     if (error) return fail(error, 'Enregistrement impossible');
-    Object.assign(S.me, p); setTheme(); toast('Profil enregistré');
+    Object.assign(S.me, p); setTheme();
+    toast(changedAvail ? (isCaptain() ? 'Profil enregistré. Régénère le programme pour appliquer tes nouvelles disponibilités.' : 'Profil enregistré. Demande au capitaine de régénérer le programme.') : 'Profil enregistré');
   };
 }
 

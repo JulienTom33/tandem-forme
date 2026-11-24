@@ -96,6 +96,29 @@ function pickExercises(member, eqSet, groups, seed, count) {
 }
 
 // settings : { equipment:[], weeks, start_date, run_from_week, days_off:[] }
+export const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+export const DEFAULT_AVAIL = { days: [0, 1, 2, 3, 4, 5], sessions: 4, minutes: 30 };
+export function availOf(m) {
+  const a = { ...DEFAULT_AVAIL, ...(m.availability || {}) };
+  a.days = (a.days && a.days.length ? a.days : DEFAULT_AVAIL.days).map(Number).filter((d) => d >= 0 && d <= 6).sort((x, y) => x - y);
+  a.sessions = Math.max(1, Math.min(6, Number(a.sessions) || 4, a.days.length));
+  a.minutes = [20, 30, 45, 60].includes(Number(a.minutes)) ? Number(a.minutes) : 30;
+  return a;
+}
+// Répartit n séances sur les jours disponibles, le plus espacées possible.
+function spread(days, n) {
+  if (n >= days.length) return [...days];
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(days[Math.round((i * (days.length - 1)) / Math.max(1, n - 1))]);
+  return [...new Set(out)];
+}
+// Ordre des séances selon le nombre par semaine : on alterne renfo et cardio, la sortie longue en fin de semaine.
+const ROTATION = {
+  1: ['renfo'], 2: ['renfo', 'long'], 3: ['renfo', 'cardio', 'long'], 4: ['renfo', 'cardio', 'renfo', 'long'],
+  5: ['renfo', 'cardio', 'renfo', 'cardio', 'long'], 6: ['renfo', 'cardio', 'renfo', 'cardio', 'renfo', 'long'],
+};
+
+// settings : { equipment:[], weeks, start_date, run_from_week } ; chaque membre a ses disponibilités (jours, séances par semaine, durée).
 export function generatePlan(settings, members) {
   const eq = new Set(settings.equipment || []);
   const weeks = Math.min(12, Math.max(2, Number(settings.weeks) || 6));
@@ -103,49 +126,61 @@ export function generatePlan(settings, members) {
   const runFrom = Number(settings.run_from_week || 1);
   const hasBike = eq.has('velo');
   const canRun = eq.has('course');
+  const canWalk = eq.has('marche') || !eq.size;
   const days = {};
   for (let w = 1; w <= weeks; w++) {
-    const rounds = w <= Math.ceil(weeks / 3) ? 2 : w <= Math.ceil((2 * weeks) / 3) ? 3 : 3;
-    const reps = w <= Math.ceil(weeks / 3) ? '10 à 12' : '12 à 15';
-    const walk = Math.min(30 + (w - 1) * 3, 50);
+    const phase = w <= Math.ceil(weeks / 3) ? 0 : w <= Math.ceil((2 * weeks) / 3) ? 1 : 2;
+    const reps = ['10 à 12', '12', '12 à 15'][phase];
+    const week = Array.from({ length: 7 }, () => []);
+    for (const m of members) {
+      const av = availOf(m); const M = av.minutes;
+      const chosen = spread(av.days, av.sessions);
+      const kinds = ROTATION[chosen.length] || ROTATION[4];
+      let renfoN = 0;
+      chosen.forEach((dIdx, i) => {
+        const day = addDays(start, (w - 1) * 7 + dIdx);
+        const kind = kinds[i];
+        if (kind === 'renfo') {
+          const letter = 'ABC'[renfoN++ % 3];
+          const rounds = Math.max(2, Math.min(4, Math.round(M / 15) + (phase >= 1 ? 1 : 0) - 1));
+          const exercises = pickExercises(m, eq, ['bas', 'haut', 'tronc'], `${day}${letter}${m.id}`, M >= 45 ? 6 : 5).map((e) => e.n);
+          week[dIdx].push({ key: 'renfo', title: `Renfo maison ${letter}`, minutes: M, member: m.id, exercises,
+            detail: `${hasBike ? `${M >= 45 ? 10 : 5} min de vélo tranquille pour s'échauffer, puis ` : '5 min d\'échauffement articulaire, puis '}${rounds} tours de ${reps} répétitions, 1 min de pause entre les exercices. Environ ${M} min.` });
+        } else if (kind === 'cardio') {
+          const mins = Math.min(M + phase * 5, M + 15);
+          if (canWalk) week[dIdx].push({ key: 'marche', title: 'Marche active', minutes: mins, member: m.id, detail: `${mins} min de marche d'un bon pas.` });
+          else if (hasBike) week[dIdx].push({ key: 'velo', title: 'Vélo', minutes: mins, member: m.id, detail: `${mins} min de vélo à allure facile (tu peux parler).` });
+          else week[dIdx].push({ key: 'mobilite', title: 'Étirements et mobilité', minutes: 15, member: m.id, detail: '15 min de mobilité douce.' });
+        } else {
+          if (canRun && w >= runFrom) {
+            const n = Math.min(4 + (w - runFrom), 10);
+            week[dIdx].push({ key: 'course', title: 'Course douce', minutes: n * 3 + 10, member: m.id, detail: `${n} × (1 min de course + 2 min de marche), à l'allure conversation. Aux sensations : si ça tire, on marche.` });
+          } else if (hasBike && !canWalk) {
+            week[dIdx].push({ key: 'velo', title: 'Vélo long', minutes: M + 15, member: m.id, detail: `${M + 15} min de vélo très facile.` });
+          } else {
+            const mins = Math.min(M + 15 + phase * 5, 75);
+            week[dIdx].push({ key: 'balade', title: 'Grande balade', minutes: mins, member: m.id, detail: `${mins} min de marche tranquille.` });
+          }
+        }
+      });
+      // Un jour disponible restant : étirements doux (facultatifs, non comptés comme séance)
+      const free = av.days.filter((d) => !chosen.includes(d));
+      if (free.length) week[free[free.length - 1]].push({ key: 'mobilite', title: 'Étirements doux', minutes: 10, member: m.id, optional: true, detail: '10 min de mobilité : cou, épaules, hanches, sans forcer. Facultatif.' });
+    }
+    // Fusion : même séance le même jour pour les deux = une séance commune
     for (let k = 0; k < 7; k++) {
       const day = addDays(start, (w - 1) * 7 + k);
       const list = [];
-      const strength = (label, seedKey) => {
-        const per = {};
-        for (const m of members) {
-          per[m.id] = pickExercises(m, eq, ['bas', 'haut', 'tronc'], `${day}${seedKey}${m.id}`, 5).map((e) => e.n);
-        }
-        list.push({
-          key: 'renfo', title: label,
-          detail: `${hasBike ? '10 min de vélo tranquille pour s\'échauffer, puis ' : '5 min d\'échauffement articulaire, puis '}${rounds} tours de ${reps} répétitions, 1 min de pause entre les exercices.`,
-          per,
-        });
-      };
-      if (k === 0) strength('Renfo maison A', 'A');
-      if (k === 2) strength('Renfo maison B', 'B');
-      if (k === 4) {
-        if (hasBike) list.push({ key: 'velo', title: 'Vélo et gainage', detail: `${20 + Math.min(w, 6) * 2} min de vélo à allure facile (tu peux parler), puis 10 min de gainage doux.` });
-        else strength('Renfo maison C', 'C');
+      for (const s of week[k]) {
+        const twin = list.find((x) => x.key === s.key && x.title === s.title);
+        if (twin) { twin.for.push(s.member); if (s.exercises) twin.per[s.member] = s.exercises; if (members.length > 1 && twin.for.length > 1 && !/ensemble/.test(twin.title) && s.key !== 'renfo') twin.title += ' ensemble'; continue; }
+        list.push({ key: s.key, title: s.title, detail: s.detail, minutes: s.minutes, optional: s.optional || false, for: [s.member], ...(s.exercises ? { per: { [s.member]: s.exercises } } : {}) });
       }
-      if (k === 1 || k === 3) {
-        if (eq.has('marche') || !eq.size) list.push({ key: 'marche', title: 'Marche active', detail: `${walk} min de marche d'un bon pas, ensemble si possible.` });
-        else if (hasBike) list.push({ key: 'velo', title: 'Vélo facile', detail: `${walk} min de vélo très facile.` });
-      }
-      if (k === 5) {
-        if (canRun && w >= runFrom) {
-          const n = Math.min(4 + (w - runFrom) * 1, 10);
-          list.push({ key: 'course', title: 'Course douce ensemble', detail: `${n} × (1 min de course + 2 min de marche), à l'allure conversation. Aux sensations : si ça tire, on marche.` });
-        } else {
-          list.push({ key: 'balade', title: 'Grande balade', detail: `${45 + Math.min(w, 5) * 3} min de marche tranquille.` });
-        }
-      }
-      if (k === 6) list.push({ key: 'mobilite', title: 'Étirements doux', detail: '10 min de mobilité : cou, épaules, hanches, sans forcer.' });
-      list.push({ key: 'respiration', title: 'Respiration du soir', detail: 'Cohérence cardiaque : 5 min, inspirer 5 s, expirer 5 s.' });
+      list.push({ key: 'respiration', title: 'Respiration du soir', detail: 'Cohérence cardiaque : 5 min, inspirer 5 s, expirer 5 s.', for: members.map((m) => m.id), optional: true });
       days[day] = { week: w, sessions: list };
     }
   }
-  return { start_date: start, weeks, days, generated_at: new Date().toISOString() };
+  return { start_date: start, weeks, days, generated_at: new Date().toISOString(), version: 2 };
 }
 
 // ---------- Repas ----------
