@@ -64,10 +64,14 @@ async function boot() {
 }
 
 async function route() {
-  if (!S.session) { $tabs.hidden = true; return location.hash === '#inscription' ? viewRegister() : viewLogin(); }
+  if (!S.session) { $tabs.hidden = true; return location.hash === '#inscription' ? viewRegister() : viewLogin(location.hash.includes('error') ? 'email' : 'password', location.hash.includes('error') ? 'Ce lien a expiré ou a déjà servi. Demande un nouveau lien.' : ''); }
   try { await loadCore(); } catch (e) { fail(e, 'Chargement impossible'); return; }
   if (!S.me) return viewNoMember();
   setTheme();
+  const meta = S.session.user.user_metadata || {};
+  let resetting = false; try { resetting = sessionStorage.getItem('tf_reset') === '1'; } catch {}
+  if (!meta.password_set) return viewSetPassword('create');
+  if (resetting || new URLSearchParams(location.search).has('reinit')) return viewSetPassword('reset');
   if (!S.me.onboarded_at) { $tabs.hidden = true; return viewOnboarding(); }
   renderTabs(); render();
 }
@@ -99,49 +103,165 @@ async function loadCore() {
 }
 
 // ---------- connexion / inscription ----------
-function viewLogin(step = 'email', err = '') {
+// Messages d'erreur Supabase traduits pour l'utilisateur.
+function authMessage(error) {
+  const code = error?.code || ''; const msg = error?.message || '';
+  if (code === 'invalid_credentials' || /Invalid login credentials/i.test(msg)) return 'E-mail ou mot de passe incorrect.';
+  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit' || /rate limit|security purposes/i.test(msg)) return 'Trop de demandes d\'affilée. Patiente une minute puis réessaie.';
+  if (code === 'otp_disabled' || code === 'signup_disabled' || code === 'user_not_found' || /Signups not allowed|not found/i.test(msg)) return 'Adresse inconnue. Inscris-toi d\'abord avec un code d\'invitation.';
+  if (code === 'otp_expired' || /expired|invalid/i.test(msg)) return 'Code ou lien incorrect ou expiré. Demande-en un nouveau.';
+  if (code === 'weak_password') return 'Mot de passe trop faible : 12 caractères minimum, avec minuscule, majuscule, chiffre et caractère spécial.';
+  if (code === 'same_password') return 'Choisis un mot de passe différent de l\'ancien.';
+  if (code === 'reauthentication_needed') return 'Pour des raisons de sécurité, reconnecte-toi avec un lien e-mail puis recommence.';
+  if (/Failed to fetch|NetworkError/i.test(msg)) return 'Pas de connexion internet.';
+  return msg || 'Une erreur est survenue.';
+}
+
+// Règles du mot de passe : 12 caractères, minuscule, majuscule, chiffre, caractère spécial.
+const PW_RULES = [
+  ['len', '12 caractères minimum', (p) => p.length >= 12],
+  ['low', 'Une minuscule', (p) => /[a-zà-ÿ]/.test(p)],
+  ['up', 'Une majuscule', (p) => /[A-ZÀ-Ý]/.test(p)],
+  ['num', 'Un chiffre', (p) => /\d/.test(p)],
+  ['spe', 'Un caractère spécial (!?@#…)', (p) => /[^A-Za-z0-9À-ÿ\s]/.test(p)],
+];
+const pwOk = (p) => PW_RULES.every(([, , t]) => t(p));
+function pwField(name, label, autocomplete) {
+  return `<label>${label}<span class="row" style="gap:6px"><input name="${name}" type="password" autocomplete="${autocomplete}" required style="flex:1">
+    <button type="button" class="btn soft sm" data-eye="${name}" aria-label="Afficher le mot de passe" style="min-height:46px">Voir</button></span></label>`;
+}
+function bindEyes(root) {
+  root.querySelectorAll('[data-eye]').forEach((b) => b.onclick = () => {
+    const i = root.querySelector(`[name=${b.dataset.eye}]`); const show = i.type === 'password';
+    i.type = show ? 'text' : 'password'; b.textContent = show ? 'Cacher' : 'Voir';
+    b.setAttribute('aria-label', show ? 'Cacher le mot de passe' : 'Afficher le mot de passe');
+  });
+}
+
+function viewLogin(step = 'password', err = '') {
+  const otp = step === 'code';
   $app.innerHTML = `
   <div class="hero"><div class="inner"><h1>Tandem Forme</h1><small>Le sport et les menus, à deux.</small></div></div>
   <div class="wrap">
-    ${step === 'email' ? `
-    <form id="f" class="card white">
+    ${step === 'password' ? `
+    <form id="f" class="card white" novalidate>
       <h2>Connexion</h2>
-      <label>Ton e-mail<input name="email" type="email" autocomplete="email" required value="${esc(S.loginEmail)}"></label>
-      <button class="btn block">Recevoir mon code</button>
-      <p class="muted small" style="margin:0">Pas de mot de passe : on t'envoie un code à 6 chiffres.</p>
+      <label>E-mail<input name="email" type="email" autocomplete="email" required value="${esc(S.loginEmail)}"></label>
+      ${pwField('password', 'Mot de passe', 'current-password')}
+      <p class="err" id="err" role="alert" style="margin:0">${esc(err)}</p>
+      <button class="btn block">Se connecter</button>
+      <button type="button" class="link" id="forgot">Mot de passe oublié ? Recevoir un lien de connexion</button>
     </form>
     <div class="card"><span class="title">Nouveau tandem ?</span><span class="muted">L'un de vous deux inscrit le couple avec un code d'invitation.</span>
-      <a class="btn ghost" href="#inscription">S'inscrire à deux</a></div>` : `
-    <form id="f" class="card white">
-      <h2>Ton code</h2>
-      <p class="muted" style="margin:0">Envoyé à ${esc(S.loginEmail)}. Tu peux aussi toucher le lien dans l'e-mail.</p>
-      <input name="token" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+      <a class="btn ghost" href="#inscription">S'inscrire à deux</a></div>` : step === 'email' ? `
+    <form id="f" class="card white" novalidate>
+      <h2>Mot de passe oublié</h2>
+      <p class="muted" style="margin:0">On t'envoie un lien de connexion et un code à 6 chiffres. Une fois connecté, tu choisiras un nouveau mot de passe.</p>
+      <label>E-mail<input name="email" type="email" autocomplete="email" required value="${esc(S.loginEmail)}"></label>
+      <p class="err" id="err" role="alert" style="margin:0">${esc(err)}</p>
+      <button class="btn block">Recevoir le lien</button>
+      <button type="button" class="link" id="back">Revenir à la connexion</button>
+    </form>` : `
+    <form id="f" class="card white" novalidate>
+      <h2>Regarde tes e-mails</h2>
+      <p class="muted" style="margin:0">Touche le lien envoyé à ${esc(S.loginEmail)}, ou saisis le code à 6 chiffres ici.</p>
+      <input name="token" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required aria-label="Code à 6 chiffres">
+      <p class="err" id="err" role="alert" style="margin:0">${esc(err)}</p>
       <button class="btn block">Valider</button>
-      <button type="button" class="link" id="back">Changer d'adresse</button>
+      <button type="button" class="link" id="resend">Renvoyer un e-mail</button>
+      <button type="button" class="link" id="back">Revenir à la connexion</button>
     </form>`}
-    ${err ? `<p class="err">${esc(err)}</p>` : ''}
   </div>`;
-  const f = document.getElementById('f');
-  document.getElementById('back')?.addEventListener('click', () => viewLogin('email'));
+  const f = document.getElementById('f'); const $err = document.getElementById('err');
+  const showErr = (m) => { $err.textContent = m; btn.disabled = false; };
+  const btn = f.querySelector('.btn.block');
+  bindEyes(f);
+  document.getElementById('back')?.addEventListener('click', () => viewLogin('password'));
+  document.getElementById('forgot')?.addEventListener('click', () => { S.loginEmail = (f.email.value || '').trim().toLowerCase(); viewLogin('email'); });
+  const sendLink = async () => {
+    const { error } = await sb.auth.signInWithOtp({ email: S.loginEmail, options: { shouldCreateUser: false, emailRedirectTo: `${location.origin}/?reinit=1` } });
+    if (error) return authMessage(error);
+    try { sessionStorage.setItem('tf_reset', '1'); } catch {}
+    return '';
+  };
+  document.getElementById('resend')?.addEventListener('click', async (e) => {
+    e.target.disabled = true; const m = await sendLink(); toast(m || 'E-mail renvoyé'); setTimeout(() => { e.target.disabled = false; }, 60000);
+  });
   f.onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = f.querySelector('button'); btn.disabled = true;
+    e.preventDefault(); $err.textContent = ''; btn.disabled = true;
     const v = formData(f);
-    if (step === 'email') {
-      S.loginEmail = v.email.trim().toLowerCase();
-      const { error } = await sb.auth.signInWithOtp({ email: S.loginEmail, options: { shouldCreateUser: false, emailRedirectTo: location.origin } });
-      if (error) return viewLogin('email', /signups not allowed|not found|Signups/i.test(error.message) ? 'Adresse inconnue. Inscris-toi d\'abord avec ton code d\'invitation.' : error.message);
+    if (step === 'password') {
+      S.loginEmail = (v.email || '').trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(S.loginEmail)) return showErr('Saisis une adresse e-mail valide.');
+      if (!v.password) return showErr('Saisis ton mot de passe.');
+      const { error } = await sb.auth.signInWithPassword({ email: S.loginEmail, password: v.password });
+      if (error) return showErr(authMessage(error));
+    } else if (step === 'email') {
+      S.loginEmail = (v.email || '').trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(S.loginEmail)) return showErr('Saisis une adresse e-mail valide.');
+      const m = await sendLink();
+      if (m) return showErr(m);
       viewLogin('code');
     } else {
-      const { error } = await sb.auth.verifyOtp({ email: S.loginEmail, token: v.token.trim(), type: 'email' });
-      if (error) return viewLogin('code', 'Code incorrect ou expiré.');
+      const token = (v.token || '').replace(/\D/g, '');
+      if (token.length !== 6) return showErr('Le code fait 6 chiffres.');
+      const { error } = await sb.auth.verifyOtp({ email: S.loginEmail, token, type: 'email' });
+      if (error) return showErr(authMessage(error));
     }
+  };
+  void otp;
+}
+
+// Création ou changement du mot de passe (après le premier lien, après un oubli, ou depuis le compte).
+function viewSetPassword(mode = 'create') {
+  $tabs.hidden = true;
+  const titles = { create: ['Crée ton mot de passe', 'Il te servira à te reconnecter. Si tu l\'oublies, tu pourras toujours recevoir un lien par e-mail.'], reset: ['Nouveau mot de passe', 'Choisis un nouveau mot de passe pour tes prochaines connexions.'], change: ['Changer mon mot de passe', ''] };
+  const [t, sub] = titles[mode];
+  $app.innerHTML = `
+  <div class="hero"><div class="inner"><h1>${t}</h1>${sub ? `<small>${sub}</small>` : ''}</div></div>
+  <form id="f" class="wrap" novalidate>
+    <div class="card white">
+      <input type="email" name="username" autocomplete="username" value="${esc(S.session?.user?.email)}" hidden>
+      ${pwField('pw1', 'Mot de passe', 'new-password')}
+      <ul class="plain small" id="rules" style="list-style:none;padding:0">${PW_RULES.map(([k, l]) => `<li data-rule="${k}">○ ${l}</li>`).join('')}</ul>
+      ${pwField('pw2', 'Répète le mot de passe', 'new-password')}
+      <span class="small" id="match"></span>
+      <button class="btn block">Enregistrer le mot de passe</button>
+      ${mode !== 'create' ? '<button type="button" class="link" id="skip">Plus tard</button>' : ''}
+      <p class="err" id="err" role="alert"></p>
+    </div>
+  </form>`;
+  const f = document.getElementById('f'); bindEyes(f);
+  const $err = document.getElementById('err'); const btn = f.querySelector('.btn.block');
+  const refresh = () => {
+    const p = f.pw1.value; const q = f.pw2.value;
+    PW_RULES.forEach(([k, l, test]) => { const li = f.querySelector(`[data-rule=${k}]`); const ok = test(p); li.textContent = `${ok ? '✓' : '○'} ${l}`; li.style.color = ok ? 'var(--ok)' : 'var(--muted)'; });
+    const m = document.getElementById('match');
+    m.textContent = q ? (p === q ? '✓ Les deux mots de passe sont identiques' : '✗ Les deux mots de passe sont différents') : '';
+    m.style.color = p === q ? 'var(--ok)' : 'var(--danger)';
+  };
+  f.pw1.oninput = refresh; f.pw2.oninput = refresh;
+  document.getElementById('skip')?.addEventListener('click', () => { try { sessionStorage.removeItem('tf_reset'); } catch {} history.replaceState(null, '', location.pathname); route(); });
+  f.onsubmit = async (e) => {
+    e.preventDefault(); $err.textContent = '';
+    const p = f.pw1.value; const q = f.pw2.value;
+    if (!pwOk(p)) return ($err.textContent = 'Le mot de passe ne respecte pas toutes les règles ci-dessus.');
+    if (p !== q) return ($err.textContent = 'Les deux mots de passe ne sont pas identiques.');
+    btn.disabled = true; btn.textContent = 'Enregistrement…';
+    const { error } = await sb.auth.updateUser({ password: p, data: { password_set: true } });
+    if (error) { btn.disabled = false; btn.textContent = 'Enregistrer le mot de passe'; return ($err.textContent = authMessage(error)); }
+    try { sessionStorage.removeItem('tf_reset'); } catch {}
+    history.replaceState(null, '', location.pathname);
+    const { data } = await sb.auth.getSession(); S.session = data.session;
+    toast('Mot de passe enregistré');
+    if (mode === 'change') { S.view = 'account'; }
+    route();
   };
 }
 
 function viewRegister(err = '') {
   $app.innerHTML = `
-  <div class="hero"><div class="inner"><h1>Inscrire notre tandem</h1><small>Une personne inscrit les deux. Chacun recevra son code par e-mail.</small></div></div>
+  <div class="hero"><div class="inner"><h1>Inscrire notre tandem</h1><small>Une personne inscrit les deux. Chacun reçoit un lien par e-mail pour créer son mot de passe et remplir son profil.</small></div></div>
   <div class="wrap">
     <form id="f" class="card white">
       <label>Code d'invitation<input name="code" required placeholder="TF-XXXX-XXXX" autocapitalize="characters"></label>
@@ -151,7 +271,7 @@ function viewRegister(err = '') {
       <div class="sep"></div><h3>Ton ou ta partenaire</h3>
       <div class="grid2"><label>Prénom<input name="p_first" required></label><label>Nom<input name="p_last"></label></div>
       <label>E-mail<input name="p_email" type="email" required></label>
-      <p class="muted small" style="margin:0">L'e-mail sert uniquement à vous connecter, sans mot de passe. Vous pourrez supprimer vos comptes à tout moment.</p>
+      <p class="muted small" style="margin:0">L'e-mail sert à vous connecter et à récupérer l'accès si vous oubliez votre mot de passe. Vous pourrez supprimer vos comptes à tout moment.</p>
       <button class="btn block">Créer le tandem</button>
       ${err ? `<p class="err">${esc(err)}</p>` : ''}
     </form>
@@ -175,10 +295,23 @@ function viewRegister(err = '') {
       return viewRegister(msg);
     }
     S.loginEmail = v.me_email.trim().toLowerCase();
-    location.hash = '';
+    history.replaceState(null, '', location.pathname);
     const failed = Object.values(data?.sent || {}).some((s) => s !== 'envoye');
-    viewLogin('code', failed ? 'Le tandem est créé, mais un e-mail n\'a pas pu partir. Réessaie la connexion dans un instant.' : '');
+    viewRegistered(v.p_first, failed);
   };
+}
+
+function viewRegistered(partnerFirst, failed) {
+  $app.innerHTML = `
+  <div class="hero"><div class="inner"><h1>Tandem créé</h1><small>Il ne reste qu'à ouvrir vos e-mails.</small></div></div>
+  <div class="wrap">
+    <div class="card"><span class="title">1. Ouvre l'e-mail « Ton accès à Tandem Forme »</span><span class="muted">Envoyé à ${esc(S.loginEmail)}. Pense à regarder dans les spams.</span></div>
+    <div class="card"><span class="title">2. Touche « Ouvrir l'appli »</span><span class="muted">Tu crées ton mot de passe, puis tu remplis ton profil.</span></div>
+    <div class="card"><span class="title">3. ${esc(partnerFirst)} fait pareil sur son téléphone</span><span class="muted">Son e-mail est parti en même temps.</span></div>
+    ${failed ? '<div class="notice">Un des e-mails n\'a pas pu partir. Utilisez « Mot de passe oublié » sur l\'écran de connexion pour en recevoir un nouveau.</div>' : ''}
+    <button class="btn ghost" id="code">J'ai un code à 6 chiffres</button>
+  </div>`;
+  document.getElementById('code').onclick = () => viewLogin('code');
 }
 
 function viewNoMember() {
@@ -689,6 +822,7 @@ function viewSources() {
 function viewAccount() {
   $app.innerHTML = header('Mon compte', esc(S.session.user.email)) + `<div class="wrap">
     <div class="card"><span class="title">Exporter mes données</span><span class="muted">Un fichier JSON avec ton profil, ton journal, tes pesées, tes séances et tes données de suivi.</span><button class="btn ghost" id="exp">Télécharger</button></div>
+    <div class="card"><span class="title">Mot de passe</span><button class="btn ghost" id="pw">Changer mon mot de passe</button></div>
     <div class="card"><span class="title">Se déconnecter</span><button class="btn ghost" id="out">Se déconnecter</button></div>
     <div class="card" style="border:1px solid var(--danger)"><span class="title">Supprimer mon compte</span>
       <span class="muted">Efface définitivement ton profil et toutes tes données. ${S.partner ? `Le compte de ${esc(S.partner.first_name)} reste actif${isCaptain() ? ` et ${esc(S.partner.first_name)} devient capitaine` : ''}.` : 'Le tandem sera supprimé.'}</span>
@@ -696,6 +830,7 @@ function viewAccount() {
   </div>`;
   document.getElementById('out').onclick = () => sb.auth.signOut();
   document.getElementById('exp').onclick = exportData;
+  document.getElementById('pw').onclick = () => viewSetPassword('change');
   document.getElementById('del').onclick = deleteAccount;
 }
 async function exportData() {
@@ -711,24 +846,23 @@ async function exportData() {
 }
 function deleteAccount() {
   openModal(`<h2>Supprimer mon compte</h2>
-    <p class="muted" style="margin:0">Par sécurité, on t'envoie un code à ${esc(S.session.user.email)}. Saisis-le pour confirmer la suppression définitive.</p>
-    <button class="btn ghost" id="snd">Envoyer le code</button>
-    <form id="d" style="display:flex;flex-direction:column;gap:12px">
-      <input name="token" class="otp" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code">
+    <p class="muted" style="margin:0">C'est définitif. Saisis ton mot de passe pour confirmer.</p>
+    <form id="d" style="display:flex;flex-direction:column;gap:12px" novalidate>
+      ${pwField('password', 'Mot de passe', 'current-password')}
+      <p class="err" id="derr" role="alert"></p>
       <div class="grid2"><button type="button" class="btn ghost" data-close>Annuler</button><button class="btn danger">Supprimer</button></div>
     </form>`, (root) => {
-    root.querySelector('#snd').onclick = async (e) => {
-      e.target.disabled = true;
-      const { error } = await sb.auth.signInWithOtp({ email: S.session.user.email, options: { shouldCreateUser: false } });
-      toast(error ? 'Envoi impossible, réessaie dans une minute' : 'Code envoyé'); e.target.disabled = false;
-    };
+    bindEyes(root);
     root.querySelector('#d').onsubmit = async (e) => {
       e.preventDefault();
-      const email = S.session.user.email;
-      const { error } = await sb.auth.verifyOtp({ email, token: formData(e.target).token.trim(), type: 'email' });
-      if (error) return toast('Code incorrect ou expiré');
+      const $e = root.querySelector('#derr'); const b = root.querySelector('.btn.danger'); $e.textContent = '';
+      const password = e.target.password.value;
+      if (!password) return ($e.textContent = 'Saisis ton mot de passe.');
+      b.disabled = true;
+      const { error } = await sb.auth.signInWithPassword({ email: S.session.user.email, password });
+      if (error) { b.disabled = false; return ($e.textContent = authMessage(error)); }
       const { error: delErr } = await sb.functions.invoke('delete-account', { method: 'POST' });
-      if (delErr) { let m = 'Suppression impossible'; try { m = (await delErr.context.json()).error || m; } catch {} return toast(m); }
+      if (delErr) { let m = 'Suppression impossible'; try { m = (await delErr.context.json()).error || m; } catch {} b.disabled = false; return ($e.textContent = m); }
       closeModal(); await sb.auth.signOut(); toast('Compte supprimé');
     };
   });
