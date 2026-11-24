@@ -1,0 +1,2293 @@
+[
+ {
+  "id": "lentilles_feta",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Rince les lentilles sous l'eau froide. Mets-les dans une casserole avec 3 fois leur volume d'eau froide, sans sel. Porte à ébullition puis laisse frémir 20 min : elles doivent être tendres mais encore entières.",
+   "Pendant ce temps, épluche les carottes et râpe-les (grosse grille), ou coupe-les en petits dés de 5 mm. Émince finement l'échalote.",
+   "Prépare la vinaigrette dans le saladier : moutarde, vinaigre de cidre, sel, poivre, puis l'huile de colza en fouettant.",
+   "Égoutte les lentilles, sale-les et verse-les encore tièdes sur la vinaigrette : elles absorbent mieux l'assaisonnement.",
+   "Ajoute carottes et échalote, mélange. Concasse grossièrement les noix au couteau et fais-les dorer 2 min à sec dans une poêle.",
+   "Au moment de servir, émiette la feta, parsème de noix et de persil ciselé."
+  ],
+  "tip": "Sale les lentilles seulement en fin de cuisson : salées au départ, elles restent dures.",
+  "variant": "En été, remplace les carottes par des tomates cerises et un demi-concombre.",
+  "storage": "3 jours au frais dans une boîte hermétique. En gamelle, ajoute la feta et les noix au dernier moment pour qu'elles restent croquantes.",
+  "nutrition": {
+   "kcal": 493,
+   "prot": 24,
+   "gluc": 37,
+   "lip": 25,
+   "fib": 12
+  }
+ },
+ {
+  "id": "saumon_brocolis",
+  "prep_min": 10,
+  "cook_min": 25,
+  "steps": [
+   "Préchauffe le four à 200 °C (chaleur tournante 180 °C). Lance le riz complet : 250 g dans 2 fois son volume d'eau bouillante salée, 25 min à couvert et à feu doux.",
+   "Détaille le brocoli en petits bouquets de la taille d'une noix. Pèle la tige et coupe-la en rondelles : elle se mange aussi.",
+   "Étale les bouquets sur une plaque, arrose d'1 c. à s. d'huile, sale, poivre et mélange avec les mains.",
+   "Pose les pavés de saumon côté peau sur une autre plaque ou au milieu des brocolis. Badigeonne-les du reste d'huile, ajoute sel, poivre et aneth.",
+   "Enfourne 12 à 15 min : le saumon est cuit quand il se détache en lamelles mais reste légèrement rosé à cœur.",
+   "Arrose de jus de citron au moment de servir, avec le riz."
+  ],
+  "tip": "Sors le saumon du frigo 10 min avant la cuisson : il cuit plus uniformément.",
+  "variant": "Remplace le brocoli par des haricots verts ou des poireaux en fines rondelles.",
+  "storage": "2 jours au frais. Pour la gamelle, réchauffe 1 min 30 au micro-ondes, couvercle entrouvert.",
+  "nutrition": {
+   "kcal": 584,
+   "prot": 34,
+   "gluc": 50,
+   "lip": 25,
+   "fib": 6
+  }
+ },
+ {
+  "id": "veloute_potimarron",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Lave le potimarron (inutile de l'éplucher, sa peau devient fondante). Coupe-le en deux, retire les graines avec une cuillère, puis taille-le en cubes de 3 cm.",
+   "Épluche et coupe l'oignon et la pomme de terre en morceaux.",
+   "Fais revenir l'oignon 3 min dans une grande casserole avec un filet d'huile, sans qu'il colore.",
+   "Ajoute potimarron et pomme de terre, couvre avec le bouillon chaud. Laisse cuire 20 min à frémissement : la pointe d'un couteau doit s'enfoncer sans résistance.",
+   "Mixe longuement, ajoute la crème légère, rectifie le sel et le poivre. Si c'est trop épais, ajoute un peu d'eau chaude.",
+   "Fais griller les tranches de pain, tartine de chèvre frais, poivre. Sers avec une salade verte."
+  ],
+  "tip": "Une pincée de muscade ou de cumin relève très bien le potimarron.",
+  "variant": "Version butternut : même recette, en épluchant la courge.",
+  "storage": "4 jours au frais, 3 mois au congélateur en portions. Parfait en thermos pour le midi.",
+  "nutrition": {
+   "kcal": 366,
+   "prot": 13,
+   "gluc": 53,
+   "lip": 10,
+   "fib": 12
+  }
+ },
+ {
+  "id": "wrap_poulet",
+  "prep_min": 15,
+  "cook_min": 8,
+  "steps": [
+   "Coupe les filets de poulet en lanières d'1 cm. Saisis-les 6 à 8 min à la poêle bien chaude avec un filet d'huile, sel, poivre et paprika, en remuant : plus de rose à l'intérieur.",
+   "Épluche et râpe la carotte. Coupe la tomate en petits dés et égoutte-les sur du papier absorbant pour ne pas détremper le wrap.",
+   "Réchauffe chaque wrap 10 s à la poêle sèche : il devient souple et ne se déchire pas.",
+   "Étale 1 c. à s. de houmous au centre, en laissant 3 cm libres sur les bords.",
+   "Dispose salade, carotte, tomate et poulet en bande au milieu. Replie le bas, puis roule bien serré.",
+   "Emballe dans du papier cuisson ou d'aluminium et coupe en deux en biais."
+  ],
+  "tip": "Le houmous sert de colle : sans lui, le wrap s'ouvre dans la gamelle.",
+  "variant": "Version végétarienne : remplace le poulet par des pois chiches rôtis au paprika.",
+  "storage": "Se prépare la veille, 24 h maximum au frais, bien emballé.",
+  "nutrition": {
+   "kcal": 332,
+   "prot": 24,
+   "gluc": 35,
+   "lip": 10,
+   "fib": 5
+  }
+ },
+ {
+  "id": "poulet_roti",
+  "prep_min": 20,
+  "cook_min": 60,
+  "steps": [
+   "Préchauffe le four à 200 °C. Sors le poulet du frigo 20 min avant.",
+   "Épluche les carottes, coupe-les en tronçons de 4 cm. Épluche la demi-courge et taille-la en cubes de 3 cm. Coupe les oignons rouges en quartiers.",
+   "Dans un grand plat, mélange les légumes avec 1 c. à s. d'huile, sel, poivre et herbes de Provence.",
+   "Frotte le poulet avec le reste d'huile, les herbes, sel et poivre. Glisse le demi-citron coupé à l'intérieur. Pose-le sur les légumes.",
+   "Enfourne 1 h (compte 45 min pour 4 cuisses). Arrose avec le jus toutes les 20 min. Il est cuit quand le jus qui coule de la cuisse piquée est transparent.",
+   "Pendant les 15 dernières minutes, fais cuire le boulgour : verse-le dans 2 fois son volume d'eau bouillante salée, couvre et laisse gonfler hors du feu 12 min.",
+   "Laisse reposer le poulet 10 min sous une feuille d'aluminium avant de le découper. Garde le reste de poulet et de boulgour pour le taboulé du lendemain."
+  ],
+  "tip": "Retire la peau dans l'assiette : c'est elle qui concentre l'essentiel des graisses.",
+  "variant": "En été, remplace la courge par des courgettes et des poivrons.",
+  "storage": "Restes : 3 jours au frais. Effiloche le poulet froid pour le taboulé ou des wraps.",
+  "nutrition": {
+   "kcal": 739,
+   "prot": 52,
+   "gluc": 67,
+   "lip": 27,
+   "fib": 14
+  }
+ },
+ {
+  "id": "taboule_poulet",
+  "prep_min": 15,
+  "cook_min": 0,
+  "steps": [
+   "Égrène le boulgour restant à la fourchette dans un saladier.",
+   "Coupe les tomates et le concombre en petits dés de 5 mm. Égoutte les tomates 5 min dans une passoire.",
+   "Lave le persil et la menthe, sèche-les bien, puis cisèle-les finement : il en faut beaucoup, c'est l'âme du taboulé.",
+   "Effiloche le poulet restant en petits morceaux.",
+   "Mélange tout avec le jus des 2 citrons et l'huile d'olive. Sale, poivre.",
+   "Laisse reposer au moins 30 min au frais pour que les saveurs se mélangent."
+  ],
+  "tip": "Encore meilleur préparé le matin pour le midi : le boulgour s'imprègne du citron.",
+  "variant": "Ajoute une poignée de pois chiches pour une version plus rassasiante.",
+  "storage": "2 jours au frais. Idéal en gamelle, se mange froid.",
+  "nutrition": {
+   "kcal": 324,
+   "prot": 20,
+   "gluc": 25,
+   "lip": 15,
+   "fib": 5
+  }
+ },
+ {
+  "id": "pizza",
+  "prep_min": 20,
+  "cook_min": 15,
+  "steps": [
+   "Préchauffe le four au maximum (240 à 250 °C) avec la plaque à l'intérieur.",
+   "Lave la courgette et coupe-la en fines rondelles. Épépine le poivron et taille-le en lanières. Émince les champignons.",
+   "Fais revenir 5 min les légumes à la poêle avec un filet d'huile : ils perdent leur eau et la pâte ne sera pas détrempée.",
+   "Étale la pâte sur du papier cuisson. Répartis le coulis en laissant 1 cm de bord, puis l'origan.",
+   "Ajoute les légumes, puis la mozzarella en petits morceaux bien égouttés.",
+   "Fais glisser sur la plaque chaude et enfourne 12 à 15 min, jusqu'à ce que les bords soient dorés.",
+   "Ajoute la roquette à la sortie du four."
+  ],
+  "tip": "Cuire sur la plaque déjà chaude donne une pâte croustillante dessous, comme au four à pizza.",
+  "variant": "Version jambon : ajoute 2 tranches de jambon blanc en morceaux avant la mozzarella.",
+  "storage": "Les restes se réchauffent à la poêle, couvercle posé, 4 à 5 min : la pâte redevient croustillante.",
+  "nutrition": {
+   "kcal": 297,
+   "prot": 14,
+   "gluc": 39,
+   "lip": 8,
+   "fib": 5
+  }
+ },
+ {
+  "id": "omelette_champignons",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Coupe les pommes de terre en cubes de 2 cm (avec la peau si elles sont nouvelles). Fais-les cuire 8 min dans l'eau bouillante salée, égoutte.",
+   "Fais-les dorer 10 min à la poêle avec l'huile, en remuant de temps en temps.",
+   "Pendant ce temps, émince les champignons et l'échalote. Fais-les revenir 5 min dans une autre poêle jusqu'à ce que l'eau des champignons soit évaporée.",
+   "Bats les œufs en omelette avec sel, poivre et persil ciselé.",
+   "Verse les œufs sur les champignons, à feu moyen. Ramène les bords vers le centre avec une spatule pendant 2 min, puis laisse prendre 1 à 2 min : le dessus doit rester légèrement baveux.",
+   "Plie l'omelette en deux et sers avec les pommes de terre et la salade."
+  ],
+  "tip": "Sors les œufs du frigo un peu avant : l'omelette sera plus moelleuse.",
+  "variant": "Remplace les champignons par des épinards frais et un peu de chèvre.",
+  "storage": "L'omelette se mange le jour même ; les pommes de terre se gardent 2 jours.",
+  "nutrition": {
+   "kcal": 291,
+   "prot": 16,
+   "gluc": 28,
+   "lip": 12,
+   "fib": 5
+  }
+ },
+ {
+  "id": "papillote_poisson",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Préchauffe le four à 200 °C. Rince le quinoa dans une passoire fine (il perd son amertume), puis cuis-le 12 min dans 2 fois son volume d'eau salée.",
+   "Équeute les haricots verts et fais-les cuire 8 min à l'eau bouillante salée : ils doivent rester un peu croquants.",
+   "Découpe 4 grands rectangles de papier cuisson. Pose un filet de poisson au centre de chacun.",
+   "Ajoute 2 rondelles de tomate, 2 rondelles de citron, des herbes, un filet d'huile, sel et poivre.",
+   "Referme en papillote bien hermétique (replie les bords plusieurs fois) et pose sur une plaque.",
+   "Enfourne 12 à 15 min selon l'épaisseur. Ouvre les papillotes à table, avec le quinoa et les haricots verts."
+  ],
+  "tip": "Le poisson est cuit quand sa chair devient blanche et nacrée et se détache en lamelles.",
+  "variant": "Avec des filets surgelés, compte 5 min de cuisson en plus, sans les décongeler.",
+  "storage": "Le poisson cuit se garde 1 jour ; le quinoa et les haricots 3 jours.",
+  "nutrition": {
+   "kcal": 350,
+   "prot": 33,
+   "gluc": 37,
+   "lip": 7,
+   "fib": 7
+  }
+ },
+ {
+  "id": "burger",
+  "prep_min": 20,
+  "cook_min": 30,
+  "steps": [
+   "Préchauffe le four à 210 °C. Coupe les pommes de terre en quartiers avec la peau. Mélange-les avec l'huile, sel et paprika, étale-les en une seule couche sur la plaque et enfourne 30 min en les retournant à mi-cuisson.",
+   "Prépare la sauce : 4 c. à s. de yaourt soja, 1 c. à c. de moutarde, sel, poivre.",
+   "Coupe la tomate et l'oignon rouge en fines rondelles. Lave la salade.",
+   "10 min avant la fin des potatoes, fais cuire les steaks à la poêle bien chaude, 2 à 3 min par face. Pose une tranche de fromage dessus la dernière minute, couvercle posé pour qu'elle fonde.",
+   "Toaste les pains coupés en deux, face coupée sur la poêle, 1 min.",
+   "Monte les burgers : pain, sauce, salade, steak au fromage, tomate, oignon, pain."
+  ],
+  "tip": "Ne presse jamais le steak avec la spatule : il perdrait son jus.",
+  "variant": "Burger de poulet : remplace le steak par un filet aplati, grillé 4 min par face.",
+  "storage": "Les potatoes se réchauffent au four 5 min. Les burgers se mangent tout de suite.",
+  "nutrition": {
+   "kcal": 610,
+   "prot": 38,
+   "gluc": 74,
+   "lip": 17,
+   "fib": 10
+  }
+ },
+ {
+  "id": "roti_dinde",
+  "prep_min": 20,
+  "cook_min": 60,
+  "steps": [
+   "Préchauffe le four à 190 °C. Sors le rôti du frigo 20 min avant.",
+   "Épluche les carottes et les panais, coupe-les en bâtonnets de la taille d'un doigt. Coupe les oignons en quartiers.",
+   "Mélange les légumes avec 1 c. à s. d'huile, sel, poivre et thym, et répartis-les autour du rôti dans le plat.",
+   "Badigeonne le rôti du reste d'huile, sale, poivre, ajoute du thym. Verse 10 cl d'eau au fond du plat.",
+   "Enfourne 50 min à 1 h (compte 30 min par 500 g). Arrose 2 fois avec le jus du plat.",
+   "10 min avant la fin, prépare la semoule : verse-la dans un saladier, couvre d'eau bouillante salée à hauteur, couvre 5 min puis égrène à la fourchette.",
+   "Laisse reposer le rôti 10 min avant de le trancher finement."
+  ],
+  "tip": "Le repos sous aluminium garde la dinde juteuse : ne le saute pas.",
+  "variant": "Remplace les panais par de la patate douce.",
+  "storage": "Le rôti froid se tranche très bien pour les sandwichs : 3 jours au frais.",
+  "nutrition": {
+   "kcal": 542,
+   "prot": 55,
+   "gluc": 60,
+   "lip": 7,
+   "fib": 13
+  }
+ },
+ {
+  "id": "chili_con_carne",
+  "prep_min": 15,
+  "cook_min": 35,
+  "steps": [
+   "Émince l'oignon, hache l'ail, coupe le poivron en petits dés.",
+   "Dans une cocotte, fais revenir l'oignon 3 min avec un filet d'huile, puis ajoute le bœuf haché et fais-le dorer 5 min en l'émiettant à la spatule.",
+   "Ajoute l'ail, le poivron, 1 c. à c. de cumin, 1 c. à c. de paprika et une pincée de piment. Remue 1 min pour torréfier les épices.",
+   "Verse les tomates concassées et les haricots rouges rincés et égouttés. Sale, poivre.",
+   "Laisse mijoter 25 min à couvert et à feu doux, en remuant de temps en temps. Si ça accroche, ajoute un peu d'eau.",
+   "Pendant ce temps, fais cuire le riz complet 25 min dans 2 fois son volume d'eau salée."
+  ],
+  "tip": "Rincer les haricots en boîte enlève une bonne partie du sel et de l'amidon.",
+  "variant": "Version végétarienne : remplace le bœuf par 200 g de lentilles corail.",
+  "storage": "Encore meilleur le lendemain. 3 jours au frais, 3 mois au congélateur.",
+  "nutrition": {
+   "kcal": 600,
+   "prot": 40,
+   "gluc": 85,
+   "lip": 8,
+   "fib": 15
+  }
+ },
+ {
+  "id": "gratin_pates",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Préchauffe le four à 200 °C. Fais cuire les pâtes 2 min de moins que le temps indiqué. Ajoute les bouquets de brocoli dans l'eau les 4 dernières minutes. Égoutte.",
+   "Prépare la béchamel : délaye la farine dans le lait froid au fouet, puis fais chauffer à feu moyen sans cesser de fouetter jusqu'à épaississement (3 à 4 min). Sale, poivre, ajoute la muscade.",
+   "Coupe le jambon en carrés.",
+   "Mélange pâtes, brocoli, jambon et béchamel dans un plat à gratin.",
+   "Parsème d'emmental et enfourne 15 à 20 min, jusqu'à ce que le dessus soit doré."
+  ],
+  "tip": "Délayer la farine à froid évite tous les grumeaux, sans beurre.",
+  "variant": "Remplace le jambon par du thon et le brocoli par des épinards.",
+  "storage": "3 jours au frais. Réchauffe au four ou au micro-ondes avec une cuillère de lait.",
+  "nutrition": {
+   "kcal": 470,
+   "prot": 29,
+   "gluc": 62,
+   "lip": 9,
+   "fib": 9
+  }
+ },
+ {
+  "id": "fajitas",
+  "prep_min": 20,
+  "cook_min": 15,
+  "steps": [
+   "Coupe le poulet en fines lanières, les poivrons et l'oignon en lamelles.",
+   "Mélange le poulet avec les épices (1 c. à c. de cumin, 1 c. à c. de paprika, ail en poudre), sel et un filet d'huile.",
+   "Saisis le poulet 5 min à feu vif dans une grande poêle, réserve.",
+   "Dans la même poêle, fais sauter poivrons et oignon 6 à 8 min : ils doivent rester légèrement croquants. Remets le poulet 1 min.",
+   "Guacamole : écrase les avocats à la fourchette avec le jus du citron vert, la tomate en petits dés, sel et coriandre.",
+   "Réchauffe les tortillas 10 s chacune à la poêle sèche. Chacun garnit les siennes à table."
+  ],
+  "tip": "Ne surcharge pas la poêle : le poulet doit griller, pas bouillir.",
+  "variant": "Version bœuf : des lanières de bavette, 2 min de cuisson seulement.",
+  "storage": "La garniture se garde 2 jours. Le guacamole noircit vite : prépare-le au dernier moment.",
+  "nutrition": {
+   "kcal": 573,
+   "prot": 36,
+   "gluc": 50,
+   "lip": 23,
+   "fib": 10
+  }
+ },
+ {
+  "id": "poulet_basquaise",
+  "prep_min": 15,
+  "cook_min": 40,
+  "steps": [
+   "Coupe les poivrons en lanières, émince les oignons, hache l'ail.",
+   "Dans une cocotte, fais dorer le poulet 5 min de chaque côté avec un filet d'huile. Réserve-le.",
+   "Dans la même cocotte, fais fondre oignons et poivrons 10 min à feu moyen en remuant.",
+   "Ajoute l'ail, les tomates concassées, une pincée de piment d'Espelette, sel et poivre. Remets le poulet.",
+   "Couvre et laisse mijoter 25 min à feu doux (35 min pour des cuisses).",
+   "Pendant ce temps, fais cuire le riz complet 25 min dans 2 fois son volume d'eau salée."
+  ],
+  "tip": "Le piment d'Espelette parfume sans brûler : n'hésite pas à en mettre.",
+  "variant": "Ajoute des olives vertes en fin de cuisson pour une touche plus provençale.",
+  "storage": "3 jours au frais, se congèle très bien. Parfait en gamelle.",
+  "nutrition": {
+   "kcal": 530,
+   "prot": 40,
+   "gluc": 60,
+   "lip": 13,
+   "fib": 7
+  }
+ },
+ {
+  "id": "galettes_sarrasin",
+  "prep_min": 10,
+  "cook_min": 15,
+  "steps": [
+   "Émince les champignons et fais-les revenir 5 min à la poêle avec un filet d'huile jusqu'à évaporation de leur eau. Sale, poivre.",
+   "Chauffe une grande poêle à feu moyen. Pose une galette, face la plus jolie dessous.",
+   "Casse un œuf au centre, étale le blanc avec le dos d'une cuillère sans crever le jaune.",
+   "Ajoute une tranche de jambon déchirée, des champignons et un peu d'emmental autour du jaune.",
+   "Replie les 4 bords vers le centre en carré, laisse cuire 2 à 3 min jusqu'à ce que le blanc soit pris.",
+   "Sers aussitôt avec une salade verte. Recommence pour les autres galettes."
+  ],
+  "tip": "Garde les galettes cuites au chaud dans le four à 80 °C pendant que tu fais les suivantes.",
+  "variant": "Version végétarienne : remplace le jambon par des poireaux fondus.",
+  "storage": "Se mangent tout de suite.",
+  "nutrition": {
+   "kcal": 300,
+   "prot": 24,
+   "gluc": 26,
+   "lip": 11,
+   "fib": 4
+  }
+ },
+ {
+  "id": "salade_lentilles_oeuf",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Rince les lentilles et cuis-les 20 min dans 3 fois leur volume d'eau froide non salée, portée à frémissement. Égoutte et sale.",
+   "Pendant ce temps, cuis les œufs 9 min dans l'eau bouillante, refroidis-les sous l'eau froide et écale-les.",
+   "Râpe les carottes et émince très finement le chou rouge.",
+   "Mélange les lentilles tièdes avec la vinaigrette à la moutarde.",
+   "Ajoute carottes, chou et persil ciselé. Sers avec les œufs coupés en quartiers."
+  ],
+  "tip": "Les œufs à 9 min ont un jaune tout juste pris, moelleux et pas grisâtre.",
+  "variant": "Ajoute des dés de jambon ou de la feta pour varier.",
+  "storage": "3 jours au frais. En gamelle, garde les œufs entiers jusqu'au moment de manger.",
+  "nutrition": {
+   "kcal": 350,
+   "prot": 23,
+   "gluc": 37,
+   "lip": 10,
+   "fib": 12
+  }
+ },
+ {
+  "id": "bouillon_legumes",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Épluche carottes et navet, coupe-les en petits dés. Lave le poireau et le céleri, coupe-les en rondelles fines.",
+   "Mets tous les légumes dans une casserole avec 1,2 l d'eau froide et le bouquet garni.",
+   "Porte à ébullition, puis laisse frémir 20 min à couvert.",
+   "Sale, poivre. Retire le bouquet garni.",
+   "Sers bien chaud avec une salade verte, puis un fruit en dessert."
+  ],
+  "tip": "Un bouillon léger pour les soirs où l'on a beaucoup mangé à midi.",
+  "variant": "Ajoute une cuillère de pesto dans chaque bol pour plus de goût.",
+  "storage": "4 jours au frais, se congèle bien.",
+  "nutrition": {
+   "kcal": 120,
+   "prot": 3,
+   "gluc": 24,
+   "lip": 1,
+   "fib": 7
+  }
+ },
+ {
+  "id": "bouillon_vermicelles",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Épluche les carottes et coupe-les en petits dés. Coupe le poireau et la courgette en fines rondelles.",
+   "Porte le bouillon à ébullition, ajoute carottes et poireau, laisse frémir 10 min.",
+   "Ajoute la courgette et les vermicelles, laisse cuire encore 5 min.",
+   "Rectifie l'assaisonnement et parsème de persil ciselé."
+  ],
+  "tip": "Ajoute les vermicelles seulement au dernier moment : ils gonflent vite.",
+  "variant": "Ajoute un œuf battu en filet à la fin, en remuant, pour un bouillon plus nourrissant.",
+  "storage": "2 jours au frais (les vermicelles continuent de gonfler).",
+  "nutrition": {
+   "kcal": 107,
+   "prot": 5,
+   "gluc": 18,
+   "lip": 1,
+   "fib": 3
+  }
+ },
+ {
+  "id": "poulet_haricots",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Coupe les pommes de terre en morceaux réguliers et fais-les cuire 20 min à la vapeur ou dans l'eau salée.",
+   "Équeute les haricots verts et fais-les cuire 8 min à l'eau bouillante salée.",
+   "Aplatis légèrement les filets de poulet avec le plat de la main pour qu'ils aient la même épaisseur. Assaisonne de sel, poivre et herbes de Provence.",
+   "Fais-les griller 5 à 6 min de chaque côté dans une poêle chaude avec l'huile, sans les bouger pour qu'ils dorent.",
+   "Arrose d'un filet de citron et sers avec les légumes."
+  ],
+  "tip": "Couvre la poêle les 2 dernières minutes : le poulet reste moelleux.",
+  "variant": "Remplace le poulet par des escalopes de dinde, cuites 3 min par face.",
+  "storage": "3 jours au frais : parfait en gamelle, froid ou réchauffé.",
+  "nutrition": {
+   "kcal": 402,
+   "prot": 41,
+   "gluc": 39,
+   "lip": 7,
+   "fib": 8
+  }
+ },
+ {
+  "id": "steak_puree",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Épluche les pommes de terre, coupe-les en gros morceaux et fais-les cuire 20 min dans l'eau froide salée portée à ébullition.",
+   "Égoutte-les et écrase-les au presse-purée (pas au mixeur, la purée deviendrait collante).",
+   "Ajoute le lait chaud petit à petit et la noix de beurre, en mélangeant jusqu'à la texture voulue. Sale, poivre, ajoute une pointe de muscade.",
+   "Fais cuire les steaks à la poêle bien chaude, 2 à 3 min par face selon ta cuisson.",
+   "Sers avec la purée et une salade assaisonnée de vinaigrette."
+  ],
+  "tip": "Le lait doit être chaud : froid, il refroidit la purée et la rend grumeleuse.",
+  "variant": "Purée mi-pommes de terre mi-carottes ou céleri pour plus de légumes.",
+  "storage": "La purée se garde 2 jours ; réchauffe-la avec un peu de lait.",
+  "nutrition": {
+   "kcal": 398,
+   "prot": 28,
+   "gluc": 46,
+   "lip": 11,
+   "fib": 5
+  }
+ },
+ {
+  "id": "dinde_champignons",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Lance le riz : 250 g dans un grand volume d'eau bouillante salée, 11 à 12 min, puis égoutte.",
+   "Émince l'échalote et les champignons en lamelles.",
+   "Fais dorer les escalopes 3 min de chaque côté dans une poêle chaude avec un filet d'huile. Sale, poivre et réserve sur une assiette.",
+   "Dans la même poêle, fais revenir l'échalote 2 min, puis les champignons 5 min à feu vif.",
+   "Verse la crème légère, laisse épaissir 2 min en grattant les sucs au fond de la poêle.",
+   "Remets les escalopes et leur jus 1 min dans la sauce. Parsème de persil et sers avec le riz."
+  ],
+  "tip": "Les sucs de cuisson de la dinde donnent tout son goût à la sauce : ne lave pas la poêle entre les deux.",
+  "variant": "Ajoute une cuillère de moutarde à la crème pour une sauce plus relevée.",
+  "storage": "2 jours au frais. Réchauffe doucement pour que la crème ne tranche pas.",
+  "nutrition": {
+   "kcal": 437,
+   "prot": 37,
+   "gluc": 53,
+   "lip": 8,
+   "fib": 2
+  }
+ },
+ {
+  "id": "cabillaud_carottes",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Préchauffe le four à 200 °C. Épluche les carottes et coupe-les en rondelles de 5 mm. Coupe les pommes de terre en cubes de 2 cm.",
+   "Étale-les sur la plaque avec un filet d'huile, sel et poivre. Enfourne 15 min.",
+   "Pose les dos de cabillaud au milieu des légumes, avec une rondelle de citron sur chacun, sel et poivre.",
+   "Remets au four 10 à 12 min : le poisson doit être nacré et se détacher en lamelles.",
+   "Sauce citron : mélange le yaourt, le jus d'un demi-citron, la ciboulette ciselée, sel et poivre.",
+   "Sers le poisson nappé de sauce, avec les légumes."
+  ],
+  "tip": "Ne cuis pas le cabillaud plus de 12 min : il devient sec et fibreux.",
+  "variant": "Remplace les carottes par des poireaux, et le cabillaud par du saumon.",
+  "storage": "Le poisson se garde 1 jour. La sauce 2 jours au frais.",
+  "nutrition": {
+   "kcal": 319,
+   "prot": 29,
+   "gluc": 38,
+   "lip": 4,
+   "fib": 7
+  }
+ },
+ {
+  "id": "bolognaise",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Émince finement l'oignon, râpe la carotte, hache l'ail.",
+   "Fais revenir l'oignon et la carotte 5 min à feu moyen avec un filet d'huile.",
+   "Ajoute le bœuf haché et fais-le dorer 5 min en l'émiettant.",
+   "Verse les tomates concassées, l'ail, les herbes, sel et poivre. Laisse mijoter 20 min à feu doux, à couvert.",
+   "Pendant ce temps, fais cuire les spaghettis complets le temps indiqué sur le paquet, dans beaucoup d'eau salée.",
+   "Égoutte en gardant une louche d'eau de cuisson, mélange les pâtes à la sauce (ajoute un peu d'eau si besoin). Parsème de parmesan."
+  ],
+  "tip": "La carotte râpée adoucit l'acidité de la tomate, sans sucre.",
+  "variant": "Version végétarienne : lentilles corail à la place de la viande, 15 min de cuisson.",
+  "storage": "La sauce se garde 3 jours au frais et 3 mois au congélateur.",
+  "nutrition": {
+   "kcal": 576,
+   "prot": 39,
+   "gluc": 77,
+   "lip": 10,
+   "fib": 12
+  }
+ },
+ {
+  "id": "hachis",
+  "prep_min": 20,
+  "cook_min": 40,
+  "steps": [
+   "Épluche les pommes de terre, coupe-les en morceaux et fais-les cuire 20 min dans l'eau salée. Préchauffe le four à 200 °C.",
+   "Pendant ce temps, émince l'oignon et râpe les carottes. Fais-les revenir 5 min avec un filet d'huile.",
+   "Ajoute la viande, fais-la dorer 5 min en l'émiettant. Sale, poivre, ajoute le persil.",
+   "Écrase les pommes de terre avec le lait chaud, sale et poivre.",
+   "Dans un plat, étale la viande, puis la purée. Trace des sillons à la fourchette et parsème d'emmental.",
+   "Enfourne 20 min, jusqu'à ce que le dessus soit doré. Sers avec une salade verte."
+  ],
+  "tip": "Les carottes râpées dans la viande ajoutent des légumes sans que ça se voie.",
+  "variant": "Version patate douce pour la purée, ou mi-pommes de terre mi-potiron.",
+  "storage": "3 jours au frais, se congèle très bien en portions.",
+  "nutrition": {
+   "kcal": 497,
+   "prot": 38,
+   "gluc": 60,
+   "lip": 11,
+   "fib": 8
+  }
+ },
+ {
+  "id": "filet_mignon",
+  "prep_min": 10,
+  "cook_min": 35,
+  "steps": [
+   "Préchauffe le four à 200 °C. Coupe les pommes de terre grenaille en deux, mélange-les avec l'huile, sel et thym, et enfourne-les 10 min.",
+   "Badigeonne le filet mignon de moutarde sur toutes les faces, sale et poivre.",
+   "Fais-le dorer 1 min de chaque côté dans une poêle chaude.",
+   "Pose-le au milieu des pommes de terre et remets au four 25 min.",
+   "Pendant ce temps, fais cuire les haricots verts 8 min dans l'eau bouillante salée.",
+   "Laisse reposer la viande 5 min avant de la couper en tranches épaisses : elle doit être légèrement rosée."
+  ],
+  "tip": "Le porc se mange aujourd'hui légèrement rosé : il reste bien plus tendre.",
+  "variant": "Ajoute une cuillère de miel à la moutarde pour une version sucrée-salée.",
+  "storage": "2 jours au frais. Froid, en tranches fines, il est parfait en salade.",
+  "nutrition": {
+   "kcal": 335,
+   "prot": 33,
+   "gluc": 30,
+   "lip": 8,
+   "fib": 6
+  }
+ },
+ {
+  "id": "poisson_pane",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Préchauffe le four à 210 °C. Sèche bien les filets de poisson avec du papier absorbant.",
+   "Prépare 3 assiettes : la farine, l'œuf battu avec une pincée de sel, la chapelure.",
+   "Passe chaque filet dans la farine (tapote pour retirer l'excès), puis dans l'œuf, puis dans la chapelure en appuyant.",
+   "Pose-les sur une plaque recouverte de papier cuisson, arrose d'un léger filet d'huile et enfourne 12 à 15 min.",
+   "Pendant ce temps, fais réchauffer les petits pois-carottes 8 min à la casserole avec un fond d'eau.",
+   "Sers avec des quartiers de citron."
+  ],
+  "tip": "Un poisson bien sec garde une panure croustillante.",
+  "variant": "Ajoute du parmesan râpé et des herbes dans la chapelure.",
+  "storage": "Se mange tout de suite : la panure ramollit au frigo.",
+  "nutrition": {
+   "kcal": 282,
+   "prot": 33,
+   "gluc": 25,
+   "lip": 4,
+   "fib": 8
+  }
+ },
+ {
+  "id": "salade_pates_thon",
+  "prep_min": 15,
+  "cook_min": 10,
+  "steps": [
+   "Fais cuire les pâtes le temps indiqué, égoutte-les et passe-les sous l'eau froide pour stopper la cuisson.",
+   "Coupe les tomates et le concombre en dés. Égoutte le maïs et le thon.",
+   "Mélange tout dans un saladier avec la vinaigrette.",
+   "Ajoute le basilic ciselé au moment de servir."
+  ],
+  "tip": "Une salade de pâtes est plus savoureuse à température ambiante qu'à la sortie du frigo.",
+  "variant": "Ajoute des olives et des cubes de feta.",
+  "storage": "2 jours au frais : la gamelle idéale.",
+  "nutrition": {
+   "kcal": 381,
+   "prot": 28,
+   "gluc": 50,
+   "lip": 6,
+   "fib": 7
+  }
+ },
+ {
+  "id": "salade_riz_poulet",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Fais cuire le riz 11 min dans beaucoup d'eau salée, égoutte et rince à l'eau froide.",
+   "Cuis les œufs 9 min, refroidis-les et écale-les.",
+   "Fais griller les filets de poulet 5 min de chaque côté, laisse refroidir et coupe-les en dés.",
+   "Coupe les tomates et le poivron en dés, égoutte le maïs.",
+   "Mélange tout avec la vinaigrette légère et ajoute les œufs en quartiers."
+  ],
+  "tip": "Le riz rincé à l'eau froide ne colle pas en salade.",
+  "variant": "Ajoute un peu de curry dans la vinaigrette.",
+  "storage": "2 jours au frais, parfait en gamelle.",
+  "nutrition": {
+   "kcal": 429,
+   "prot": 27,
+   "gluc": 59,
+   "lip": 8,
+   "fib": 3
+  }
+ },
+ {
+  "id": "piemontaise",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Fais cuire les pommes de terre entières avec leur peau 20 min dans l'eau salée. Cuis les œufs 9 min.",
+   "Pendant ce temps, coupe le jambon et les cornichons en petits dés, les tomates en morceaux.",
+   "Sauce : mélange la mayonnaise allégée et le yaourt, sale, poivre.",
+   "Épluche les pommes de terre tièdes et coupe-les en cubes. Écale et coupe les œufs.",
+   "Mélange tout délicatement avec la sauce et le persil ciselé."
+  ],
+  "tip": "Mélanger mayonnaise et yaourt divise les calories de la sauce par deux.",
+  "variant": "Ajoute du thon au lieu du jambon.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 326,
+   "prot": 20,
+   "gluc": 38,
+   "lip": 9,
+   "fib": 5
+  }
+ },
+ {
+  "id": "endives_jambon",
+  "prep_min": 15,
+  "cook_min": 35,
+  "steps": [
+   "Retire la base dure des endives avec la pointe d'un couteau (en cône) pour enlever l'amertume.",
+   "Fais-les cuire 15 min à la vapeur ou dans l'eau, puis presse-les bien dans une passoire : elles rendent beaucoup d'eau.",
+   "Préchauffe le four à 200 °C. Béchamel : délaye la farine dans le lait froid, chauffe en fouettant jusqu'à épaississement, ajoute sel, poivre et muscade.",
+   "Roule chaque endive dans une tranche de jambon et range-les dans un plat.",
+   "Nappe de béchamel, parsème d'emmental et enfourne 20 min."
+  ],
+  "tip": "Bien presser les endives évite un gratin noyé dans l'eau.",
+  "variant": "Remplace le jambon par du jambon de dinde.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 250,
+   "prot": 26,
+   "gluc": 16,
+   "lip": 8,
+   "fib": 3
+  }
+ },
+ {
+  "id": "couscous_poulet",
+  "prep_min": 20,
+  "cook_min": 45,
+  "steps": [
+   "Épluche et coupe carottes et navets en gros tronçons, les courgettes en gros morceaux, l'oignon en quartiers.",
+   "Dans une grande cocotte, fais dorer le poulet 5 min avec un filet d'huile. Ajoute l'oignon et les épices à couscous.",
+   "Ajoute carottes, navets, tomates concassées et 1 l d'eau. Sale, poivre et laisse mijoter 25 min.",
+   "Ajoute les courgettes et les pois chiches rincés, poursuis 15 min.",
+   "Prépare la semoule : verse-la dans un saladier, couvre d'eau bouillante salée à hauteur, couvre 5 min puis égrène à la fourchette.",
+   "Sers le bouillon et les légumes à part, avec la semoule."
+  ],
+  "tip": "Ajoute les courgettes en fin de cuisson : elles restent entières.",
+  "variant": "Version végétarienne : double les pois chiches et retire le poulet.",
+  "storage": "Encore meilleur le lendemain. 3 jours au frais.",
+  "nutrition": {
+   "kcal": 622,
+   "prot": 49,
+   "gluc": 68,
+   "lip": 14,
+   "fib": 14
+  }
+ },
+ {
+  "id": "roti_boeuf",
+  "prep_min": 10,
+  "cook_min": 40,
+  "steps": [
+   "Préchauffe le four à 210 °C. Sors le rôti du frigo 30 min avant.",
+   "Coupe les pommes de terre en quartiers, mélange-les avec l'huile, sel et thym, enfourne-les 15 min.",
+   "Fais dorer le rôti 2 min sur chaque face dans une poêle chaude.",
+   "Pose-le avec les pommes de terre et enfourne 25 min pour une cuisson rosée (15 min par 500 g).",
+   "Pendant ce temps, fais cuire les haricots verts 8 min à l'eau bouillante salée.",
+   "Laisse reposer le rôti 10 min sous aluminium avant de le trancher finement."
+  ],
+  "tip": "Le repos permet au jus de se répartir : la viande reste rosée et tendre.",
+  "variant": "Ajoute des carottes en bâtonnets avec les pommes de terre.",
+  "storage": "Les restes en tranches fines font d'excellents sandwichs : 3 jours au frais.",
+  "nutrition": {
+   "kcal": 497,
+   "prot": 50,
+   "gluc": 39,
+   "lip": 14,
+   "fib": 8
+  }
+ },
+ {
+  "id": "saumon_courgettes",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Fais cuire le riz 11 à 12 min dans beaucoup d'eau salée.",
+   "Coupe les courgettes en demi-rondelles. Fais-les sauter 8 min à feu vif avec un filet d'huile et l'ail haché : elles doivent dorer sans devenir molles.",
+   "Fais cuire les pavés de saumon côté peau 4 min dans une poêle chaude, sans les bouger, puis 2 min de l'autre côté.",
+   "Assaisonne de citron, d'herbes, sel et poivre.",
+   "Sers avec les courgettes et le riz."
+  ],
+  "tip": "Commencer côté peau rend la peau croustillante et protège la chair.",
+  "variant": "Remplace le riz par du quinoa.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 520,
+   "prot": 33,
+   "gluc": 54,
+   "lip": 18,
+   "fib": 3
+  }
+ },
+ {
+  "id": "poulet_moutarde",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Coupe les filets de poulet en morceaux, émince l'oignon.",
+   "Fais dorer le poulet 5 min dans une poêle avec un filet d'huile. Ajoute l'oignon et cuis 3 min de plus.",
+   "Mélange la crème légère et la moutarde, verse sur le poulet et laisse mijoter 8 min à feu doux.",
+   "Pendant ce temps, fais cuire les tagliatelles et les haricots verts (8 min) dans deux casseroles d'eau salée.",
+   "Sers le poulet et sa sauce sur les pâtes, avec les haricots."
+  ],
+  "tip": "Ajoute la moutarde hors du feu fort : elle perd son piquant en bouillant.",
+  "variant": "Moutarde à l'ancienne pour une sauce avec du grain.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 546,
+   "prot": 48,
+   "gluc": 56,
+   "lip": 11,
+   "fib": 10
+  }
+ },
+ {
+  "id": "colin_poelee",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Coupe les pommes de terre en cubes et fais-les cuire 10 min dans l'eau salée.",
+   "Coupe le poivron et les courgettes en dés, émince l'oignon. Fais-les revenir 10 min à la poêle avec un filet d'huile.",
+   "Ajoute les pommes de terre égouttées et fais dorer 5 min.",
+   "Dans une autre poêle, cuis le colin 3 min de chaque côté.",
+   "Arrose de citron et parsème de persil."
+  ],
+  "tip": "Le colin est fragile : retourne-le une seule fois avec une large spatule.",
+  "variant": "Ajoute une cuillère de pesto à la poêlée.",
+  "storage": "1 jour au frais pour le poisson.",
+  "nutrition": {
+   "kcal": 265,
+   "prot": 28,
+   "gluc": 31,
+   "lip": 2,
+   "fib": 5
+  }
+ },
+ {
+  "id": "quiche_jambon",
+  "prep_min": 15,
+  "cook_min": 35,
+  "steps": [
+   "Préchauffe le four à 190 °C. Lave les poireaux et coupe-les en fines rondelles.",
+   "Fais-les fondre 10 min à la poêle avec un filet d'huile, à couvert.",
+   "Étale la pâte dans un moule, pique le fond à la fourchette.",
+   "Bats les œufs avec le lait, la crème, sel, poivre et muscade.",
+   "Répartis poireaux et jambon en dés sur la pâte, verse l'appareil et parsème d'emmental.",
+   "Enfourne 30 à 35 min : la quiche est cuite quand le centre ne tremble plus. Sers avec une salade verte."
+  ],
+  "tip": "Mélanger lait et crème allège la quiche sans perdre le moelleux.",
+  "variant": "Version saumon et épinards.",
+  "storage": "2 jours au frais, se mange froide ou tiède en gamelle.",
+  "nutrition": {
+   "kcal": 478,
+   "prot": 23,
+   "gluc": 33,
+   "lip": 27,
+   "fib": 4
+  }
+ },
+ {
+  "id": "poelee_dinde",
+  "prep_min": 10,
+  "cook_min": 15,
+  "steps": [
+   "Lance le riz : 11 à 12 min dans beaucoup d'eau salée.",
+   "Coupe les poivrons et les courgettes en lanières, émince l'oignon.",
+   "Saisis l'émincé de dinde 5 min à feu vif avec un filet d'huile. Réserve.",
+   "Fais sauter les légumes 8 min à feu vif : ils doivent rester croquants.",
+   "Remets la dinde, ajoute les herbes de Provence, le jus du citron, sel et poivre."
+  ],
+  "tip": "Cuis la viande et les légumes séparément : chacun garde sa texture.",
+  "variant": "Ajoute 1 c. à s. de sauce soja à la fin.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 406,
+   "prot": 35,
+   "gluc": 57,
+   "lip": 3,
+   "fib": 4
+  }
+ },
+ {
+  "id": "boulettes",
+  "prep_min": 20,
+  "cook_min": 25,
+  "steps": [
+   "Mélange le bœuf, l'œuf, la chapelure, le persil haché, sel et poivre. Forme une vingtaine de boulettes avec les mains mouillées.",
+   "Fais-les dorer 5 min dans une sauteuse avec un filet d'huile, en les roulant.",
+   "Ajoute l'oignon émincé, puis les tomates concassées. Laisse mijoter 15 min à couvert.",
+   "Pendant ce temps, fais cuire les pâtes.",
+   "Sers les boulettes et leur sauce sur les pâtes, avec un peu de parmesan."
+  ],
+  "tip": "Mouiller les mains empêche la viande de coller.",
+  "variant": "Boulettes de dinde pour une version plus légère.",
+  "storage": "3 jours au frais, se congèlent très bien.",
+  "nutrition": {
+   "kcal": 556,
+   "prot": 44,
+   "gluc": 64,
+   "lip": 12,
+   "fib": 10
+  }
+ },
+ {
+  "id": "lasagnes",
+  "prep_min": 25,
+  "cook_min": 50,
+  "steps": [
+   "Prépare la sauce comme une bolognaise : oignon et carotte revenus 5 min, viande dorée 5 min, tomates concassées, 15 min de mijotage.",
+   "Béchamel : délaye la farine dans le lait froid, chauffe en fouettant jusqu'à épaississement, sale, poivre et ajoute de la muscade.",
+   "Préchauffe le four à 180 °C.",
+   "Dans un plat, alterne : un peu de sauce, des feuilles de lasagnes, sauce, béchamel. Recommence 3 fois.",
+   "Termine par la béchamel et l'emmental.",
+   "Enfourne 40 min. Laisse reposer 10 min avant de couper."
+  ],
+  "tip": "Le repos après cuisson évite que les parts s'écroulent.",
+  "variant": "Lasagnes de légumes : courgettes et épinards à la place de la viande.",
+  "storage": "3 jours au frais, se congèlent en parts.",
+  "nutrition": {
+   "kcal": 598,
+   "prot": 46,
+   "gluc": 70,
+   "lip": 14,
+   "fib": 6
+  }
+ },
+ {
+  "id": "steak_frites",
+  "prep_min": 10,
+  "cook_min": 30,
+  "steps": [
+   "Préchauffe le four à 220 °C. Coupe les pommes de terre en frites épaisses, rince-les et sèche-les bien.",
+   "Mélange-les avec l'huile, sel et paprika, étale en une couche sur la plaque et enfourne 30 min en les retournant à mi-cuisson.",
+   "Sors la viande du frigo 15 min avant.",
+   "Saisis-la dans une poêle très chaude, 2 à 3 min de chaque côté pour une cuisson saignante à point.",
+   "Laisse reposer 3 min. Sers avec la salade assaisonnée d'échalote émincée."
+  ],
+  "tip": "Rincer et sécher les frites enlève l'amidon : elles croustillent mieux.",
+  "variant": "Remplace les frites par des potatoes de patate douce.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 450,
+   "prot": 37,
+   "gluc": 44,
+   "lip": 13,
+   "fib": 6
+  }
+ },
+ {
+  "id": "soupe_hiver",
+  "prep_min": 20,
+  "cook_min": 25,
+  "steps": [
+   "Épluche et coupe tous les légumes en morceaux.",
+   "Fais revenir l'oignon 3 min dans une grande casserole avec un filet d'huile.",
+   "Ajoute les autres légumes et le bouillon. Laisse cuire 25 min à frémissement.",
+   "Mixe finement, rectifie l'assaisonnement.",
+   "Sers avec des tartines de pain complet au fromage frais, et du jambon si tu veux un repas plus complet."
+  ],
+  "tip": "Pour une soupe veloutée sans crème, la pomme de terre suffit.",
+  "variant": "Ajoute un morceau de potiron en automne.",
+  "storage": "4 jours au frais, 3 mois au congélateur.",
+  "nutrition": {
+   "kcal": 323,
+   "prot": 19,
+   "gluc": 45,
+   "lip": 6,
+   "fib": 9
+  }
+ },
+ {
+  "id": "poulet_citron_four",
+  "prep_min": 15,
+  "cook_min": 45,
+  "steps": [
+   "Préchauffe le four à 200 °C. Coupe les pommes de terre en quartiers (avec la peau si elles sont nouvelles).",
+   "Écrase légèrement les gousses d'ail avec le plat du couteau, sans les éplucher. Coupe un citron en rondelles, presse l'autre.",
+   "Dans un grand plat, mélange pommes de terre, ail, rondelles de citron, thym, l'huile, sel et poivre.",
+   "Pose les cuisses de poulet dessus, peau vers le haut. Arrose du jus de citron, sale et poivre.",
+   "Enfourne 45 min, en retournant les pommes de terre à mi-cuisson. La peau doit être dorée et le jus de la cuisse transparent.",
+   "Sers avec une salade verte."
+  ],
+  "tip": "Pique l'ail en chemise dans les pommes de terre : il devient doux et fondant, à écraser sur le poulet.",
+  "variant": "Ajoute des olives vertes et des oignons en quartiers.",
+  "storage": "3 jours au frais. Désossé, le poulet se glisse dans une salade ou un wrap.",
+  "nutrition": {
+   "kcal": 506,
+   "prot": 38,
+   "gluc": 45,
+   "lip": 18,
+   "fib": 6
+  }
+ },
+ {
+  "id": "blanquette_poulet",
+  "prep_min": 15,
+  "cook_min": 30,
+  "steps": [
+   "Coupe le poulet en cubes de 3 cm. Épluche les carottes et coupe-les en rondelles, émince l'oignon, coupe les champignons en quartiers.",
+   "Dans une cocotte, fais revenir poulet et oignon 4 min avec un filet d'huile, sans coloration.",
+   "Ajoute les carottes et le bouillon chaud. Laisse mijoter 15 min à couvert.",
+   "Ajoute les champignons et poursuis 10 min.",
+   "Délaye la maïzena dans la crème froide, verse dans la cocotte avec le jus d'un demi-citron. Laisse épaissir 3 min en remuant.",
+   "Pendant ce temps, fais cuire le riz. Sers la blanquette bien chaude sur le riz."
+  ],
+  "tip": "Délayer la maïzena à froid évite les grumeaux et remplace le roux au beurre.",
+  "variant": "Version veau : remplace le poulet par de l'épaule de veau et compte 1 h de mijotage.",
+  "storage": "3 jours au frais : la gamelle d'hiver idéale.",
+  "nutrition": {
+   "kcal": 536,
+   "prot": 44,
+   "gluc": 63,
+   "lip": 10,
+   "fib": 4
+  }
+ },
+ {
+  "id": "brochettes_poulet_ratatouille",
+  "prep_min": 25,
+  "cook_min": 35,
+  "steps": [
+   "Ratatouille : coupe courgettes, aubergine, poivrons et tomates en dés de 2 cm, émince l'oignon.",
+   "Fais revenir l'oignon et l'aubergine 5 min dans une cocotte avec 1 c. à s. d'huile, puis ajoute poivrons et courgettes 5 min, enfin les tomates et les herbes. Sale, poivre et laisse mijoter 25 min à couvert.",
+   "Lance le riz pendant ce temps.",
+   "Coupe le poulet en cubes de 3 cm, mélange-les avec le reste d'huile, des herbes, sel et poivre. Enfile-les sur les brochettes.",
+   "Fais-les griller 10 à 12 min à la poêle ou au four à 220 °C, en les tournant.",
+   "Sers les brochettes sur la ratatouille, avec le riz."
+  ],
+  "tip": "La ratatouille est encore meilleure le lendemain : fais-en le double.",
+  "variant": "En été, les brochettes passent au barbecue.",
+  "storage": "La ratatouille se garde 4 jours et se congèle. Le poulet 3 jours.",
+  "nutrition": {
+   "kcal": 533,
+   "prot": 42,
+   "gluc": 61,
+   "lip": 11,
+   "fib": 6
+  }
+ },
+ {
+  "id": "poulet_tomate_olives",
+  "prep_min": 10,
+  "cook_min": 25,
+  "steps": [
+   "Coupe les filets de poulet en gros morceaux. Émince l'oignon, hache l'ail.",
+   "Fais dorer le poulet 5 min avec l'oignon dans une sauteuse huilée.",
+   "Ajoute ail, tomates concassées, olives et origan. Sale peu (les olives sont salées), poivre.",
+   "Laisse mijoter 15 min à couvert, à feu doux.",
+   "Pendant ce temps, fais cuire les pâtes complètes. Sers le poulet sur les pâtes."
+  ],
+  "tip": "Ajoute les olives au début : elles parfument toute la sauce.",
+  "variant": "Version poisson : des dos de cabillaud posés sur la sauce les 8 dernières minutes.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 503,
+   "prot": 46,
+   "gluc": 56,
+   "lip": 8,
+   "fib": 8
+  }
+ },
+ {
+  "id": "salade_cesar",
+  "prep_min": 20,
+  "cook_min": 12,
+  "steps": [
+   "Fais cuire les œufs 9 min, refroidis-les et écale-les.",
+   "Fais griller les filets de poulet 5 à 6 min de chaque côté à la poêle. Laisse tiédir et coupe en lanières.",
+   "Coupe le pain en cubes et fais-les dorer 3 à 4 min à la poêle sèche : ce sont les croûtons.",
+   "Sauce : mélange le yaourt, la moutarde, le jus d'un demi-citron, la moitié du parmesan râpé, sel et poivre.",
+   "Lave et coupe la romaine. Assemble salade, poulet, œufs en quartiers, croûtons et le reste de parmesan en copeaux."
+  ],
+  "tip": "La sauce au yaourt remplace la sauce César classique, bien plus grasse.",
+  "variant": "Remplace le poulet par des crevettes.",
+  "storage": "En gamelle, garde la sauce et les croûtons à part. 2 jours au frais.",
+  "nutrition": {
+   "kcal": 271,
+   "prot": 36,
+   "gluc": 10,
+   "lip": 9,
+   "fib": 2
+  }
+ },
+ {
+  "id": "aiguillettes_panees",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Préchauffe le four à 210 °C. Fais cuire les pommes de terre 20 min à la vapeur et les haricots verts 8 min à l'eau salée.",
+   "Bats l'œuf avec une pincée de sel. Mélange la chapelure avec le paprika.",
+   "Passe chaque aiguillette dans l'œuf, puis dans la chapelure en appuyant bien.",
+   "Pose-les sur une plaque recouverte de papier cuisson et arrose d'un léger filet d'huile.",
+   "Enfourne 15 min en les retournant à mi-cuisson : elles doivent être dorées et croustillantes."
+  ],
+  "tip": "Un passage au four remplace la friture : 3 fois moins de matière grasse.",
+  "variant": "Ajoute du parmesan ou des flocons d'avoine dans la chapelure.",
+  "storage": "Se mangent tout de suite, ou froides le lendemain en gamelle.",
+  "nutrition": {
+   "kcal": 378,
+   "prot": 38,
+   "gluc": 42,
+   "lip": 5,
+   "fib": 7
+  }
+ },
+ {
+  "id": "soupe_poulet_legumes",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Épluche et coupe carottes et navet en petits dés, émince les poireaux.",
+   "Mets les légumes et les filets de poulet entiers dans le bouillon froid. Porte à frémissement.",
+   "Laisse cuire 20 min à feu doux.",
+   "Sors le poulet, effiloche-le avec deux fourchettes et remets-le dans la soupe.",
+   "Ajoute les vermicelles et cuis encore 4 à 5 min. Parsème de persil."
+  ],
+  "tip": "Partir du bouillon froid donne un poulet plus moelleux.",
+  "variant": "Ajoute un filet de citron et du gingembre râpé.",
+  "storage": "3 jours au frais : à emporter en thermos.",
+  "nutrition": {
+   "kcal": 234,
+   "prot": 24,
+   "gluc": 26,
+   "lip": 3,
+   "fib": 5
+  }
+ },
+ {
+  "id": "poulet_patate_douce",
+  "prep_min": 15,
+  "cook_min": 40,
+  "steps": [
+   "Préchauffe le four à 200 °C. Épluche les patates douces et coupe-les en cubes de 3 cm. Coupe l'oignon rouge en quartiers.",
+   "Mélange-les avec l'huile, le paprika, sel et poivre, et répartis dans un grand plat.",
+   "Pose les cuisses de poulet dessus, assaisonne-les.",
+   "Enfourne 40 min : la patate douce doit être caramélisée sur les bords.",
+   "Sers avec une salade verte."
+  ],
+  "tip": "La patate douce cuit plus vite que la pomme de terre : des cubes de 3 cm suffisent.",
+  "variant": "Ajoute des pois chiches égouttés à mi-cuisson, ils deviennent croustillants.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 465,
+   "prot": 36,
+   "gluc": 40,
+   "lip": 18,
+   "fib": 7
+  }
+ },
+ {
+  "id": "sandwich_poulet",
+  "prep_min": 10,
+  "cook_min": 0,
+  "steps": [
+   "Coupe le poulet cuit en fines tranches.",
+   "Coupe la tomate et le concombre en rondelles fines. Égoutte-les sur du papier absorbant.",
+   "Tartine chaque tranche de pain de fromage frais : il fait barrière et le pain ne ramollit pas.",
+   "Garnis de salade, poulet, tomate et concombre. Sale, poivre et ferme.",
+   "Coupe en deux en diagonale et emballe bien serré."
+  ],
+  "tip": "Utilise les restes du poulet rôti de la veille.",
+  "variant": "Remplace le poulet par du thon mélangé à un peu de yaourt.",
+  "storage": "Se prépare la veille, 24 h maximum au frais.",
+  "nutrition": {
+   "kcal": 295,
+   "prot": 26,
+   "gluc": 34,
+   "lip": 5,
+   "fib": 6
+  }
+ },
+ {
+  "id": "poulet_curry_doux",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Lance le riz.",
+   "Coupe le poulet en lanières, émince l'oignon, coupe le poivron en dés.",
+   "Fais dorer le poulet 5 min avec un filet d'huile, puis ajoute oignon et poivron 5 min.",
+   "Saupoudre de paprika, remue 1 min, puis verse la crème légère. Laisse épaissir 3 min à feu doux.",
+   "Sale, poivre et sers avec le riz."
+  ],
+  "tip": "Le paprika doux donne de la couleur sans piquer : idéal si vous n'aimez pas les plats épicés.",
+  "variant": "Ajoute une poignée d'épinards frais à la fin.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 476,
+   "prot": 41,
+   "gluc": 54,
+   "lip": 9,
+   "fib": 2
+  }
+ },
+ {
+  "id": "dinde_panee_puree",
+  "prep_min": 20,
+  "cook_min": 20,
+  "steps": [
+   "Épluche carottes et pommes de terre, coupe-les en morceaux et fais-les cuire 20 min dans l'eau salée. Préchauffe le four à 210 °C.",
+   "Bats l'œuf. Passe chaque escalope dans l'œuf puis dans la chapelure.",
+   "Pose-les sur une plaque recouverte de papier cuisson, arrose d'un léger filet d'huile et enfourne 15 min en les retournant à mi-cuisson.",
+   "Égoutte les légumes et écrase-les avec le lait chaud. Sale, poivre.",
+   "Sers les escalopes avec la purée orange."
+  ],
+  "tip": "La purée de carottes plaît aux plus réticents aux légumes : douce et colorée.",
+  "variant": "Purée de patate douce à la place des carottes.",
+  "storage": "La purée se garde 3 jours, l'escalope 2 jours.",
+  "nutrition": {
+   "kcal": 351,
+   "prot": 36,
+   "gluc": 39,
+   "lip": 5,
+   "fib": 8
+  }
+ },
+ {
+  "id": "boulettes_dinde",
+  "prep_min": 20,
+  "cook_min": 20,
+  "steps": [
+   "Mélange la dinde hachée, l'œuf, la chapelure, le persil, sel et poivre. Forme une vingtaine de boulettes avec les mains mouillées.",
+   "Fais-les dorer 5 min dans une sauteuse huilée, en les roulant.",
+   "Ajoute l'oignon émincé, les tomates concassées et 1 c. à c. de cumin. Laisse mijoter 15 min à couvert.",
+   "Prépare la semoule : couvre-la d'eau bouillante salée à hauteur, couvre 5 min puis égrène à la fourchette.",
+   "Sers les boulettes et leur sauce sur la semoule."
+  ],
+  "tip": "La dinde hachée est plus maigre que le bœuf : garde un couvercle pour qu'elle ne sèche pas.",
+  "variant": "Ajoute des courgettes en dés dans la sauce.",
+  "storage": "3 jours au frais, se congèlent très bien.",
+  "nutrition": {
+   "kcal": 502,
+   "prot": 38,
+   "gluc": 58,
+   "lip": 12,
+   "fib": 8
+  }
+ },
+ {
+  "id": "wrap_dinde",
+  "prep_min": 10,
+  "cook_min": 0,
+  "steps": [
+   "Réchauffe chaque wrap 10 s à la poêle sèche pour l'assouplir.",
+   "Tartine de fromage frais en laissant 3 cm libres sur les bords.",
+   "Dispose la salade, 2 tranches de dinde, la carotte râpée et la tomate en dés bien égouttés.",
+   "Replie le bas, puis roule bien serré.",
+   "Emballe dans du papier cuisson et coupe en deux."
+  ],
+  "tip": "Égoutter la tomate évite un wrap détrempé à midi.",
+  "variant": "Ajoute quelques bâtonnets de concombre et de la ciboulette.",
+  "storage": "24 h au frais, bien emballé.",
+  "nutrition": {
+   "kcal": 284,
+   "prot": 19,
+   "gluc": 34,
+   "lip": 7,
+   "fib": 5
+  }
+ },
+ {
+  "id": "roti_dinde_marrons",
+  "prep_min": 15,
+  "cook_min": 50,
+  "steps": [
+   "Préchauffe le four à 190 °C. Badigeonne le rôti d'huile, sale, poivre et ajoute le thym.",
+   "Enfourne 50 min avec 10 cl d'eau au fond du plat. Arrose 2 fois.",
+   "Pendant ce temps, épluche le céleri-rave et les pommes de terre, coupe-les en morceaux et fais-les cuire 25 min dans l'eau salée.",
+   "Égoutte et écrase avec le lait chaud. Sale, poivre.",
+   "Laisse reposer le rôti 10 min avant de le trancher. Sers avec la purée."
+  ],
+  "tip": "Le céleri-rave donne une purée légère au goût de noisette.",
+  "variant": "Ajoute des marrons cuits sous vide autour du rôti les 15 dernières minutes.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 381,
+   "prot": 51,
+   "gluc": 25,
+   "lip": 7,
+   "fib": 6
+  }
+ },
+ {
+  "id": "saumon_poireaux",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Préchauffe le four à 200 °C. Lance le riz.",
+   "Lave les poireaux et coupe-les en fines rondelles. Fais-les fondre 10 min à la poêle, à couvert, avec un filet d'huile et une pincée de sel.",
+   "Découpe 4 grands carrés de papier cuisson. Répartis les poireaux au centre, pose un pavé de saumon dessus.",
+   "Ajoute une rondelle de citron, de l'aneth, sel et poivre. Ferme en papillote.",
+   "Enfourne 15 min. Sers avec le riz."
+  ],
+  "tip": "Les poireaux fondus font un lit moelleux qui garde le saumon juteux.",
+  "variant": "Remplace le saumon par du cabillaud (12 min de cuisson).",
+  "storage": "1 jour au frais pour le poisson.",
+  "nutrition": {
+   "kcal": 519,
+   "prot": 32,
+   "gluc": 54,
+   "lip": 18,
+   "fib": 4
+  }
+ },
+ {
+  "id": "saumon_lentilles",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Rince les lentilles, mets-les dans 3 fois leur volume d'eau froide avec les carottes en petits dés et l'oignon émincé. Laisse frémir 20 min.",
+   "Égoutte, sale, ajoute la moutarde et le persil, mélange.",
+   "Fais chauffer une poêle, pose les pavés côté peau, 4 min sans les bouger.",
+   "Retourne-les et cuis 2 min de l'autre côté : le cœur doit rester rosé.",
+   "Sers le saumon sur le lit de lentilles."
+  ],
+  "tip": "Les lentilles tièdes à la moutarde, c'est le grand classique des bistrots.",
+  "variant": "Remplace le saumon par du maquereau.",
+  "storage": "Les lentilles se gardent 3 jours, le saumon 2 jours.",
+  "nutrition": {
+   "kcal": 496,
+   "prot": 42,
+   "gluc": 35,
+   "lip": 18,
+   "fib": 11
+  }
+ },
+ {
+  "id": "cabillaud_provencale",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Préchauffe le four à 200 °C. Lance le riz.",
+   "Coupe les courgettes et les tomates en rondelles fines, hache l'ail.",
+   "Dans un plat, alterne courgettes et tomates en tuiles. Parsème d'ail et d'herbes, arrose de la moitié de l'huile, sale et poivre.",
+   "Enfourne 10 min, puis pose les dos de cabillaud dessus et arrose du reste d'huile.",
+   "Remets 12 min au four : le poisson doit être nacré."
+  ],
+  "tip": "Précuire les légumes 10 min avant le poisson évite que celui-ci soit trop cuit.",
+  "variant": "Remplace les courgettes par du fenouil émincé.",
+  "storage": "1 jour au frais.",
+  "nutrition": {
+   "kcal": 429,
+   "prot": 30,
+   "gluc": 55,
+   "lip": 8,
+   "fib": 3
+  }
+ },
+ {
+  "id": "colin_puree_brocoli",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Épluche les pommes de terre, coupe-les en morceaux, et le brocoli en bouquets.",
+   "Fais cuire les pommes de terre 20 min dans l'eau salée, en ajoutant le brocoli les 10 dernières minutes.",
+   "Égoutte et écrase avec le lait chaud. Sale, poivre.",
+   "Fais cuire le colin 3 min de chaque côté dans une poêle huilée.",
+   "Arrose de citron et sers sur la purée verte."
+  ],
+  "tip": "La purée verte est une astuce pour faire manger du brocoli à ceux qui n'aiment pas ça.",
+  "variant": "Purée de petits pois à la place du brocoli.",
+  "storage": "La purée se garde 3 jours.",
+  "nutrition": {
+   "kcal": 254,
+   "prot": 30,
+   "gluc": 26,
+   "lip": 2,
+   "fib": 6
+  }
+ },
+ {
+  "id": "brandade_legere",
+  "prep_min": 20,
+  "cook_min": 35,
+  "steps": [
+   "Épluche les pommes de terre, coupe-les en morceaux et cuis-les 20 min dans l'eau salée. Préchauffe le four à 200 °C.",
+   "Dans une casserole, porte le lait à frémissement avec l'ail écrasé. Ajoute le cabillaud et poche-le 8 min.",
+   "Égoutte le poisson en gardant le lait, et émiette-le en retirant les arêtes éventuelles.",
+   "Écrase les pommes de terre avec le lait de cuisson et l'huile, puis mélange au poisson et au persil. Sale, poivre.",
+   "Verse dans un plat et gratine 15 min. Sers avec une salade."
+  ],
+  "tip": "Le lait de cuisson du poisson parfume toute la purée.",
+  "variant": "Ajoute une poignée d'épinards dans la brandade.",
+  "storage": "3 jours au frais, réchauffe au four.",
+  "nutrition": {
+   "kcal": 350,
+   "prot": 29,
+   "gluc": 38,
+   "lip": 8,
+   "fib": 5
+  }
+ },
+ {
+  "id": "pates_thon_tomate",
+  "prep_min": 10,
+  "cook_min": 15,
+  "steps": [
+   "Fais cuire les pâtes complètes.",
+   "Pendant ce temps, fais revenir l'oignon émincé 3 min avec un filet d'huile.",
+   "Ajoute les tomates concassées et laisse réduire 10 min.",
+   "Ajoute le thon égoutté et émietté et les câpres, chauffe 2 min.",
+   "Mélange avec les pâtes égouttées et parsème de basilic."
+  ],
+  "tip": "Ajoute le thon à la fin : il reste moelleux.",
+  "variant": "Ajoute des olives noires et un peu de piment.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 379,
+   "prot": 30,
+   "gluc": 55,
+   "lip": 2,
+   "fib": 8
+  }
+ },
+ {
+  "id": "salade_sardines_pdt",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Fais cuire les pommes de terre entières 20 min dans l'eau salée.",
+   "Coupe-les tièdes en rondelles épaisses.",
+   "Émince finement l'oignon rouge, cisèle le persil.",
+   "Égoutte les sardines en gardant 2 c. à s. de leur huile, émiette-les grossièrement en retirant l'arête centrale.",
+   "Mélange tout avec l'huile des sardines et le jus du citron. Sers sur la salade."
+  ],
+  "tip": "L'huile des sardines sert d'assaisonnement : rien à ajouter.",
+  "variant": "Remplace les sardines par du maquereau fumé.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 284,
+   "prot": 16,
+   "gluc": 37,
+   "lip": 7,
+   "fib": 5
+  }
+ },
+ {
+  "id": "truite_amandes",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Fais cuire les pommes de terre 20 min à la vapeur et les haricots verts 8 min à l'eau salée.",
+   "Fais dorer les amandes effilées 2 min dans une poêle sèche. Réserve.",
+   "Dans la même poêle, fais fondre la noisette de beurre, pose les filets de truite côté peau.",
+   "Cuis 3 min, retourne et cuis 1 min de plus.",
+   "Parsème d'amandes, arrose de citron et sers."
+  ],
+  "tip": "Une noisette de beurre suffit pour le goût : c'est la touche bistrot.",
+  "variant": "Remplace les amandes par des noisettes concassées.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 388,
+   "prot": 31,
+   "gluc": 31,
+   "lip": 13,
+   "fib": 8
+  }
+ },
+ {
+  "id": "crevettes_riz",
+  "prep_min": 10,
+  "cook_min": 15,
+  "steps": [
+   "Lance le riz.",
+   "Coupe les courgettes et le poivron en dés.",
+   "Fais-les sauter 8 min à feu vif dans une poêle huilée.",
+   "Ajoute les crevettes et l'ail haché, cuis 3 min : les crevettes deviennent roses et opaques.",
+   "Parsème de persil, sale, poivre et sers avec le riz."
+  ],
+  "tip": "Les crevettes cuisent très vite : 3 min suffisent, sinon elles deviennent caoutchouteuses.",
+  "variant": "Ajoute un filet de sauce soja et de gingembre.",
+  "storage": "1 jour au frais.",
+  "nutrition": {
+   "kcal": 343,
+   "prot": 26,
+   "gluc": 54,
+   "lip": 2,
+   "fib": 3
+  }
+ },
+ {
+  "id": "moules_frites",
+  "prep_min": 20,
+  "cook_min": 35,
+  "steps": [
+   "Préchauffe le four à 220 °C. Coupe les pommes de terre en frites, rince et sèche-les, mélange avec l'huile et du sel. Enfourne 35 min en les retournant à mi-cuisson.",
+   "Nettoie les moules sous l'eau froide, retire les filaments. Jette celles qui sont cassées ou qui restent ouvertes quand on les tapote.",
+   "Dans une grande cocotte, fais suer les échalotes émincées 2 min.",
+   "Ajoute le vin blanc et les moules, couvre et cuis 6 min à feu vif en secouant la cocotte.",
+   "Elles sont prêtes quand elles sont ouvertes. Jette celles qui restent fermées. Parsème de persil et sers avec les frites."
+  ],
+  "tip": "Ne sale pas les moules : leur eau est déjà salée.",
+  "variant": "Moules à la crème légère : ajoute 10 cl de crème à la fin.",
+  "storage": "Les moules se mangent tout de suite.",
+  "nutrition": {
+   "kcal": 368,
+   "prot": 20,
+   "gluc": 50,
+   "lip": 6,
+   "fib": 5
+  }
+ },
+ {
+  "id": "salade_nicoise",
+  "prep_min": 20,
+  "cook_min": 20,
+  "steps": [
+   "Cuis les pommes de terre 20 min, les haricots verts 8 min et les œufs 9 min.",
+   "Refroidis tout sous l'eau froide.",
+   "Coupe les tomates en quartiers, le poivron en lamelles, les pommes de terre en rondelles.",
+   "Dispose tout dans un plat avec le thon émietté, les olives et les œufs en quartiers.",
+   "Assaisonne de vinaigrette au moment de servir."
+  ],
+  "tip": "Ajoute la vinaigrette au dernier moment pour garder tout bien croquant.",
+  "variant": "Version printemps : fèves et radis.",
+  "storage": "En gamelle, vinaigrette à part. 2 jours au frais.",
+  "nutrition": {
+   "kcal": 374,
+   "prot": 31,
+   "gluc": 31,
+   "lip": 13,
+   "fib": 7
+  }
+ },
+ {
+  "id": "gratin_poisson_epinards",
+  "prep_min": 15,
+  "cook_min": 30,
+  "steps": [
+   "Préchauffe le four à 200 °C. Lance le riz.",
+   "Fais tomber les épinards 3 min dans une grande poêle, puis presse-les bien dans une passoire.",
+   "Béchamel : délaye la farine dans le lait froid, chauffe en fouettant jusqu'à épaississement. Sale, poivre et ajoute de la muscade.",
+   "Dans un plat, étale les épinards, pose le poisson en morceaux, nappe de béchamel et parsème d'emmental.",
+   "Enfourne 25 min."
+  ],
+  "tip": "Presser les épinards évite un gratin aqueux.",
+  "variant": "Ajoute quelques crevettes avec le poisson.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 477,
+   "prot": 42,
+   "gluc": 60,
+   "lip": 6,
+   "fib": 5
+  }
+ },
+ {
+  "id": "merlu_sauce_vierge",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Rince le quinoa et cuis-le 12 min dans 2 fois son volume d'eau salée.",
+   "Sauce vierge : coupe les tomates en tout petits dés, émince l'échalote, cisèle le basilic. Mélange avec le jus du citron, l'huile, sel et poivre.",
+   "Fais cuire le merlu 3 min de chaque côté dans une poêle huilée.",
+   "Sers le poisson nappé de sauce vierge, avec le quinoa."
+  ],
+  "tip": "La sauce vierge se prépare 15 min avant pour que les saveurs se mélangent.",
+  "variant": "Ajoute des olives et des câpres à la sauce.",
+  "storage": "La sauce se garde 1 jour.",
+  "nutrition": {
+   "kcal": 402,
+   "prot": 31,
+   "gluc": 36,
+   "lip": 14,
+   "fib": 5
+  }
+ },
+ {
+  "id": "wrap_saumon_fume",
+  "prep_min": 10,
+  "cook_min": 0,
+  "steps": [
+   "Mélange le fromage frais avec l'aneth ciselé et du poivre.",
+   "Réchauffe chaque wrap 10 s à la poêle sèche.",
+   "Tartine de fromage frais, ajoute une tranche de saumon, la salade et des bâtonnets de concombre.",
+   "Roule bien serré et emballe."
+  ],
+  "tip": "Le saumon fumé est salé : inutile d'ajouter du sel.",
+  "variant": "Remplace le saumon par de la truite fumée.",
+  "storage": "24 h au frais.",
+  "nutrition": {
+   "kcal": 257,
+   "prot": 12,
+   "gluc": 32,
+   "lip": 8,
+   "fib": 4
+  }
+ },
+ {
+  "id": "maquereau_moutarde",
+  "prep_min": 10,
+  "cook_min": 30,
+  "steps": [
+   "Préchauffe le four à 200 °C. Coupe les pommes de terre en quartiers, mélange avec un filet d'huile et du sel, enfourne 15 min.",
+   "Badigeonne les filets de maquereau de moutarde côté chair, parsème de thym.",
+   "Pose-les sur les pommes de terre et remets au four 12 min.",
+   "Sers avec une salade verte."
+  ],
+  "tip": "Le maquereau est riche en oméga 3 et très bon marché.",
+  "variant": "Moutarde à l'ancienne et miel pour une version sucrée-salée.",
+  "storage": "1 jour au frais.",
+  "nutrition": {
+   "kcal": 377,
+   "prot": 24,
+   "gluc": 35,
+   "lip": 15,
+   "fib": 5
+  }
+ },
+ {
+  "id": "boeuf_carottes",
+  "prep_min": 20,
+  "cook_min": 120,
+  "steps": [
+   "Coupe le bœuf en cubes de 4 cm. Épluche les carottes et coupe-les en rondelles épaisses, émince les oignons.",
+   "Dans une cocotte, fais dorer la viande en 2 fois, 5 min par fournée, avec un filet d'huile.",
+   "Remets toute la viande, ajoute oignons, carottes, tomates concassées, bouillon et bouquet garni.",
+   "Couvre et laisse mijoter 1 h 45 à feu très doux : la viande doit se couper à la fourchette.",
+   "Fais cuire les pommes de terre à la vapeur les 25 dernières minutes. Sers bien chaud."
+  ],
+  "tip": "Faire dorer la viande en 2 fois évite qu'elle bouille dans son jus.",
+  "variant": "Ajoute un verre de vin rouge avec le bouillon.",
+  "storage": "Encore meilleur réchauffé : 4 jours au frais, se congèle.",
+  "nutrition": {
+   "kcal": 550,
+   "prot": 52,
+   "gluc": 48,
+   "lip": 16,
+   "fib": 11
+  }
+ },
+ {
+  "id": "bourguignon_leger",
+  "prep_min": 25,
+  "cook_min": 135,
+  "steps": [
+   "Coupe le bœuf en cubes de 4 cm. Épluche les carottes, coupe-les en rondelles. Émince les oignons.",
+   "Dans une cocotte, fais dorer les lardons à sec, puis la viande en 2 fois. Ajoute les oignons.",
+   "Saupoudre de farine, remue 1 min, puis verse le vin et 30 cl d'eau. Ajoute les carottes et le bouquet garni.",
+   "Couvre et laisse mijoter 2 h à feu très doux.",
+   "Ajoute les champignons en quartiers 20 min avant la fin.",
+   "Fais cuire les tagliatelles et sers."
+  ],
+  "tip": "L'alcool s'évapore à la cuisson ; il reste le goût du vin.",
+  "variant": "Prépare-le la veille : il est bien meilleur réchauffé.",
+  "storage": "4 jours au frais, se congèle très bien.",
+  "nutrition": {
+   "kcal": 761,
+   "prot": 61,
+   "gluc": 65,
+   "lip": 21,
+   "fib": 11
+  }
+ },
+ {
+  "id": "steak_haricots",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Fais cuire les haricots verts 8 min dans l'eau bouillante salée.",
+   "Coupe les pommes de terre en cubes de 2 cm, fais-les cuire 10 min dans l'eau salée, égoutte.",
+   "Fais-les dorer 10 min à la poêle avec l'huile, en remuant.",
+   "Saisis les steaks 2 à 3 min de chaque côté dans une poêle très chaude.",
+   "Parsème de persil et sers."
+  ],
+  "tip": "Précuire les pommes de terre à l'eau permet de les dorer avec très peu d'huile.",
+  "variant": "Remplace les pommes de terre par des patates douces.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 352,
+   "prot": 28,
+   "gluc": 39,
+   "lip": 9,
+   "fib": 8
+  }
+ },
+ {
+  "id": "escalope_veau_citron",
+  "prep_min": 10,
+  "cook_min": 15,
+  "steps": [
+   "Fais cuire les tagliatelles. Fais tomber les épinards 3 min dans une poêle.",
+   "Sale et poivre les escalopes.",
+   "Saisis-les 2 min de chaque côté dans une poêle très chaude avec un filet d'huile. Réserve.",
+   "Déglace la poêle avec le jus du citron, ajoute la crème et laisse réduire 2 min.",
+   "Remets les escalopes 30 s dans la sauce. Sers avec les pâtes et les épinards."
+  ],
+  "tip": "Les escalopes de veau sont fines : 2 min par face suffisent.",
+  "variant": "Remplace le veau par de la dinde.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 474,
+   "prot": 42,
+   "gluc": 51,
+   "lip": 8,
+   "fib": 9
+  }
+ },
+ {
+  "id": "porc_miel_carottes",
+  "prep_min": 10,
+  "cook_min": 30,
+  "steps": [
+   "Préchauffe le four à 200 °C. Épluche les carottes et coupe-les en bâtonnets.",
+   "Mélange le miel et la sauce soja.",
+   "Pose le filet mignon au centre d'un plat, entoure-le de carottes, badigeonne la viande du mélange.",
+   "Enfourne 30 min en arrosant à mi-cuisson.",
+   "Pendant ce temps, fais cuire le riz.",
+   "Laisse reposer la viande 5 min, tranche-la et sers."
+  ],
+  "tip": "Le miel caramélise : surveille la fin de cuisson.",
+  "variant": "Ajoute du gingembre râpé dans la marinade.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 440,
+   "prot": 33,
+   "gluc": 63,
+   "lip": 5,
+   "fib": 5
+  }
+ },
+ {
+  "id": "roti_porc_lentilles",
+  "prep_min": 15,
+  "cook_min": 55,
+  "steps": [
+   "Préchauffe le four à 190 °C. Pose le rôti dans un plat avec le thym, sale, poivre et ajoute 10 cl d'eau.",
+   "Enfourne 50 min, en arrosant 2 fois.",
+   "Rince les lentilles et mets-les dans 3 fois leur volume d'eau froide avec les carottes en dés, l'oignon et le laurier.",
+   "Laisse frémir 25 min, égoutte et sale.",
+   "Tranche le rôti et sers sur les lentilles avec le jus de cuisson."
+  ],
+  "tip": "Le jus du rôti est parfait pour assaisonner les lentilles.",
+  "variant": "Ajoute un peu de moutarde dans les lentilles.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 564,
+   "prot": 61,
+   "gluc": 43,
+   "lip": 13,
+   "fib": 14
+  }
+ },
+ {
+  "id": "poelee_boeuf_poivrons",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Lance le riz.",
+   "Coupe le bœuf en fines lanières, les poivrons en lamelles, émince l'oignon.",
+   "Saisis le bœuf 2 min à feu très vif dans une poêle huilée. Réserve.",
+   "Fais sauter poivrons et oignon 8 min à feu vif.",
+   "Remets le bœuf, ajoute la sauce soja et chauffe 1 min."
+  ],
+  "tip": "Le bœuf en lanières se cuit très vite : 2 min, sinon il durcit.",
+  "variant": "Ajoute des pousses de soja ou des brocolis.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 420,
+   "prot": 28,
+   "gluc": 57,
+   "lip": 8,
+   "fib": 4
+  }
+ },
+ {
+  "id": "carbonara_legere",
+  "prep_min": 10,
+  "cook_min": 15,
+  "steps": [
+   "Fais cuire les spaghettis dans beaucoup d'eau salée. Garde une louche d'eau de cuisson.",
+   "Fais dorer les lardons à sec dans une poêle.",
+   "Dans un bol, bats les œufs avec la crème, le parmesan et beaucoup de poivre.",
+   "Hors du feu, mélange les pâtes égouttées et les lardons avec la sauce. Ajoute un peu d'eau de cuisson si c'est trop épais."
+  ],
+  "tip": "Mélange hors du feu : les œufs nappent les pâtes sans cuire en omelette.",
+  "variant": "Ajoute des champignons revenus.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 555,
+   "prot": 26,
+   "gluc": 66,
+   "lip": 18,
+   "fib": 8
+  }
+ },
+ {
+  "id": "tomates_farcies",
+  "prep_min": 20,
+  "cook_min": 40,
+  "steps": [
+   "Préchauffe le four à 190 °C. Coupe un chapeau sur chaque tomate et creuse-les avec une cuillère. Sale l'intérieur et retourne-les 10 min pour qu'elles dégorgent.",
+   "Mélange le bœuf, l'oignon émincé, le persil, l'œuf, sel et poivre.",
+   "Farcis les tomates et remets les chapeaux.",
+   "Mets-les dans un plat avec la chair retirée et enfourne 35 min.",
+   "Pendant ce temps, fais cuire le riz et sers-le avec le jus des tomates."
+  ],
+  "tip": "Faire dégorger les tomates évite qu'elles rendent trop d'eau.",
+  "variant": "Farce mi-bœuf mi-chair à saucisse de volaille.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 422,
+   "prot": 29,
+   "gluc": 58,
+   "lip": 7,
+   "fib": 4
+  }
+ },
+ {
+  "id": "courgettes_farcies",
+  "prep_min": 20,
+  "cook_min": 40,
+  "steps": [
+   "Préchauffe le four à 190 °C. Coupe les courgettes en deux et creuse-les.",
+   "Hache la chair retirée. Fais revenir l'oignon, le bœuf et la chair 8 min.",
+   "Ajoute la moitié des tomates concassées, sale et poivre.",
+   "Farcis les courgettes, nappe du reste de tomates, parsème d'emmental.",
+   "Enfourne 35 min. Pendant ce temps, prépare le boulgour."
+  ],
+  "tip": "La chair de courgette dans la farce ajoute du moelleux.",
+  "variant": "Version végétarienne avec du boulgour dans la farce.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 451,
+   "prot": 35,
+   "gluc": 54,
+   "lip": 10,
+   "fib": 11
+  }
+ },
+ {
+  "id": "pot_au_feu",
+  "prep_min": 25,
+  "cook_min": 150,
+  "steps": [
+   "Mets la viande dans une grande marmite, couvre d'eau froide et porte à ébullition. Retire l'écume.",
+   "Ajoute l'oignon piqué de clous de girofle et le bouquet garni. Laisse frémir 1 h 30.",
+   "Épluche les carottes, les navets et les poireaux, coupe-les en gros morceaux.",
+   "Ajoute-les et poursuis 45 min.",
+   "Sers la viande et les légumes avec un peu de bouillon et de la moutarde."
+  ],
+  "tip": "Le bouillon restant fait une excellente soupe le lendemain.",
+  "variant": "Ajoute des pommes de terre les 30 dernières minutes.",
+  "storage": "4 jours au frais.",
+  "nutrition": {
+   "kcal": 501,
+   "prot": 59,
+   "gluc": 21,
+   "lip": 19,
+   "fib": 9
+  }
+ },
+ {
+  "id": "saucisse_lentilles",
+  "prep_min": 10,
+  "cook_min": 30,
+  "steps": [
+   "Rince les lentilles et mets-les dans 3 fois leur volume d'eau froide avec les carottes en dés, l'oignon et le thym.",
+   "Laisse frémir 25 min.",
+   "Fais dorer les saucisses 10 min à la poêle.",
+   "Coupe-les en rondelles et mélange-les aux lentilles égouttées et salées."
+  ],
+  "tip": "Les saucisses de volaille sont plus maigres que celles de porc.",
+  "variant": "Ajoute un peu de moutarde.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 476,
+   "prot": 33,
+   "gluc": 43,
+   "lip": 16,
+   "fib": 13
+  }
+ },
+ {
+  "id": "oeufs_cocotte_epinards",
+  "prep_min": 10,
+  "cook_min": 15,
+  "steps": [
+   "Préchauffe le four à 180 °C. Fais tomber les épinards 3 min à la poêle et presse-les.",
+   "Répartis-les dans 4 ramequins, ajoute de la muscade.",
+   "Casse 2 œufs par ramequin et ajoute une cuillère de crème.",
+   "Place les ramequins dans un plat rempli d'eau chaude à mi-hauteur.",
+   "Enfourne 12 min : le blanc doit être pris et le jaune coulant.",
+   "Sers avec du pain grillé et une salade."
+  ],
+  "tip": "Le bain-marie évite que les œufs durcissent.",
+  "variant": "Ajoute un peu de jambon en dés.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 323,
+   "prot": 22,
+   "gluc": 21,
+   "lip": 16,
+   "fib": 6
+  }
+ },
+ {
+  "id": "frittata_legumes",
+  "prep_min": 15,
+  "cook_min": 20,
+  "steps": [
+   "Coupe la courgette, le poivron et l'oignon en petits dés.",
+   "Fais-les revenir 10 min dans une poêle huilée.",
+   "Bats les œufs avec le parmesan, sel et poivre, et verse sur les légumes.",
+   "Couvre et laisse cuire 10 min à feu doux, jusqu'à ce que le dessus soit pris.",
+   "Sers avec une salade."
+  ],
+  "tip": "Couvrir la poêle fait cuire le dessus sans retourner.",
+  "variant": "Ajoute des pommes de terre cuites en dés.",
+  "storage": "2 jours au frais, se mange froide.",
+  "nutrition": {
+   "kcal": 229,
+   "prot": 19,
+   "gluc": 6,
+   "lip": 14,
+   "fib": 2
+  }
+ },
+ {
+  "id": "tortilla_pdt",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Coupe les pommes de terre en fines tranches et l'oignon en lamelles.",
+   "Fais-les cuire 15 min dans une poêle huilée, à couvert, en remuant.",
+   "Bats les œufs, ajoute les pommes de terre, sale et poivre.",
+   "Remets dans la poêle et cuis 8 min à feu doux.",
+   "Retourne-la à l'aide d'une assiette et cuis 2 min de l'autre côté."
+  ],
+  "tip": "Le retournement se fait d'un geste sûr au-dessus de l'évier.",
+  "variant": "Ajoute du chorizo en dés.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 348,
+   "prot": 18,
+   "gluc": 28,
+   "lip": 18,
+   "fib": 4
+  }
+ },
+ {
+  "id": "risotto_champignons",
+  "prep_min": 10,
+  "cook_min": 25,
+  "steps": [
+   "Garde le bouillon chaud dans une casserole.",
+   "Fais revenir l'oignon émincé 2 min, ajoute le riz et remue 1 min : il devient nacré.",
+   "Verse le vin et laisse-le s'évaporer.",
+   "Ajoute le bouillon louche par louche, en remuant, en attendant qu'il soit absorbé, pendant 18 min.",
+   "Pendant ce temps, fais revenir les champignons à part.",
+   "Hors du feu, ajoute champignons, parmesan et persil. Couvre 2 min avant de servir."
+  ],
+  "tip": "Le risotto doit rester crémeux et onctueux, presque fluide.",
+  "variant": "Ajoute des petits pois ou du potiron.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 366,
+   "prot": 12,
+   "gluc": 64,
+   "lip": 4,
+   "fib": 3
+  }
+ },
+ {
+  "id": "pates_ratatouille",
+  "prep_min": 15,
+  "cook_min": 30,
+  "steps": [
+   "Coupe courgettes, aubergine, poivron et tomates en dés.",
+   "Fais revenir aubergine et poivron 5 min, puis ajoute courgettes et tomates.",
+   "Laisse mijoter 25 min à couvert.",
+   "Fais cuire les pâtes et mélange avec la ratatouille.",
+   "Ajoute la mozzarella en morceaux et le basilic."
+  ],
+  "tip": "La mozzarella fond légèrement au contact des pâtes chaudes.",
+  "variant": "Remplace la mozzarella par de la feta.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 400,
+   "prot": 18,
+   "gluc": 58,
+   "lip": 8,
+   "fib": 10
+  }
+ },
+ {
+  "id": "salade_quinoa_feta",
+  "prep_min": 15,
+  "cook_min": 12,
+  "steps": [
+   "Rince le quinoa et cuis-le 12 min. Laisse refroidir.",
+   "Coupe le concombre et les tomates en dés.",
+   "Émiette la feta, cisèle la menthe.",
+   "Mélange tout avec le jus du citron et l'huile. Sale peu : la feta est salée."
+  ],
+  "tip": "Rincer le quinoa enlève son amertume.",
+  "variant": "Ajoute des pois chiches pour plus de protéines.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 373,
+   "prot": 15,
+   "gluc": 37,
+   "lip": 18,
+   "fib": 5
+  }
+ },
+ {
+  "id": "gratin_dauphinois",
+  "prep_min": 20,
+  "cook_min": 50,
+  "steps": [
+   "Préchauffe le four à 180 °C. Coupe les pommes de terre en fines rondelles (2 à 3 mm).",
+   "Mets-les dans une casserole avec le lait, l'ail écrasé, sel, poivre et muscade. Laisse frémir 10 min.",
+   "Verse dans un plat frotté à l'ail, parsème d'emmental.",
+   "Enfourne 40 min : le dessus doit être doré.",
+   "Sers avec le jambon et une salade."
+  ],
+  "tip": "Précuire les pommes de terre dans le lait rend le gratin fondant sans crème.",
+  "variant": "Ajoute un peu de chèvre.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 347,
+   "prot": 20,
+   "gluc": 50,
+   "lip": 6,
+   "fib": 6
+  }
+ },
+ {
+  "id": "veloute_legumes_oeuf",
+  "prep_min": 15,
+  "cook_min": 25,
+  "steps": [
+   "Épluche et coupe tous les légumes.",
+   "Cuis-les 25 min dans le bouillon, puis mixe.",
+   "Cuis les œufs 6 min dans l'eau bouillante, refroidis et écale.",
+   "Sers le velouté avec un œuf mollet et du pain complet."
+  ],
+  "tip": "L'œuf mollet transforme un simple velouté en vrai repas.",
+  "variant": "Ajoute des croûtons.",
+  "storage": "4 jours au frais pour le velouté.",
+  "nutrition": {
+   "kcal": 297,
+   "prot": 15,
+   "gluc": 40,
+   "lip": 7,
+   "fib": 8
+  }
+ },
+ {
+  "id": "soupe_lentilles",
+  "prep_min": 10,
+  "cook_min": 25,
+  "steps": [
+   "Fais revenir l'oignon émincé avec le cumin 3 min.",
+   "Ajoute les carottes en rondelles, les lentilles corail rincées et le bouillon.",
+   "Laisse cuire 20 min.",
+   "Mixe et sers avec du pain complet."
+  ],
+  "tip": "Les lentilles corail cuisent vite et rendent la soupe crémeuse sans crème.",
+  "variant": "Ajoute du lait de coco.",
+  "storage": "4 jours au frais.",
+  "nutrition": {
+   "kcal": 363,
+   "prot": 21,
+   "gluc": 58,
+   "lip": 3,
+   "fib": 15
+  }
+ },
+ {
+  "id": "tartine_oeuf_avocat",
+  "prep_min": 10,
+  "cook_min": 7,
+  "steps": [
+   "Cuis les œufs 7 min dans l'eau bouillante, refroidis et écale.",
+   "Écrase les avocats avec le jus du citron, sel et poivre.",
+   "Fais griller le pain.",
+   "Tartine d'avocat et ajoute les œufs en tranches.",
+   "Sers avec une salade."
+  ],
+  "tip": "Le citron empêche l'avocat de noircir.",
+  "variant": "Ajoute du saumon fumé.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 407,
+   "prot": 15,
+   "gluc": 33,
+   "lip": 22,
+   "fib": 9
+  }
+ },
+ {
+  "id": "chou_fleur_gratin",
+  "prep_min": 15,
+  "cook_min": 30,
+  "steps": [
+   "Préchauffe le four à 200 °C. Détaille le chou-fleur en bouquets et cuis-les 10 min à l'eau salée.",
+   "Béchamel : délaye la farine dans le lait froid, chauffe en fouettant jusqu'à épaississement, ajoute muscade, sel et poivre.",
+   "Dans un plat, répartis le chou-fleur et le jambon en dés.",
+   "Nappe de béchamel et parsème d'emmental.",
+   "Enfourne 20 min."
+  ],
+  "tip": "Bien égoutter le chou-fleur évite un gratin aqueux.",
+  "variant": "Remplace le jambon par du saumon.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 205,
+   "prot": 19,
+   "gluc": 15,
+   "lip": 7,
+   "fib": 3
+  }
+ },
+ {
+  "id": "galette_legumes",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Coupe les courgettes et le poivron en petits dés.",
+   "Fais-les revenir 8 min dans une poêle huilée.",
+   "Chauffe une galette dans une poêle, garnis de légumes et de chèvre.",
+   "Replie les bords et laisse 2 min.",
+   "Sers avec une salade."
+  ],
+  "tip": "Garde les galettes cuites au chaud au four à 80 °C.",
+  "variant": "Ajoute un œuf au centre.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 204,
+   "prot": 9,
+   "gluc": 29,
+   "lip": 5,
+   "fib": 5
+  }
+ },
+ {
+  "id": "haricots_blancs_tomate",
+  "prep_min": 10,
+  "cook_min": 20,
+  "steps": [
+   "Fais revenir l'oignon émincé 3 min.",
+   "Ajoute les tomates concassées, les haricots rincés et le paprika. Laisse mijoter 10 min.",
+   "Creuse 4 puits et casse un œuf dans chacun.",
+   "Couvre et laisse cuire 6 min : le blanc doit être pris.",
+   "Sers avec du pain."
+  ],
+  "tip": "Un plat complet en une seule poêle.",
+  "variant": "Ajoute un peu de chorizo.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 335,
+   "prot": 21,
+   "gluc": 40,
+   "lip": 7,
+   "fib": 12
+  }
+ },
+ {
+  "id": "crepes_salees",
+  "prep_min": 20,
+  "cook_min": 20,
+  "steps": [
+   "Pâte : mélange la farine et le sel, ajoute les œufs, puis le lait petit à petit en fouettant. Laisse reposer 15 min.",
+   "Fais revenir les champignons émincés.",
+   "Cuis les crêpes dans une poêle légèrement huilée, 1 min de chaque côté.",
+   "Garnis de jambon, d'emmental et de champignons, replie.",
+   "Sers avec une salade."
+  ],
+  "tip": "Le repos de la pâte rend les crêpes plus souples.",
+  "variant": "Garniture œuf et fromage.",
+  "storage": "Les crêpes nature se gardent 2 jours.",
+  "nutrition": {
+   "kcal": 404,
+   "prot": 28,
+   "gluc": 44,
+   "lip": 12,
+   "fib": 3
+  }
+ },
+ {
+  "id": "tartiflette_legere",
+  "prep_min": 20,
+  "cook_min": 40,
+  "steps": [
+   "Préchauffe le four à 200 °C. Cuis les pommes de terre 15 min et coupe-les en rondelles.",
+   "Fais dorer les lardons et l'oignon émincé.",
+   "Dans un plat, alterne pommes de terre et lardons, verse la crème.",
+   "Pose le demi-reblochon coupé en deux, croûte dessus.",
+   "Enfourne 25 min. Sers avec une grande salade."
+  ],
+  "tip": "Un demi-reblochon suffit pour 4 : c'est le plat plaisir de la semaine.",
+  "variant": "Remplace les lardons par du jambon cru.",
+  "storage": "2 jours au frais.",
+  "nutrition": {
+   "kcal": 499,
+   "prot": 22,
+   "gluc": 46,
+   "lip": 24,
+   "fib": 6
+  }
+ },
+ {
+  "id": "burger_poulet",
+  "prep_min": 20,
+  "cook_min": 30,
+  "steps": [
+   "Préchauffe le four à 210 °C. Coupe les pommes de terre en quartiers et enfourne-les 30 min avec un filet d'huile.",
+   "Pane le poulet : œuf battu, puis chapelure.",
+   "Enfourne-le 15 min.",
+   "Toaste les pains et garnis de fromage frais, salade, tomate et poulet.",
+   "Sers avec les potatoes."
+  ],
+  "tip": "Paner au four au lieu de frire : 3 fois moins de matière grasse.",
+  "variant": "Ajoute de l'avocat.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 584,
+   "prot": 49,
+   "gluc": 72,
+   "lip": 9,
+   "fib": 9
+  }
+ },
+ {
+  "id": "pizza_jambon",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Préchauffe le four à 240 °C avec la plaque à l'intérieur.",
+   "Étale la pâte, le coulis et l'origan.",
+   "Ajoute le jambon, les champignons et la mozzarella.",
+   "Fais glisser sur la plaque chaude et cuis 12 min.",
+   "Ajoute la roquette à la sortie du four."
+  ],
+  "tip": "La plaque déjà chaude rend la pâte croustillante.",
+  "variant": "Ajoute un œuf au centre.",
+  "storage": "Se réchauffe à la poêle couverte.",
+  "nutrition": {
+   "kcal": 324,
+   "prot": 21,
+   "gluc": 37,
+   "lip": 9,
+   "fib": 4
+  }
+ },
+ {
+  "id": "croque_monsieur",
+  "prep_min": 15,
+  "cook_min": 15,
+  "steps": [
+   "Préchauffe le four à 200 °C.",
+   "Béchamel : délaye la farine dans le lait froid, chauffe en fouettant jusqu'à épaississement.",
+   "Monte les croques : pain, béchamel, jambon, fromage, pain, un peu de béchamel.",
+   "Enfourne 12 min.",
+   "Sers avec une grande salade."
+  ],
+  "tip": "La béchamel maison est bien plus légère que le beurre.",
+  "variant": "Ajoute un œuf pour un croque-madame.",
+  "storage": "Se mange tout de suite.",
+  "nutrition": {
+   "kcal": 270,
+   "prot": 18,
+   "gluc": 28,
+   "lip": 9,
+   "fib": 4
+  }
+ },
+ {
+  "id": "parmentier_poulet",
+  "prep_min": 20,
+  "cook_min": 40,
+  "steps": [
+   "Épluche les patates douces, cuis-les 20 min et écrase-les avec le lait.",
+   "Préchauffe le four à 200 °C. Hache le poulet finement et fais-le revenir avec l'oignon.",
+   "Dans un plat, mets le poulet, puis la purée.",
+   "Parsème d'emmental et gratine 20 min.",
+   "Sers avec une salade."
+  ],
+  "tip": "La patate douce rend le parmentier doux et coloré.",
+  "variant": "Mélange pommes de terre et patates douces.",
+  "storage": "3 jours au frais.",
+  "nutrition": {
+   "kcal": 366,
+   "prot": 33,
+   "gluc": 44,
+   "lip": 6,
+   "fib": 7
+  }
+ },
+ {
+  "id": "chili_sin_carne",
+  "prep_min": 15,
+  "cook_min": 35,
+  "steps": [
+   "Fais revenir l'oignon, l'ail et les poivrons 8 min.",
+   "Ajoute les épices, les tomates, les haricots rincés et le maïs.",
+   "Laisse mijoter 25 min.",
+   "Pendant ce temps, fais cuire le riz complet.",
+   "Sers le chili sur le riz."
+  ],
+  "tip": "Haricots et riz ensemble apportent des protéines complètes.",
+  "variant": "Ajoute un peu de chocolat noir pour la profondeur.",
+  "storage": "4 jours au frais, se congèle.",
+  "nutrition": {
+   "kcal": 516,
+   "prot": 20,
+   "gluc": 92,
+   "lip": 4,
+   "fib": 17
+  }
+ }
+]
