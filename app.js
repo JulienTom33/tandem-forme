@@ -73,8 +73,10 @@ async function route() {
   if (!meta.password_set) return viewSetPassword('create');
   if (resetting || new URLSearchParams(location.search).has('reinit')) return viewSetPassword('reset');
   if (!S.me.onboarded_at) { $tabs.hidden = true; return viewOnboarding(); }
-  renderTabs(); render();
+  renderTabs(); await render();
   autoSyncGarmin().catch(() => {});
+  let tourDone = !!meta.tour_done; try { tourDone = tourDone || localStorage.getItem('tf_tour_done') === '1'; } catch {}
+  if (S.startTour || !tourDone) { S.startTour = false; setTimeout(() => startTour(0), 400); }
 }
 
 async function loadCore() {
@@ -264,6 +266,13 @@ function viewRegister(err = '') {
   $app.innerHTML = `
   <div class="hero"><div class="inner"><h1>Inscrire notre tandem</h1><small>Une personne inscrit les deux. Chacun reçoit un lien par e-mail pour créer son mot de passe et remplir son profil.</small></div></div>
   <div class="wrap">
+    <div class="card"><span class="title">Comment ça marche ?</span>
+      <ol class="steps small">
+        <li>Tu remplis tes infos et celles de ton ou ta partenaire, puis tu envoies.</li>
+        <li>Vous recevez chacun un e-mail avec un lien (pensez aux spams).</li>
+        <li>Chacun ouvre son lien sur son téléphone, crée son mot de passe et remplit son profil en 3 minutes, avec des explications à chaque étape.</li>
+      </ol>
+      <span class="small">Tu deviens le <b>capitaine</b> : c'est toi qui régleras le matériel et le programme pour vous deux.</span></div>
     <form id="f" class="card white" novalidate>
       <h3>Toi</h3>
       <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
@@ -394,20 +403,164 @@ function readProfile(root) {
   };
 }
 
-function viewOnboarding() {
+// Premier lancement : un assistant en étapes, chaque écran explique à quoi servent les infos demandées.
+function viewOnboarding(step = 0) {
+  const partner = S.partner?.first_name || 'ton ou ta partenaire';
+  const captain = isCaptain();
+  const cards = profileForm(S.me, S.partner?.color).split(/(?=<div class="card white"><h3>)/).filter((x) => x.trim());
+  const STEPS = [
+    { title: `Bienvenue ${esc(S.me.first_name)} !`, sub: 'Tandem Forme, c\'est votre coach à deux : sport, repas et suivi, chacun sur son téléphone.', body: `
+      <div class="card"><span class="title">Ce que fait l'appli</span>
+        <ul class="plain small">
+          <li><b>Un programme de sport</b> adapté à votre matériel et à vos petites douleurs, à cocher séance par séance.</li>
+          <li><b>Des menus simples et équilibrés</b> : 3 idées par repas, filtrées selon vos allergies.</li>
+          <li><b>Un suivi</b> des pas, du sommeil, du poids… à la main ou depuis votre montre.</li>
+          <li><b>Des défis à deux</b> pour se motiver : paliers de pas, séries, points et badges.</li>
+        </ul></div>
+      <div class="card"><span class="title">${captain ? 'Tu es le capitaine du tandem' : `${esc(partner)} est le capitaine du tandem`}</span>
+        <span class="small">${captain ? `C'est toi qui règles le matériel et la durée du programme, pour vous deux. ${esc(partner)} pourra te faire des suggestions.` : `C'est ${esc(partner)} qui règle le matériel et la durée du programme. Toi, tu peux lui envoyer des suggestions depuis l'appli.`}</span></div>
+      <div class="card"><span class="title">Ça prend 3 minutes</span><span class="small">5 petites étapes. Tout reste modifiable plus tard dans « Mon profil ».</span></div>` },
+    { title: 'Ta couleur', sub: 'Elle sert à te reconnaître partout : boutons, graphiques, défis.', body: `${cards[0]}<p class="small muted">La couleur déjà choisie par ${esc(partner)} est grisée.</p>` },
+    { title: 'Toi', sub: 'Pour personnaliser tes objectifs et suivre tes progrès.', body: `${cards[1]}
+      <div class="card"><span class="small"><b>Pourquoi ces infos ?</b> L'âge et la taille aident à fixer des objectifs réalistes. Le poids de départ sert de point de comparaison dans tes courbes, et l'objectif t'indique le chemin restant. Seul le prénom est obligatoire.</span>
+      <span class="small"><b>Qui les voit ?</b> Toi et ${esc(partner)} uniquement.</span></div>` },
+    { title: 'Ta santé', sub: 'Pour que le programme évite les mouvements qui te font mal.', body: `${cards[2]}
+      <div class="card"><span class="small"><b>Comment ça marche ?</b> Ajoute une zone fragile (épaule, nuque, genou…) : les exercices qui la sollicitent sont retirés de ton programme, et des exercices doux de renforcement peuvent être ajoutés. Exemple : une tendinite à l'épaule retire les pompes et le kettlebell swing.</span>
+      <span class="small"><b>Rien à signaler ?</b> Passe simplement à l'étape suivante.</span>
+      <span class="small muted">L'appli ne remplace pas un avis médical : en cas de douleur vive, arrête et consulte.</span></div>` },
+    { title: 'Ton alimentation', sub: 'Pour que les recettes proposées conviennent à vous deux.', body: `${cards[3]}
+      <div class="card"><span class="small"><b>Comment ça marche ?</b> Les allergies et régimes de vous deux sont combinés : une recette n'est proposée que si elle convient à chacun. Les allergènes sont calculés à partir des ingrédients et affichés sur chaque recette.</span>
+      <span class="small"><b>Ce que tu n'aimes pas</b> : écris quelques mots séparés par des virgules (ex. « chou-fleur, lentilles »), les recettes qui en contiennent seront écartées.</span></div>` },
+    { title: 'C\'est prêt !', sub: 'Voici comment démarrer.', body: `
+      <div class="card"><span class="title">1. ${captain ? 'Crée le programme' : `${esc(partner)} crée le programme`}</span><span class="small">${captain ? 'Dans Plus, puis « Matériel et programme » : coche votre matériel, choisis la durée (2 à 12 semaines) et la date de début.' : 'Dès que c\'est fait, tes séances apparaissent dans « Aujourd\'hui ».'}</span></div>
+      <div class="card"><span class="title">2. Choisis tes repas</span><span class="small">Onglet Repas : touche une des 3 idées, puis « C'est mangé » après le repas. Si vous avez mangé autre chose, dis-le, sans culpabiliser.</span></div>
+      <div class="card"><span class="title">3. Note ta journée</span><span class="small">Onglet Suivi, à la main ou avec ta montre (Plus, puis « Montres et sources »).</span></div>
+      <div class="card"><span class="title">Une visite guidée t'attend</span><span class="small">En 1 minute, on te montre où tout se trouve. Le guide complet est toujours dans Plus, puis « Guide de l'appli ».</span></div>` },
+  ];
+  const n = STEPS.length;
   $app.innerHTML = `
-  <div class="hero"><div class="inner"><h1>Bienvenue ${esc(S.me.first_name)}</h1><small>Remplis ton profil sur ton téléphone${S.partner ? `, ${esc(S.partner.first_name)} fera pareil sur le sien` : ''}.</small></div></div>
-  <form id="f" class="wrap">${profileForm(S.me, S.partner?.color)}
-    <button class="btn block">C'est parti</button></form>`;
+  <div class="hero"><div class="inner">
+    <div class="row between"><small>Étape ${step + 1} sur ${n}</small>${step > 0 && step < n - 1 ? '<button class="link" id="skipStep" style="color:#fff">Passer</button>' : ''}</div>
+    <div class="bar"><div style="width:${Math.round(((step + 1) / n) * 100)}%"></div></div>
+    <h1>${STEPS[step].title}</h1><small>${STEPS[step].sub}</small></div></div>
+  <form id="f" class="wrap" novalidate>
+    ${STEPS.map((st, i) => `<div data-step="${i}" ${i === step ? '' : 'hidden'} style="display:flex;flex-direction:column;gap:14px">${st.body}</div>`).join('')}
+    <p class="err" id="oerr" role="alert" style="margin:0"></p>
+    <div class="grid2">${step > 0 ? '<button type="button" class="btn ghost" id="prev">Retour</button>' : '<span></span>'}<button class="btn" id="next">${step === n - 1 ? 'Commencer' : step === 0 ? 'C\'est parti' : 'Suivant'}</button></div>
+  </form>`;
   const f = document.getElementById('f'); bindProfile(f);
+  if (S.onbDraft) restoreDraft(f, S.onbDraft);
+  const $e = document.getElementById('oerr');
+  const goStep = (k) => { S.onbDraft = snapshot(f); viewOnboarding(k); window.scrollTo(0, 0); };
+  document.getElementById('prev')?.addEventListener('click', () => goStep(step - 1));
+  document.getElementById('skipStep')?.addEventListener('click', () => goStep(step + 1));
   f.onsubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); $e.textContent = '';
     const p = readProfile(f);
-    if (!p.color) return toast('Choisis ta couleur');
-    if (S.partner && p.color === S.partner.color) return toast(`Cette couleur est déjà prise par ${S.partner.first_name}`);
+    if (step === 1 && !p.color) return ($e.textContent = 'Choisis une couleur pour continuer.');
+    if (step === 1 && S.partner && p.color === S.partner.color) return ($e.textContent = `Cette couleur est déjà prise par ${S.partner.first_name}.`);
+    if (step === 2) {
+      if (!p.first_name) return ($e.textContent = 'Indique ton prénom.');
+      const bad = [[p.height_cm, 120, 230, 'Taille (cm)'], [p.start_weight, 30, 300, 'Poids de départ'], [p.goal_weight, 30, 300, 'Poids objectif']].find(([v, lo, hi]) => v != null && (Number.isNaN(v) || v < lo || v > hi));
+      if (bad) return ($e.textContent = `${bad[3]} : entre ${bad[1]} et ${bad[2]}.`);
+      if (p.birth_date && (p.birth_date > addDays(today(), -365 * 16) || p.birth_date < '1920-01-01')) return ($e.textContent = 'Vérifie ta date de naissance.');
+    }
+    if (step < n - 1) return goStep(step + 1);
+    const btn = document.getElementById('next'); btn.disabled = true; btn.textContent = 'Enregistrement…';
     const { error } = await sb.from('members').update({ ...p, onboarded_at: new Date().toISOString() }).eq('id', S.me.id);
-    if (error) return fail(error, 'Enregistrement impossible');
+    if (error) { btn.disabled = false; btn.textContent = 'Commencer'; return ($e.textContent = `Enregistrement impossible : ${error.message}`); }
+    S.onbDraft = null; S.startTour = true;
     route();
+  };
+}
+// Garde les réponses quand on navigue entre les étapes de l'assistant.
+function snapshot(f) {
+  return {
+    values: Object.fromEntries([...f.querySelectorAll('input[name],select[name],textarea[name]')].filter((i) => !i.name.startsWith('z_')).map((i) => [i.name, i.value])),
+    pressed: [...f.querySelectorAll('[data-multi] .chip[aria-pressed=true]')].map((b) => `${b.closest('[data-multi]').dataset.multi}:${b.dataset.v}`),
+    zones: [...f.querySelectorAll('.zone')].map((z) => ({ zone: z.querySelector('[name=z_zone]').value, side: z.querySelector('[name=z_side]').value, type: z.querySelector('[name=z_type]').value, intensity: z.querySelector('[name=z_int]').value, avoid: z.querySelector('[name=z_avoid]').value })),
+  };
+}
+function restoreDraft(f, d) {
+  for (const [k, v] of Object.entries(d.values)) { const el = f.querySelector(`[name="${k}"]`); if (el) el.value = v; }
+  f.querySelectorAll('[data-multi] .chip').forEach((b) => b.setAttribute('aria-pressed', d.pressed.includes(`${b.closest('[data-multi]').dataset.multi}:${b.dataset.v}`)));
+  f.querySelectorAll('.swatch').forEach((b) => b.setAttribute('aria-pressed', b.dataset.color === d.values.color));
+  if (d.values.color) document.documentElement.style.setProperty('--me', colorHex(d.values.color));
+  f.querySelector('#zones').innerHTML = d.zones.map(zoneRow).join('');
+}
+
+// ---------- visite guidée ----------
+const TOUR = [
+  { tab: 'today', sel: '[data-tab=today]', title: 'Aujourd\'hui', text: 'Ta page d\'accueil : les séances du jour à cocher, le défi de pas à deux et un aperçu de vos repas. Les flèches en haut changent de jour.' },
+  { tab: 'today', sel: '.toggle:not([disabled])', title: 'Coche tes séances', text: 'Touche ton bouton quand la séance est faite. Tu vois aussi où en est ton ou ta partenaire.' },
+  { tab: 'meals', sel: '[data-tab=meals]', title: 'Repas', text: '3 idées par repas, adaptées à vos allergies. Touche une recette pour la choisir, « Voir la recette » pour les ingrédients et les étapes, puis « C\'est mangé ».' },
+  { tab: 'meals', sel: '[data-other]', title: 'On a mangé autre chose ?', text: 'Aucun souci : dis ce que vous avez mangé. Tu as un joker par semaine pour un repas plaisir.' },
+  { tab: 'defis', sel: '[data-tab=defis]', title: 'Défis', text: 'Paliers de pas, marche rapide, séries, points du mois et badges. Le barème complet est en bas de l\'écran.' },
+  { tab: 'track', sel: '[data-tab=track]', title: 'Suivi', text: 'Toutes vos données en Jour, Semaine ou Mois : pas, sommeil, poids, fréquence cardiaque… et « Saisir ma journée » pour tout noter à la main.' },
+  { tab: 'more', sel: '[data-tab=more]', title: 'Plus', text: 'Journal, programme, réglages du capitaine, montres, profil, compte, et le guide complet de l\'appli. Tu peux relancer cette visite quand tu veux.' },
+];
+async function startTour(i = 0) {
+  const st = TOUR[i];
+  if (!st) return endTour();
+  if (S.view !== st.tab) { S.view = st.tab; renderTabs(); await render(); }
+  document.querySelectorAll('.tour-hi').forEach((el) => el.classList.remove('tour-hi'));
+  document.getElementById('tour')?.remove();
+  const target = document.querySelector(st.sel) || document.querySelector(`[data-tab=${st.tab}]`);
+  target.classList.add('tour-hi');
+  if (target.closest('#tabs')) window.scrollTo(0, 0); else target.scrollIntoView({ block: 'center', behavior: 'instant' });
+  const r = target.getBoundingClientRect(); const below = r.top < window.innerHeight / 2;
+  const box = document.createElement('div'); box.id = 'tour'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', st.title);
+  box.innerHTML = `<div class="tour-card" style="${below ? `top:${Math.min(window.innerHeight - 220, r.bottom + 12)}px` : `bottom:${Math.max(12, window.innerHeight - r.top + 12)}px`}">
+    <div class="row between"><span class="small muted">${i + 1} / ${TOUR.length}</span><button class="link" id="tSkip">Passer</button></div>
+    <h3>${st.title}</h3><p class="small" style="margin:0">${st.text}</p>
+    <div class="row" style="justify-content:flex-end">${i ? '<button class="btn ghost sm" id="tPrev">Retour</button>' : ''}<button class="btn sm" id="tNext">${i === TOUR.length - 1 ? 'Terminer' : 'Suivant'}</button></div></div>`;
+  document.body.appendChild(box);
+  box.querySelector('#tNext').onclick = () => startTour(i + 1);
+  box.querySelector('#tPrev')?.addEventListener('click', () => startTour(i - 1));
+  box.querySelector('#tSkip').onclick = endTour;
+  box.querySelector('#tNext').focus();
+}
+function endTour() {
+  document.querySelectorAll('.tour-hi').forEach((el) => el.classList.remove('tour-hi'));
+  document.getElementById('tour')?.remove();
+  try { localStorage.setItem('tf_tour_done', '1'); } catch {}
+  sb.auth.updateUser({ data: { tour_done: true } }).catch(() => {});
+  go('today');
+}
+
+// ---------- guide ----------
+function viewGuide() {
+  const sec = (t, html, open = false) => `<details class="card white" ${open ? 'open' : ''}><summary class="title" style="cursor:pointer">${t}</summary><div class="small" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${html}</div></details>`;
+  $app.innerHTML = header('Guide de l\'appli', 'Tout ce qu\'il faut savoir, en bref.') + `<div class="wrap">
+    <button class="btn" id="replay">Relancer la visite guidée</button>
+    ${sec('Premiers pas', `<p>1. L'un de vous inscrit le tandem avec vos deux e-mails. 2. Chacun reçoit un lien, crée son mot de passe et remplit son profil. 3. Le capitaine crée le programme dans Plus, puis « Matériel et programme ». C'est tout !</p><p>Pour installer l'appli : dans Safari ou Chrome, touchez Partager, puis « Sur l'écran d'accueil ».</p>`, true)}
+    ${sec('Le capitaine', `<p>C'est la personne qui a inscrit le tandem. Elle coche le matériel disponible à la maison, choisit la durée (2 à 12 semaines), la date de début et la semaine où la course reprend. Le programme vaut pour vous deux, mais les exercices sont adaptés à chacun selon ses zones fragiles.</p><p>L'autre personne voit les réglages et peut envoyer des suggestions.</p>`)}
+    ${sec('Le programme', `<p>Lundi, mercredi et vendredi : renfo maison (échauffement au vélo si vous en avez un). Mardi et jeudi : marche active. Samedi : grande balade ou course douce. Dimanche : étirements. Chaque soir : 5 min de respiration.</p><p>Les séances s'allongent doucement au fil des semaines. Cochez-les dans « Aujourd'hui ». Si une séance ne passe pas, ce n'est pas grave : on reprend le lendemain.</p>`)}
+    ${sec('Les repas', `<p>Pour chaque midi et chaque soir : 3 idées de la même famille (même viande ou poisson, même type de plat). Le midi privilégie les plats qui se transportent en gamelle. Le vendredi soir, un plat plaisir fait maison.</p><p>« C'est mangé » valide le repas. « On a mangé autre chose » demande ce que vous avez mangé (pour vous deux ou pour toi seul). Un joker par semaine et par personne pour un repas plaisir, sans culpabilité.</p><p>Les recettes sont prévues pour 4 portions (2 repas pour vous deux, ou 1 repas et 2 gamelles) ; le sélecteur de portions recalcule les quantités.</p>`)}
+    ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
+    ${sec('Le suivi et les montres', `<p>Onglet Suivi : chaque mesure en Jour, Semaine ou Mois, avec comparaison à la période précédente. Tout peut se saisir à la main (« Saisir ma journée », « + Activité », « + Pesée »). Une saisie à la main remplace les chiffres de la montre pour ce jour-là.</p><p>Garmin : collez votre clé personnelle Garmin Connect dans Plus, puis « Montres et sources » : vos activités arrivent toutes seules. Apple Watch : un raccourci iPhone envoie pas, sommeil et fréquence cardiaque chaque soir.</p>`)}
+    ${sec('Les défis et les points', `<p>Jauge du jour à 4 paliers (2 500, 5 000, 7 500, 10 000 pas), marche rapide de 10 ou 20 min, séries de jours à 7 500 pas, défis à deux (20 000 pas par jour, 120 000 par semaine), points du mois et badges.</p><p>Barème : 1 pt par palier de pas · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max par jour) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</p>`)}
+    ${sec('Vos données', `<p>Elles sont hébergées en Europe (Supabase, Francfort) et ne sont visibles que par vous deux. Le journal est privé sauf si vous le partagez. Dans « Mon compte » : export de toutes tes données, changement de mot de passe et suppression définitive du compte.</p>`)}
+    ${sec('Questions fréquentes', `<p><b>Je n'ai pas reçu l'e-mail.</b> Regarde dans les spams, puis utilise « Mot de passe oublié » sur l'écran de connexion.</p><p><b>Mon ou ma partenaire ne s'est pas encore connecté.</b> Sur « Aujourd'hui », un bouton permet de renvoyer son lien.</p><p><b>Je n'ai pas de montre.</b> Tout se saisit à la main, les défis marchent aussi.</p><p><b>Une recette ne nous plaît pas.</b> Ajoute l'ingrédient dans « Ce que tu n'aimes pas » (Mon profil).</p>`)}
+    <h2>Un retour sur l'appli ?</h2>
+    <form id="fb" class="card white" novalidate>
+      <span class="small">Vous testez une version bêta : un bug, une idée, quelque chose de pas clair ? Dis-le-nous, ça nous aide énormément.</span>
+      <div class="chips">${[['bug', 'Un bug'], ['idee', 'Une idée'], ['autre', 'Autre']].map(([v, l], i) => `<button type="button" class="chip" data-kind="${v}" aria-pressed="${i === 0}">${l}</button>`).join('')}</div>
+      <textarea name="text" placeholder="Ce qui s'est passé, sur quel écran…"></textarea>
+      <p class="err" id="fberr" role="alert" style="margin:0"></p>
+      <button class="btn">Envoyer</button>
+    </form>
+  </div>`;
+  document.getElementById('replay').onclick = () => startTour(0);
+  const f = document.getElementById('fb');
+  f.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => { f.querySelectorAll('[data-kind]').forEach((x) => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); });
+  f.onsubmit = async (e) => {
+    e.preventDefault(); const text = f.text.value.trim(); const $e = document.getElementById('fberr');
+    if (!text) return ($e.textContent = 'Écris ton message.');
+    const kind = f.querySelector('[data-kind][aria-pressed=true]').dataset.kind;
+    const { error } = await sb.from('feedback').insert({ member_id: S.me.id, kind, text: text.slice(0, 2000), screen: navigator.userAgent.slice(0, 200) });
+    if (error) return ($e.textContent = `Envoi impossible : ${error.message}`);
+    f.text.value = ''; toast('Merci pour ton retour !');
   };
 }
 
@@ -423,12 +576,12 @@ const ICONS = {
 const TABS = [['today', 'Aujourd\'hui'], ['meals', 'Repas'], ['defis', 'Défis'], ['track', 'Suivi'], ['more', 'Plus']];
 function renderTabs() {
   $tabs.hidden = false;
-  $tabs.innerHTML = TABS.map(([id, l]) => `<button data-tab="${id}" ${S.view === id || (id === 'more' && ['program', 'settings', 'profile', 'account', 'sources', 'journal'].includes(S.view)) ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="${id === 'more' ? 'currentColor' : 'none'}" stroke="currentColor">${ICONS[id]}</svg>${l}</button>`).join('');
+  $tabs.innerHTML = TABS.map(([id, l]) => `<button data-tab="${id}" ${S.view === id || (id === 'more' && ['program', 'settings', 'profile', 'account', 'sources', 'journal', 'guide'].includes(S.view)) ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="${id === 'more' ? 'currentColor' : 'none'}" stroke="currentColor">${ICONS[id]}</svg>${l}</button>`).join('');
   $tabs.querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.tab));
 }
 function go(view) { S.view = view; renderTabs(); render(); window.scrollTo(0, 0); }
 async function render() {
-  const views = { today: viewToday, meals: viewMeals, journal: viewJournal, defis: viewChallenges, track: viewTrack, more: viewMore, program: viewProgram, settings: viewSettings, profile: viewProfile, account: viewAccount, sources: viewSources };
+  const views = { guide: viewGuide, today: viewToday, meals: viewMeals, journal: viewJournal, defis: viewChallenges, track: viewTrack, more: viewMore, program: viewProgram, settings: viewSettings, profile: viewProfile, account: viewAccount, sources: viewSources };
   try { await (views[S.view] || viewToday)(); } catch (e) { fail(e, 'Affichage impossible'); }
 }
 function header(title, sub = '', withDayNav = false) {
@@ -1122,7 +1275,7 @@ function weightChart(weights, people) {
 // ---------- Plus ----------
 function viewMore() {
   $app.innerHTML = header('Plus') + `<div class="wrap">
-    ${[['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Garmin, Apple Watch, saisie manuelle'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
+    ${[['guide', 'Guide de l\'appli', 'Tuto, visite guidée, FAQ et retours bêta'], ['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Garmin, Apple Watch, saisie manuelle'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
       .map(([v, t, s]) => `<button class="card" style="border:0;text-align:left;cursor:pointer" data-go="${v}"><span class="title">${t}</span><span class="muted">${s}</span></button>`).join('')}
   </div>`;
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
@@ -1147,6 +1300,15 @@ async function viewSettings() {
   const { data: sugg } = await sb.from('suggestions').select('*').eq('tandem_id', S.me.tandem_id).eq('done', false).order('created_at', { ascending: false });
   $app.innerHTML = header('Matériel et programme', capt ? 'Tu es le capitaine : tes réglages valent pour vous deux.' : `Réglé par ${esc(captainName)}. Tu peux lui faire des suggestions.`) + `
   <form id="s" class="wrap">
+    <details class="card" ${S.plan ? '' : 'open'}><summary class="title" style="cursor:pointer">Comment ça marche ?</summary>
+      <ul class="plain small" style="margin-top:8px">
+        <li><b>Matériel</b> : coche tout ce que vous avez à la maison. Le programme ne propose que des exercices faisables avec ce matériel (ou au poids du corps).</li>
+        <li><b>Durée</b> : de 2 à 12 semaines. Les séances deviennent un peu plus longues et plus intenses au fil des semaines.</li>
+        <li><b>Début</b> : toujours un lundi.</li>
+        <li><b>Course</b> : si « Course dehors » est cochée, choisis la semaine où elle reprend. Avant, le samedi reste une grande balade.</li>
+        <li><b>Santé</b> : les zones fragiles de chacun (dans « Mon profil ») retirent les exercices à risque, pour lui ou elle seulement.</li>
+        <li>Tu peux <b>régénérer</b> le programme à tout moment : les séances déjà cochées restent enregistrées.</li>
+      </ul></details>
     ${EQUIPMENT.map(([g, items]) => `<div class="card white"><h3>${g}</h3><div class="chips">${items.map(([v, l]) => `<button type="button" class="chip" data-eq="${v}" aria-pressed="${eq.has(v)}" ${capt ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>`).join('')}
     <div class="card white"><h3>Programme</h3>
       <span class="muted">Durée</span>
