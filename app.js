@@ -448,9 +448,10 @@ function weekLabel(d) {
 async function viewToday() {
   const d = S.day; const pd = planDay(d);
   const monday = mondayOf(d); const sunday = addDays(monday, 6);
-  const [{ data: checks }, { data: meals }] = await Promise.all([
+  const [{ data: checks }, { data: meals }, track] = await Promise.all([
     sb.from('checks').select('*').eq('tandem_id', S.me.tandem_id).gte('day', monday).lte('day', sunday),
     sb.from('meals').select('*').eq('tandem_id', S.me.tandem_id).eq('day', d),
+    loadTrackData(d, d),
   ]);
   const has = (mid, key, day = d) => (checks || []).some((c) => c.member_id === mid && c.session_key === key && c.day === day);
   const weekTotal = (() => { let n = 0; for (let i = 0; i < 7; i++) n += (planDay(addDays(monday, i))?.sessions || []).filter((s) => s.key !== 'respiration').length; return n; })();
@@ -460,6 +461,7 @@ async function viewToday() {
   <div class="wrap">
     ${S.partner && !S.partner.user_id ? `<div class="notice row between"><span>${esc(S.partner.first_name)} n'a pas encore rejoint le tandem.</span><button class="btn ghost sm" id="resend">Renvoyer le code</button></div>` : ''}
     ${weekTotal ? `<div class="grid2">${people.map((p) => `<div class="card"><span class="small">${esc(p.first_name)} · ${Math.min(doneBy(p.id), weekTotal)} / ${weekTotal} séances cette semaine</span><div class="bar" style="background:var(--line)"><div style="width:${Math.round(Math.min(1, doneBy(p.id) / weekTotal) * 100)}%;background:${colorHex(p.color)}"></div></div></div>`).join('')}</div>` : ''}
+    ${people.length === 2 ? duoBar(`Défi du jour : ${DAILY_DUO_GOAL.toLocaleString('fr-FR')} pas à deux`, DAILY_DUO_GOAL, people.map((p) => track.merged(p.id, d).steps), people) : ''}
     <h2>Sport du jour</h2>
     ${!S.plan ? `<div class="card"><span class="title">Pas encore de programme</span><span class="muted">${isCaptain() ? 'Règle le matériel et la durée, puis génère le programme.' : `${esc(S.partner?.first_name || 'Le capitaine')} règle le matériel et génère le programme.`}</span>${isCaptain() ? '<button class="btn" data-go="settings">Créer le programme</button>' : ''}</div>` : ''}
     ${(pd?.sessions || []).map((s) => `
@@ -635,86 +637,221 @@ async function viewJournal() {
 }
 
 // ---------- Suivi ----------
-async function viewTrack() {
-  const d = S.day; const monday = mondayOf(d); const sunday = addDays(monday, 6);
-  const people = [S.me, S.partner].filter(Boolean);
-  const [{ data: metrics }, { data: weights }, { data: acts }] = await Promise.all([
-    sb.from('daily_metrics').select('*').eq('tandem_id', S.me.tandem_id).gte('day', monday).lte('day', sunday),
-    sb.from('weights').select('*').eq('tandem_id', S.me.tandem_id).order('day'),
-    sb.from('activities').select('*').eq('tandem_id', S.me.tandem_id).gte('start_at', `${monday}T00:00:00`).lte('start_at', `${sunday}T23:59:59`).order('start_at'),
+const METRICS = {
+  pas: { label: 'Pas', unit: 'pas par jour', key: 'steps', goal: 8000, goalLabel: 'Objectif 8 000', short: (v) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace('.', ',')}k` : String(Math.round(v))), fmt: (v) => Math.round(v).toLocaleString('fr-FR') },
+  activite: { label: 'Activité', unit: 'minutes actives par jour', key: 'act', goal: 30, goalLabel: '30 min', short: (v) => `${Math.round(v)}`, fmt: (v) => `${Math.round(v)} min` },
+  sommeil: { label: 'Sommeil', unit: 'heures par nuit', key: 'sleep', goal: 7, goalLabel: '7 h', short: (v) => `${v.toFixed(1).replace('.', ',')}`, fmt: (v) => `${Math.floor(v)} h ${String(Math.round((v % 1) * 60)).padStart(2, '0')}` },
+  fc: { label: 'FC repos', unit: 'battements par minute', key: 'rhr', goal: null, short: (v) => `${Math.round(v)}`, fmt: (v) => `${Math.round(v)} bpm` },
+};
+const DAILY_DUO_GOAL = 20000;
+const WEEKLY_DUO_GOAL = 120000;
+
+// Données d'une période : une valeur par personne et par jour (la saisie manuelle prime sur la montre).
+async function loadTrackData(from, to) {
+  const [{ data: metrics }, { data: acts }] = await Promise.all([
+    sb.from('daily_metrics').select('*').eq('tandem_id', S.me.tandem_id).gte('day', from).lte('day', to),
+    sb.from('activities').select('*').eq('tandem_id', S.me.tandem_id).gte('start_at', new Date(`${from}T00:00:00`).toISOString()).lte('start_at', new Date(`${to}T23:59:59`).toISOString()).order('start_at'),
   ]);
-  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i));
-  // Une valeur par personne et par jour : la saisie manuelle prime, sinon la montre.
   const merged = (mid, day) => {
     const rows = (metrics || []).filter((m) => m.member_id === mid && m.day === day)
       .sort((a, b) => (a.source === 'manuel' ? -1 : 0) - (b.source === 'manuel' ? -1 : 0));
-    const out = {};
-    for (const k of ['steps', 'floors', 'rhr', 'hrv', 'stress', 'sleep_min', 'active_min']) out[k] = rows.map((r) => r[k]).find((v) => v != null) ?? null;
-    return out;
+    const o = {};
+    for (const k of ['steps', 'floors', 'rhr', 'hr_avg', 'hr_max', 'hrv', 'stress', 'sleep_min', 'active_min']) o[k] = rows.map((r) => r[k]).find((v) => v != null) ?? null;
+    const dayActs = (acts || []).filter((a) => a.member_id === mid && iso(new Date(a.start_at)) === day);
+    const actMin = dayActs.reduce((t, a) => t + (a.duration_min || 0), 0);
+    o.acts = dayActs;
+    o.act = dayActs.length || o.active_min != null ? Math.max(actMin, o.active_min || 0) : null;
+    o.sleep = o.sleep_min == null ? null : o.sleep_min / 60;
+    return o;
   };
-  const todayMine = (metrics || []).find((m) => m.member_id === S.me.id && m.day === d && m.source === 'manuel') || merged(S.me.id, d);
-  const avg = (mid, k) => { const v = days.map((day) => merged(mid, day)[k]).filter((x) => x != null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; };
-  const hm = (min) => (min == null ? '—' : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`);
-  const lastW = (mid) => [...(weights || [])].filter((w) => w.member_id === mid && w.kg != null).pop();
-  $app.innerHTML = header('Suivi', `Semaine du ${fmtDay(monday, { day: 'numeric', month: 'long' })}`, true) + `
-  <div class="wrap">
-    <h2>Pas</h2>
-    <div class="card white">${barChart(people.map((p) => ({ color: colorHex(p.color), values: days.map((day) => merged(p.id, day).steps) })), days, (v) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace('.', ',')}k` : String(v)), 8000, 'Objectif 8 000')}${legend(people)}</div>
-    <h2>Sommeil</h2>
-    <div class="card white">${barChart(people.map((p) => ({ color: colorHex(p.color), values: days.map((day) => { const m = merged(p.id, day).sleep_min; return m == null ? null : m / 60; }) })), days, (v) => `${v.toFixed(1).replace('.', ',')} h`, 7, '7 h')}${legend(people)}</div>
-    <h2>Fréquence cardiaque au repos</h2>
-    <div class="card white">${barChart(people.map((p) => ({ color: colorHex(p.color), values: days.map((day) => merged(p.id, day).rhr) })), days, (v) => String(Math.round(v)))}${legend(people)}</div>
-    <details class="card white" ${(metrics || []).some((m) => m.member_id === S.me.id && m.day === d) ? '' : 'open'}><summary class="title" style="cursor:pointer">Saisir ma journée à la main</summary>
-    <form id="m" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
-      <div class="grid2">
-        <label>Pas<input name="steps" inputmode="numeric" value="${esc(todayMine.steps)}"></label>
-        <label>Étages<input name="floors" inputmode="numeric" value="${esc(todayMine.floors)}"></label>
-        <label>Sommeil (h)<input name="sleep_h" inputmode="decimal" value="${todayMine.sleep_min != null ? (todayMine.sleep_min / 60).toFixed(1).replace('.', ',') : ''}"></label>
-        <label>FC au repos<input name="rhr" inputmode="numeric" value="${esc(todayMine.rhr)}"></label>
-        <label>Stress (0–100)<input name="stress" inputmode="numeric" value="${esc(todayMine.stress)}"></label>
-        <label>VFC (ms)<input name="hrv" inputmode="numeric" value="${esc(todayMine.hrv)}"></label>
-        <label>Minutes actives<input name="active_min" inputmode="numeric" value="${esc(todayMine.active_min)}"></label>
-      </div>
-      <button class="btn block">Enregistrer à la main</button>
-      <span class="muted small">Ce que tu saisis ici remplace les chiffres de la montre pour ce jour-là.</span>
-    </form></details>
-    <h2>Moyennes de la semaine</h2>
+  return { metrics: metrics || [], acts: acts || [], merged };
+}
+const mean = (arr) => { const v = arr.filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+const sumOf = (arr) => arr.filter((x) => x != null).reduce((a, b) => a + b, 0);
+
+function trackHeader(title, sub) {
+  const mode = S.trackMode || 'semaine';
+  return `<div class="hero"><div class="inner">
+    <div class="daynav"><button data-shift="-1" aria-label="Période précédente">‹</button><div style="text-align:center;flex:1"><small>${sub}</small></div><button data-shift="1" aria-label="Période suivante">›</button></div>
+    <div class="row between"><h1>${title}</h1>
+      <div class="row" role="tablist" style="gap:0;background:rgba(255,255,255,.18);border-radius:12px;padding:3px">${[['jour', 'Jour'], ['semaine', 'Semaine'], ['mois', 'Mois']].map(([k, l]) => `<button role="tab" data-mode="${k}" aria-selected="${mode === k}" style="min-height:36px;padding:0 12px;border:0;border-radius:9px;font-weight:600;cursor:pointer;background:${mode === k ? '#fff' : 'transparent'};color:${mode === k ? 'var(--ink)' : '#fff'}">${l}</button>`).join('')}</div>
+    </div></div></div>`;
+}
+function metricTabs() {
+  const m = S.trackMetric || 'pas';
+  return `<div class="chips" role="tablist">${Object.entries(METRICS).map(([k, x]) => `<button class="chip" role="tab" data-metric="${k}" aria-pressed="${m === k}">${x.label}</button>`).join('')}</div>`;
+}
+function duoBar(title, goal, vals, people) {
+  const total = sumOf(vals);
+  return `<div class="card white"><div class="row between"><span class="title">${esc(title)}</span><b>${Math.round(total).toLocaleString('fr-FR')}</b></div>
+    <div style="height:12px;border-radius:99px;background:var(--line);overflow:hidden;display:flex">${people.map((p, i) => `<div style="width:${Math.min(100, ((vals[i] || 0) / goal) * 100).toFixed(1)}%;background:${colorHex(p.color)}"></div>`).join('')}</div>
+    <span class="small muted">${total >= goal ? 'Défi réussi, bravo à vous deux !' : `Encore ${Math.round(goal - total).toLocaleString('fr-FR')} pas à vous deux.`}${vals.every((v) => v != null) && vals.length === 2 ? ` ${vals[0] === vals[1] ? 'Égalité parfaite.' : `${esc((vals[0] > vals[1] ? people[0] : people[1]).first_name)} mène de ${Math.abs(Math.round(vals[0] - vals[1])).toLocaleString('fr-FR')} pas.`}` : ''}</span></div>`;
+}
+
+async function viewTrack() {
+  S.trackMode = S.trackMode || 'semaine'; S.trackMetric = S.trackMetric || 'pas';
+  const mode = S.trackMode; const people = [S.me, S.partner].filter(Boolean);
+  if (mode === 'jour') return viewTrackDay(people);
+  if (mode === 'mois') return viewTrackMonth(people);
+  return viewTrackWeek(people);
+}
+function bindTrackNav(step) {
+  $app.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { S.trackMode = b.dataset.mode; viewTrack(); });
+  $app.querySelectorAll('[data-metric]').forEach((b) => b.onclick = () => { S.trackMetric = b.dataset.metric; viewTrack(); });
+  $app.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => { S.day = addDays(S.day, Number(b.dataset.shift) * step); viewTrack(); });
+  document.getElementById('manual')?.addEventListener('click', () => manualDayForm(S.day));
+  document.getElementById('addAct')?.addEventListener('click', () => activityForm(null, S.day));
+}
+
+async function viewTrackDay(people) {
+  const d = S.day;
+  const { merged } = await loadTrackData(d, d);
+  const v = people.map((p) => merged(p.id, d));
+  const cell = (fn) => v.map((x) => `<td>${fn(x) ?? '—'}</td>`).join('');
+  const hm = (min) => (min == null ? null : `${Math.floor(min / 60)} h ${String(Math.round(min % 60)).padStart(2, '0')}`);
+  $app.innerHTML = trackHeader('Suivi', esc(cap(fmtDay(d)))) + `<div class="wrap">
+    ${duoBar(`Objectif commun : ${DAILY_DUO_GOAL.toLocaleString('fr-FR')} pas`, DAILY_DUO_GOAL, v.map((x) => x.steps), people)}
     <div class="card white"><table class="mini"><tr><th></th>${people.map((p) => `<th style="color:${colorHex(p.color)}">${esc(p.first_name)}</th>`).join('')}</tr>
-      <tr><td>Pas / jour</td>${people.map((p) => `<td>${avg(p.id, 'steps')?.toLocaleString('fr-FR') ?? '—'}</td>`).join('')}</tr>
-      <tr><td>Sommeil</td>${people.map((p) => `<td>${hm(avg(p.id, 'sleep_min'))}</td>`).join('')}</tr>
-      <tr><td>FC repos</td>${people.map((p) => `<td>${avg(p.id, 'rhr') ?? '—'}</td>`).join('')}</tr>
-      <tr><td>Stress</td>${people.map((p) => `<td>${avg(p.id, 'stress') ?? '—'}</td>`).join('')}</tr>
-      <tr><td>Activités</td>${people.map((p) => `<td>${(acts || []).filter((a) => a.member_id === p.id).length}</td>`).join('')}</tr>
+      <tr><td>Pas</td>${cell((x) => x.steps?.toLocaleString('fr-FR'))}</tr>
+      <tr><td>Étages</td>${cell((x) => x.floors)}</tr>
+      <tr><td>FC au repos</td>${cell((x) => (x.rhr != null ? `${x.rhr} bpm` : null))}</tr>
+      <tr><td>FC moy. / max</td>${cell((x) => (x.hr_avg != null || x.hr_max != null ? `${x.hr_avg ?? '—'} / ${x.hr_max ?? '—'}` : null))}</tr>
+      <tr><td>Stress / VFC</td>${cell((x) => [x.stress != null ? `Stress ${x.stress}` : '', x.hrv != null ? `VFC ${x.hrv} ms` : ''].filter(Boolean).join(' · ') || null)}</tr>
+      <tr><td>Sommeil</td>${cell((x) => hm(x.sleep_min))}</tr>
+      <tr><td>Activité</td>${cell((x) => (x.acts.length ? x.acts.map((a) => `${esc(a.type)}${a.duration_min ? ` ${a.duration_min} min` : ''}`).join('<br>') : (x.active_min != null ? `${x.active_min} min` : null)))}</tr>
     </table></div>
-    <div class="row between"><h2>Activités</h2><button class="btn ghost sm" id="addAct">+ Ajouter</button></div>
-    ${(acts || []).map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}${a.source !== 'manuel' ? ` <span class="pill">${esc({ garmin: 'Garmin', apple: 'Apple' }[a.source] || a.source)}</span>` : ''}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(a.start_at.slice(0, 10), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${String(a.distance_km).replace('.', ',')} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}${a.kcal ? ` · ${a.kcal} kcal` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
+    <div class="row" style="flex-wrap:wrap"><button class="btn" id="manual">Saisir ma journée à la main</button><button class="btn ghost" id="addAct">+ Activité</button></div>
+    <span class="small muted">Pas de montre ? Pas, étages, fréquence cardiaque, sommeil et séances se saisissent à la main.</span>
+  </div>`;
+  bindTrackNav(1);
+}
+
+async function viewTrackWeek(people) {
+  const monday = mondayOf(S.day); const sunday = addDays(monday, 6); const prevMon = addDays(monday, -7);
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i));
+  const prevDays = days.map((x) => addDays(x, -7));
+  const M = METRICS[S.trackMetric];
+  const [{ merged, acts }, { data: weights }, { data: checks }] = await Promise.all([
+    loadTrackData(prevMon, sunday),
+    sb.from('weights').select('*').eq('tandem_id', S.me.tandem_id).order('day'),
+    sb.from('checks').select('member_id,day,session_key').eq('tandem_id', S.me.tandem_id).gte('day', monday).lte('day', sunday),
+  ]);
+  const series = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
+  const planned = days.reduce((t, x) => t + (planDay(x)?.sessions || []).filter((s) => s.key !== 'respiration').length, 0);
+  const done = (mid) => (checks || []).filter((c) => c.member_id === mid && c.session_key !== 'respiration').length;
+  const delta = (p, i) => {
+    const cur = mean(series[i]); const prev = mean(prevDays.map((x) => merged(p.id, x)[M.key]));
+    if (cur == null || prev == null || prev === 0) return '';
+    if (M.key === 'steps') return `${cur >= prev ? '+' : ''}${Math.round(((cur - prev) / prev) * 100)} % vs semaine précédente`;
+    const dlt = cur - prev;
+    if (M.key === 'sleep') return `${dlt >= 0 ? '+' : '−'}${Math.round(Math.abs(dlt) * 60)} min vs semaine précédente`;
+    return `${dlt >= 0 ? '+' : '−'}${Math.round(Math.abs(dlt))} ${M.key === 'rhr' ? 'bpm' : 'min'} vs semaine précédente`;
+  };
+  const stepsWeek = people.map((p) => sumOf(days.map((x) => merged(p.id, x).steps)));
+  const pd = planDay(monday);
+  const lastW = (mid) => [...(weights || [])].filter((w) => w.member_id === mid && w.kg != null).pop();
+  const weekActs = acts.filter((a) => a.start_at >= new Date(`${monday}T00:00:00`).toISOString());
+  $app.innerHTML = trackHeader('Suivi', `${pd ? `Semaine ${pd.week} · ` : ''}${fmtDay(monday, { day: 'numeric', month: 'short' })} au ${fmtDay(sunday, { day: 'numeric', month: 'short' })}`) + `<div class="wrap">
+    ${metricTabs()}
+    <div class="card white">${barChart(people.map((p, i) => ({ color: colorHex(p.color), values: series[i] })), days, M.fmt, M.goal, M.goalLabel)}
+      <div class="row between">${legend(people)}<span class="small muted">${M.unit}</span></div></div>
+    <div class="grid2">${people.map((p, i) => { const a = mean(series[i]); return `<div class="card stat" style="border-top:3px solid ${colorHex(p.color)}"><span class="small muted">${esc(p.first_name)} · moyenne</span><b>${a == null ? '—' : esc(M.fmt(a))}</b><span class="small muted">${esc(delta(p, i))}</span>${planned ? `<span class="small">Séances : ${Math.min(done(p.id), planned)} / ${planned}</span>` : ''}</div>`; }).join('')}</div>
+    ${duoBar(`Défi à deux : ${WEEKLY_DUO_GOAL.toLocaleString('fr-FR')} pas`, WEEKLY_DUO_GOAL, stepsWeek, people)}
+    <div class="row between"><h2>Activités</h2><div class="row"><button class="btn ghost sm" id="manual">Saisir un jour</button><button class="btn ghost sm" id="addAct">+ Activité</button></div></div>
+    ${weekActs.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}${a.source !== 'manuel' ? ` <span class="pill">${esc({ garmin: 'Garmin', apple: 'Apple' }[a.source] || a.source)}</span>` : ''}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${String(a.distance_km).replace('.', ',')} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}${a.kcal ? ` · ${a.kcal} kcal` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
     <div class="row between"><h2>Poids</h2><div class="row"><button class="btn ghost sm" id="histW">Historique</button><button class="btn ghost sm" id="addW">+ Pesée</button></div></div>
     <div class="grid2">${people.map((p) => { const w = lastW(p.id); const diff = w && p.start_weight ? (w.kg - p.start_weight).toFixed(1) : null; return `<div class="card stat"><span class="small" style="color:${colorHex(p.color)};font-weight:600">${esc(p.first_name)}</span><b>${w ? `${String(w.kg).replace('.', ',')} kg` : '—'}</b><span class="muted small">${diff != null ? `${diff > 0 ? '+' : ''}${diff.replace('.', ',')} kg depuis le départ` : ''}${p.goal_weight ? ` · objectif ${String(p.goal_weight).replace('.', ',')}` : ''}</span></div>`; }).join('')}</div>
     ${people.map((p) => `<div class="card white"><span class="small" style="font-weight:600;color:${colorHex(p.color)}">${esc(p.first_name)}</span>${weightChart((weights || []).filter((w) => w.member_id === p.id), [p])}</div>`).join('')}
   </div>`;
-  bindDayNav();
-  document.getElementById('m').onsubmit = async (e) => {
-    e.preventDefault(); const v = formData(e.target);
+  bindTrackNav(7);
+  $app.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => activityForm(weekActs.find((x) => x.id === el.dataset.act), S.day));
+  document.getElementById('histW').onclick = () => weightHistory(weights || []);
+  document.getElementById('addW').onclick = () => weightForm();
+}
+
+async function viewTrackMonth(people) {
+  const end = S.day; const start = addDays(end, -29);
+  const days = Array.from({ length: 30 }, (_, i) => addDays(start, i));
+  const M = METRICS[S.trackMetric];
+  const { merged } = await loadTrackData(start, end);
+  const series = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
+  $app.innerHTML = trackHeader('Suivi', `30 jours · ${fmtDay(start, { day: 'numeric', month: 'short' })} au ${fmtDay(end, { day: 'numeric', month: 'short' })}`) + `<div class="wrap">
+    ${metricTabs()}
+    <div class="card white">${lineChart(people.map((p, i) => ({ color: colorHex(p.color), values: series[i] })), days, M)}
+      <div class="row between">${legend(people)}<span class="small muted">${M.unit} · trait épais = moyenne sur 7 jours</span></div></div>
+    <div class="grid2">${people.map((p, i) => { const a = mean(series[i]); const best = series[i].filter((x) => x != null); return `<div class="card stat" style="border-top:3px solid ${colorHex(p.color)}"><span class="small muted">${esc(p.first_name)} · moyenne 30 j</span><b>${a == null ? '—' : esc(M.fmt(a))}</b><span class="small muted">${best.length ? `${M.key === 'rhr' ? 'Plus bas' : 'Record'} : ${esc(M.fmt(M.key === 'rhr' ? Math.min(...best) : Math.max(...best)))}` : ''} · ${best.length} jour(s) renseigné(s)</span></div>`; }).join('')}</div>
+  </div>`;
+  bindTrackNav(30);
+}
+
+function lineChart(series, days, M) {
+  const all = series.flatMap((s) => s.values).filter((v) => v != null);
+  if (!all.length) return '<span class="muted">Pas encore de données sur cette période.</span>';
+  const W = 330, H = 190, top = 14, bottom = 24, left = 30, right = 6;
+  let lo = Math.min(...all, M.goal ?? Infinity), hi = Math.max(...all, M.goal ?? -Infinity);
+  if (M.key !== 'rhr') lo = 0;
+  const pad = (hi - lo) * 0.1 || 1; hi += pad; if (M.key === 'rhr') lo -= pad;
+  const X = (i) => left + (i / (days.length - 1)) * (W - left - right);
+  const Y = (v) => top + (1 - (v - lo) / (hi - lo)) * (H - top - bottom);
+  let out = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" style="height:200px">`;
+  for (const t of [lo, (lo + hi) / 2, hi]) out += `<line x1="${left}" x2="${W - right}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="#E3E6EB"/><text x="${left - 4}" y="${(Y(t) + 3).toFixed(1)}" font-size="9" fill="#5E6573" text-anchor="end">${esc(M.short(t))}</text>`;
+  if (M.goal != null) out += `<line x1="${left}" x2="${W - right}" y1="${Y(M.goal).toFixed(1)}" y2="${Y(M.goal).toFixed(1)}" stroke="#A9B0BC" stroke-dasharray="4 4"/>`;
+  for (const s of series) {
+    const pts = s.values.map((v, i) => (v == null ? null : [X(i), Y(v)]));
+    out += pts.filter(Boolean).map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2" fill="${s.color}" opacity=".55"/>`).join('');
+    const ma = s.values.map((_, i) => mean(s.values.slice(Math.max(0, i - 6), i + 1)));
+    const path = ma.map((v, i) => (v == null ? null : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`)).filter(Boolean);
+    if (path.length > 1) out += `<polyline fill="none" stroke="${s.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${path.join(' ')}"/>`;
+  }
+  [0, Math.floor((days.length - 1) / 2), days.length - 1].forEach((i) => { out += `<text x="${X(i).toFixed(1)}" y="${H - 6}" font-size="10" fill="#5E6573" text-anchor="${i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'}">${esc(fmtDay(days[i], { day: 'numeric', month: 'short' }))}</text>`; });
+  return out + '</svg>';
+}
+
+async function manualDayForm(day) {
+  const { data } = await sb.from('daily_metrics').select('*').eq('member_id', S.me.id).eq('day', day).eq('source', 'manuel').maybeSingle();
+  const m = data || {};
+  openModal(`<div class="row between"><h2>Ma journée</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    <span class="muted">${esc(cap(fmtDay(day)))} · ce que tu saisis remplace les chiffres de la montre pour ce jour-là.</span>
+    <form id="m" style="display:flex;flex-direction:column;gap:10px" novalidate>
+      <label>Jour<input name="day" type="date" value="${day}"></label>
+      <div class="grid2">
+        <label>Pas<input name="steps" inputmode="numeric" value="${esc(m.steps)}"></label>
+        <label>Étages<input name="floors" inputmode="numeric" value="${esc(m.floors)}"></label>
+        <label>Sommeil (h)<input name="sleep_h" inputmode="decimal" value="${m.sleep_min != null ? (m.sleep_min / 60).toFixed(1).replace('.', ',') : ''}"></label>
+        <label>Minutes actives<input name="active_min" inputmode="numeric" value="${esc(m.active_min)}"></label>
+        <label>FC au repos<input name="rhr" inputmode="numeric" value="${esc(m.rhr)}"></label>
+        <label>FC moyenne<input name="hr_avg" inputmode="numeric" value="${esc(m.hr_avg)}"></label>
+        <label>FC max<input name="hr_max" inputmode="numeric" value="${esc(m.hr_max)}"></label>
+        <label>Stress (0–100)<input name="stress" inputmode="numeric" value="${esc(m.stress)}"></label>
+        <label>VFC (ms)<input name="hrv" inputmode="numeric" value="${esc(m.hrv)}"></label>
+      </div>
+      <p class="err" id="merr" role="alert" style="margin:0"></p>
+      <button class="btn block">Enregistrer</button>
+    </form>`, (root) => root.querySelector('#m').onsubmit = async (e) => {
+    e.preventDefault(); const v = formData(e.target); const $e = root.querySelector('#merr');
     const sleep = num(v.sleep_h);
+    const checks = [[int(v.steps), 0, 200000, 'Pas'], [sleep, 0, 24, 'Sommeil'], [int(v.rhr), 25, 200, 'FC au repos'], [int(v.stress), 0, 100, 'Stress'], [int(v.active_min), 0, 1440, 'Minutes actives']];
+    for (const [val, lo, hi, l] of checks) if (val != null && (Number.isNaN(val) || val < lo || val > hi)) return ($e.textContent = `${l} : valeur entre ${lo} et ${hi.toLocaleString('fr-FR')}.`);
     const { error } = await sb.from('daily_metrics').upsert({
-      member_id: S.me.id, tandem_id: S.me.tandem_id, day: d, source: 'manuel',
-      steps: int(v.steps), floors: int(v.floors), rhr: int(v.rhr), stress: int(v.stress), hrv: int(v.hrv), active_min: int(v.active_min),
+      member_id: S.me.id, tandem_id: S.me.tandem_id, day: v.day || day, source: 'manuel',
+      steps: int(v.steps), floors: int(v.floors), rhr: int(v.rhr), hr_avg: int(v.hr_avg), hr_max: int(v.hr_max), stress: int(v.stress), hrv: int(v.hrv), active_min: int(v.active_min),
       sleep_min: sleep != null ? Math.round(sleep * 60) : null, updated_at: new Date().toISOString(),
     });
-    if (error) return fail(error, 'Enregistrement impossible'); toast('Journée enregistrée'); viewTrack();
-  };
-  document.getElementById('addAct').onclick = () => activityForm(null, d);
-  $app.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => activityForm((acts || []).find((x) => x.id === el.dataset.act), d));
-  document.getElementById('histW').onclick = () => weightHistory(weights || []);
-  document.getElementById('addW').onclick = () => openModal(`
-    <h2>Pesée</h2>
-    <form id="w" style="display:flex;flex-direction:column;gap:12px">
-      <div class="grid2"><label>Date<input name="date" type="date" value="${today()}"></label><label>Poids (kg)<input name="kg" inputmode="decimal" required></label></div>
+    if (error) return ($e.textContent = `Enregistrement impossible : ${error.message}`);
+    closeModal(); toast('Journée enregistrée'); viewTrack();
+  });
+}
+function weightForm() {
+  openModal(`<h2>Pesée</h2>
+    <form id="w" style="display:flex;flex-direction:column;gap:12px" novalidate>
+      <div class="grid2"><label>Date<input name="date" type="date" value="${today()}"></label><label>Poids (kg)<input name="kg" inputmode="decimal"></label></div>
       <label>Tour de taille (cm, facultatif)<input name="waist" inputmode="decimal"></label>
+      <p class="err" id="werr" role="alert" style="margin:0"></p>
       <div class="grid2"><button type="button" class="btn ghost" data-close>Annuler</button><button class="btn">Enregistrer</button></div>
     </form>`, (root) => root.querySelector('#w').onsubmit = async (e) => {
-    e.preventDefault(); const v = formData(e.target);
-    const { error } = await sb.from('weights').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, day: v.date, kg: num(v.kg), waist_cm: num(v.waist) });
+    e.preventDefault(); const v = formData(e.target); const kg = num(v.kg);
+    if (kg == null || Number.isNaN(kg) || kg < 30 || kg > 300) return (root.querySelector('#werr').textContent = 'Indique un poids entre 30 et 300 kg.');
+    const { error } = await sb.from('weights').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, day: v.date || today(), kg, waist_cm: num(v.waist) });
     if (error) return fail(error, 'Enregistrement impossible'); closeModal(); viewTrack();
   });
 }
