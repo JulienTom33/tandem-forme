@@ -110,7 +110,7 @@ function draw(name, t, color) {
 export const hasAnim = (name) => !!ANIMS[name];
 export function animSvg(name) {
   const n = name.replace(/"/g, '&quot;');
-  return `<div style="position:relative;max-width:320px;margin:0 auto;width:100%">
+  return `<div style="position:relative;max-width:260px;margin:0 auto;width:100%">
     <svg class="ex-anim" data-anim="${n}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Animation de l'exercice ${n}" style="width:100%;display:block;background:#F3F5F8;border-radius:12px;cursor:pointer"></svg>
     <button type="button" class="anim-toggle" aria-label="Mettre l'animation en pause" style="position:absolute;right:8px;top:8px;border:0;border-radius:99px;min-width:36px;min-height:36px;background:rgba(255,255,255,.9);font-size:14px;cursor:pointer">❚❚</button></div>`;
 }

@@ -40,7 +40,7 @@ function fail(err, fallback = 'Une erreur est survenue') {
   console.error(err); toast(err?.message ? `${fallback} : ${err.message}` : fallback);
 }
 function openModal(html, onMount) {
-  $modal.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  $modal.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-bar"><span class="grab" aria-hidden="true"></span><button type="button" class="sheet-close" data-close aria-label="Fermer">✕</button></div>${html}</div>`;
   $modal.hidden = false;
   $modal.onclick = (e) => { if (e.target === $modal || e.target.closest('[data-close]')) closeModal(); };
   onMount && onMount($modal.querySelector('.sheet'));
@@ -788,7 +788,7 @@ async function showRecipe(id, portions) {
   const al = (S.allergenMap[id]?.allergens || []).map((a) => (ALLERGENS.find((x) => x[0] === a) || [a, a])[1]);
   const nu = full?.nutrition;
   openModal(`
-    <div class="row between" style="align-items:flex-start"><h2>${esc(r?.name)}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    <div class="row between" style="align-items:flex-start"><h2>${esc(r?.name)}</h2></div>
     <div class="row" style="flex-wrap:wrap;gap:8px">
       ${full?.prep_min != null ? `<span class="pill">Préparation ${full.prep_min} min</span>` : ''}
       ${full?.cook_min ? `<span class="pill">Cuisson ${full.cook_min >= 60 ? `${Math.floor(full.cook_min / 60)} h ${String(full.cook_min % 60).padStart(2, '0')}` : `${full.cook_min} min`}</span>` : ''}
@@ -1085,7 +1085,7 @@ function lineChart(series, days, M) {
 async function manualDayForm(day) {
   const { data } = await sb.from('daily_metrics').select('*').eq('member_id', S.me.id).eq('day', day).eq('source', 'manuel').maybeSingle();
   const m = data || {};
-  openModal(`<div class="row between"><h2>Ma journée</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+  openModal(`<div class="row between"><h2>Ma journée</h2></div>
     <span class="muted">Ce que tu saisis ici remplace les chiffres de la montre pour ce jour-là.</span>
     <form id="m" style="display:flex;flex-direction:column;gap:10px" novalidate>
       <label>Jour<input name="day" type="date" value="${day}"></label>
@@ -1244,7 +1244,7 @@ function activityForm(a, day) {
   const time = a ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}` : '18:00';
   const known = !a || ACT_TYPES.includes(a.type);
   openModal(`
-    <div class="row between"><h2>${isNew ? 'Nouvelle activité' : 'Modifier l\'activité'}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+    <div class="row between"><h2>${isNew ? 'Nouvelle activité' : 'Modifier l\'activité'}</h2></div>
     <form id="a" style="display:flex;flex-direction:column;gap:12px" novalidate>
       <label>Type<select name="type">${ACT_TYPES.map((t) => `<option ${(a?.type === t || (!known && t === 'Autre')) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
       <label>Précision (facultatif)<input name="label" value="${esc(known ? '' : a.type)}" placeholder="ex. sortie longue, circuit jambes"></label>
@@ -1284,7 +1284,7 @@ function activityForm(a, day) {
 }
 function weightHistory(weights) {
   const mine = weights.filter((w) => w.member_id === S.me.id).sort((x, y) => (x.day < y.day ? 1 : -1));
-  openModal(`<div class="row between"><h2>Mes pesées</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+  openModal(`<div class="row between"><h2>Mes pesées</h2></div>
     ${mine.length ? `<table class="mini">${mine.map((w) => `<tr><td>${esc(fmtDay(w.day, { day: 'numeric', month: 'short', year: 'numeric' }))}</td><td>${w.kg != null ? `${String(w.kg).replace('.', ',')} kg` : '—'}</td><td>${w.waist_cm != null ? `${String(w.waist_cm).replace('.', ',')} cm` : ''}</td><td style="text-align:right"><button class="link" data-delw="${w.day}" style="color:var(--danger)">Supprimer</button></td></tr>`).join('')}</table>` : '<span class="muted">Aucune pesée pour l\'instant.</span>'}
     <span class="small muted">Pour corriger une pesée, ajoute-en une nouvelle à la même date : elle remplace l'ancienne.</span>`, (root) => {
     root.querySelectorAll('[data-delw]').forEach((b) => b.onclick = async () => {
@@ -1366,7 +1366,7 @@ function viewProgram() {
 // Détail d'une journée du programme : chaque séance avec ses exercices.
 function showDay(day) {
   const pd = planDay(day); if (!pd) return;
-  openModal(`<div class="row between"><h2>${esc(cap(fmtDay(day)))}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+  openModal(`<div class="row between"><h2>${esc(cap(fmtDay(day)))}</h2></div>
     ${pd.sessions.map((s, i) => `<button class="card" data-si="${i}" style="border:0;text-align:left;cursor:pointer"><span class="title">${esc(s.title)}</span><span class="small muted">${esc(s.detail)}</span><span class="small" style="color:var(--me)">Comment faire ›</span></button>`).join('')}`, (root) => {
     root.querySelectorAll('[data-si]').forEach((b) => b.onclick = () => showSession(pd.sessions[Number(b.dataset.si)]));
   });
@@ -1385,7 +1385,7 @@ function exerciseHtml(name, open = false) {
     </div></details>`;
 }
 function showExercise(name) {
-  openModal(`<div class="row between"><h2>Exercice</h2><button class="btn ghost sm" data-close>Fermer</button></div>${exerciseHtml(name, true)}`);
+  openModal(`<div class="row between"><h2>Exercice</h2></div>${exerciseHtml(name, true)}`);
   startAnims(meColor());
 }
 function showSession(s) {
@@ -1394,7 +1394,7 @@ function showSession(s) {
   const people = [S.me, S.partner].filter(Boolean);
   const mine = s.per?.[S.me.id] || (S.partner && s.per?.[S.partner.id]) || [];
   const theirs = S.partner && s.per?.[S.partner.id] ? s.per[S.partner.id].filter((n) => !mine.includes(n)) : [];
-  openModal(`<div class="row between"><h2>${esc(s.title)}</h2><button class="btn ghost sm" data-close>Fermer</button></div>
+  openModal(`<div class="row between"><h2>${esc(s.title)}</h2></div>
     <div class="card"><span class="title">Au programme</span><span class="small">${esc(s.detail)}</span></div>
     ${info.intro ? `<p class="small" style="margin:0">${esc(info.intro)}</p>` : ''}
     ${info.tips ? `<ul class="plain small">${info.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
