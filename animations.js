@@ -37,6 +37,10 @@ export const ANIMS = {
   'Pallof press élastique': { a: { ...STAND, ua: 25, fa: 160, th1: 8, th2: -8 }, b: { ...STAND, ua: 92, fa: 92, th1: 8, th2: -8 }, prop: 'band-side' },
   'Planche bras tendus': { a: { ...LIE, t: 100, ua: 0, fa: 0, th1: -80, sh1: -80, th2: -80, sh2: -80 }, b: { ...LIE, t: 101, ua: 0, fa: 0, th1: -79, sh1: -79, th2: -79, sh2: -79 }, still: true },
   'Superman allongé sur le ventre': { a: { ...LIE, t: 90, ua: 90, fa: 90, th1: -90, sh1: -90, th2: -90, sh2: -90 }, b: { ...LIE, t: 82, ua: 100, fa: 100, th1: -82, sh1: -82, th2: -82, sh2: -82 } },
+  'Pompes sur les genoux': { a: { ...LIE, t: 110, ua: 0, fa: 0, th1: -70, sh1: -90, th2: -70, sh2: -90 }, b: { ...LIE, t: 100, ua: -60, fa: 40, th1: -80, sh1: -90, th2: -80, sh2: -90 } },
+  'Pompes classiques': { a: { ...LIE, t: 100, ua: 0, fa: 0, th1: -80, sh1: -80, th2: -80, sh2: -80 }, b: { ...LIE, t: 93, ua: -60, fa: 40, th1: -87, sh1: -87, th2: -87, sh2: -87 } },
+  'Squat sauté': { a: { ...STAND, jump: 0, t: 145, ua: -30, fa: -30, th1: 85, sh1: -20, th2: 85, sh2: -20 }, b: { ...STAND, ua: 170, fa: 170, jump: 1 }, speed: 1.3 },
+  'Gainage latéral': { a: { ...LIE, t: 110, ua: 0, fa: 90, th1: -70, sh1: -70, th2: -70, sh2: -70 }, b: { ...LIE, t: 112, ua: 0, fa: 90, th1: -68, sh1: -68, th2: -68, sh2: -68 }, still: true },
   'Respiration ventrale allongé, jambes fléchies': { a: { ...LIE, t: -90, ua: 90, fa: 90, th1: 140, sh1: 15, th2: 140, sh2: 15, belly: 0 }, b: { ...LIE, t: -90, ua: 90, fa: 90, th1: 140, sh1: 15, th2: 140, sh2: 15, belly: 1 }, speed: 0.45, breath: true },
 };
 
@@ -60,6 +64,7 @@ function solve(p) {
     dy = GROUND - Math.max(...ys); dx = 100 - hip[0];
   }
   for (const k of Object.keys(pts)) if (pts[k]) pts[k] = [pts[k][0] + dx, pts[k][1] + dy];
+  if (p.jump) { const up = 22 * p.jump; for (const k of Object.keys(pts)) if (pts[k]) pts[k] = [pts[k][0], pts[k][1] - up]; }
   if (p.lift) { // montée sur la marche : le pied avant se pose dessus et le corps s'élève
     const f = p.lift; const rise = 16 * f;
     for (const k of ['hip', 'sh', 'head', 'el', 'wr']) pts[k] = [pts[k][0] + 10 * f, pts[k][1] - rise];

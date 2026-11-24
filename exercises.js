@@ -152,6 +152,30 @@ export const EXERCISES = {
     easier: 'Décolle seulement les bras, ou seulement les jambes.',
     muscles: 'Bas du dos, fessiers, haut du dos', video: 'exercice superman lombaires débutant',
   },
+  'Pompes sur les genoux': {
+    how: ['Mains au sol un peu plus larges que les épaules, genoux posés, pieds en l\'air.', 'Le corps forme une ligne droite des genoux à la tête.', 'Plie les coudes pour descendre la poitrine près du sol.', 'Repousse pour revenir bras tendus.'],
+    keys: ['Ne creuse pas le dos, serre les fesses.', 'Coudes à environ 45° du corps, pas écartés à l\'horizontale.'],
+    easier: 'Reviens aux pompes contre une table.',
+    muscles: 'Pectoraux, triceps, épaules', video: 'pompes sur les genoux technique',
+  },
+  'Pompes classiques': {
+    how: ['Mains au sol un peu plus larges que les épaules, sur la pointe des pieds, corps gainé.', 'Descends la poitrine jusqu\'à quelques centimètres du sol.', 'Repousse jusqu\'à bras tendus.'],
+    keys: ['Le corps reste une planche du début à la fin.', 'Souffle en poussant.'],
+    easier: 'Pompes sur les genoux.',
+    muscles: 'Pectoraux, triceps, épaules, gainage', video: 'pompes classiques bonne technique',
+  },
+  'Squat sauté': {
+    how: ['Descends en squat, bras en arrière.', 'Pousse fort dans les jambes pour sauter, bras vers le haut.', 'Réceptionne-toi en douceur, genoux fléchis, et enchaîne directement le squat suivant.'],
+    keys: ['Atterris sur l\'avant du pied puis le talon, sans bruit.', 'Les genoux restent dans l\'axe des pieds.'],
+    easier: 'Squat classique avec montée sur la pointe des pieds.',
+    muscles: 'Cuisses, fessiers, cardio', video: 'squat sauté technique',
+  },
+  'Gainage latéral': {
+    how: ['Sur le côté, appuyé sur l\'avant-bras (coude sous l\'épaule), jambes tendues, pieds l\'un sur l\'autre.', 'Soulève les hanches pour aligner chevilles, hanches et épaules.', 'Tiens de chaque côté.'],
+    keys: ['Les hanches ne tombent pas et ne partent pas en arrière.'],
+    easier: 'Gainage latéral sur les genoux.',
+    muscles: 'Obliques, gainage, épaules', video: 'gainage latéral planche côté',
+  },
 };
 
 // Routine de gainage : ordre, dose et repos. Elle s'affiche dans les séances qui parlent de gainage.

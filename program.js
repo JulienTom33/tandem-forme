@@ -240,3 +240,67 @@ export function mealChoices(pool, dayStr, slot) {
   const rest = sorted.filter((r) => r !== main && !same.includes(r) && !sameDish.includes(r));
   return [main, ...same, ...sameDish, ...rest].slice(0, 3);
 }
+
+// ---------- Niveau sportif ----------
+export const LEVELS = [
+  { n: 1, name: 'Débutant', desc: 'On (re)découvre le sport en douceur.' },
+  { n: 2, name: 'Reprise', desc: 'Une base est là, on construit la régularité.' },
+  { n: 3, name: 'Intermédiaire', desc: 'À l\'aise sur les bases, on intensifie.' },
+  { n: 4, name: 'Confirmé', desc: 'Sportif régulier, on vise la performance.' },
+];
+// Questionnaire de départ : chaque réponse vaut 0 à 3 points.
+export const LEVEL_QUESTIONS = [
+  { id: 'freq', q: 'Aujourd\'hui, tu fais du sport…', a: ['Pas du tout', 'De temps en temps', '1 à 2 fois par semaine', '3 fois ou plus par semaine'] },
+  { id: 'walk', q: 'Marcher 45 min d\'un bon pas, c\'est…', a: ['Difficile', 'Faisable mais fatigant', 'Facile', 'Très facile, je peux courir'] },
+  { id: 'squat', q: 'Combien de squats d\'affilée (s\'asseoir sur une chaise et se relever) ?', a: ['Moins de 10', '10 à 20', '20 à 30', 'Plus de 30'] },
+  { id: 'push', q: 'Les pompes, c\'est…', a: ['Impossible, même contre une table', 'Quelques-unes contre une table', '5 à 10 sur les genoux', '10 classiques ou plus'] },
+  { id: 'plank', q: 'Gainage sur les avant-bras, tu tiens…', a: ['Moins de 15 s', '15 à 30 s', '30 à 60 s', 'Plus d\'1 min'] },
+];
+export function levelFromAnswers(ans) {
+  const vals = LEVEL_QUESTIONS.map((x) => Number(ans?.[x.id] ?? 0));
+  const score = vals.reduce((a, b) => a + b, 0); // 0 à 15
+  return score <= 3 ? 1 : score <= 7 ? 2 : score <= 11 ? 3 : 4;
+}
+export const levelOf = (m) => Math.max(1, Math.min(4, Number(m?.fitness?.level) || 2));
+
+// Intensité d'une séance de renfo selon le niveau et l'avancée dans le programme (phase 0, 1, 2).
+export function renfoDose(level, phase = 0) {
+  const base = [null, { rounds: 2, reps: '8 à 10', rest: 90 }, { rounds: 2, reps: '10 à 12', rest: 60 }, { rounds: 3, reps: '12 à 15', rest: 45 }, { rounds: 4, reps: '15 à 20', rest: 30 }][level];
+  return { ...base, rounds: Math.min(5, base.rounds + (phase >= 1 ? 1 : 0)) };
+}
+export const holdSeconds = (level) => [0, 20, 30, 45, 60][level];
+
+// Variantes plus difficiles d'un même mouvement, débloquées par le niveau.
+const VARIANTS = {
+  'Pompes inclinées (mains sur table)': [[3, 'Pompes sur les genoux', ['epaule', 'poignet', 'coude']], [4, 'Pompes classiques', ['epaule', 'poignet', 'coude']]],
+  'Squat au poids du corps': [[4, 'Squat sauté', ['genou', 'cheville', 'dos']]],
+  'Gainage latéral sur les genoux': [[3, 'Gainage latéral', ['epaule', 'cotes']]],
+};
+export function variantFor(name, level, member) {
+  const zones = ((member?.health && member.health.zones) || []).map((z) => z.zone);
+  let out = name;
+  for (const [lvl, v, avoid] of VARIANTS[name] || []) if (level >= lvl && !avoid.some((z) => zones.includes(z))) out = v;
+  return out;
+}
+
+// Texte de la séance pour une personne, recalculé à l'affichage : un changement de niveau s'applique tout de suite.
+export function sessionText(s, member, week = 1, weeks = 6, runFrom = 1, hasBike = false) {
+  const level = levelOf(member);
+  const phase = week <= Math.ceil(weeks / 3) ? 0 : week <= Math.ceil((2 * weeks) / 3) ? 1 : 2;
+  const M = s.minutes || 30;
+  if (s.key === 'renfo') {
+    const d = renfoDose(level, phase);
+    return `${hasBike ? '5 à 10 min de vélo tranquille pour s\'échauffer' : '5 min d\'échauffement articulaire'}, puis ${d.rounds} tours de ${d.reps} répétitions (positions tenues : ${holdSeconds(level)} s), ${d.rest} s de pause entre les exercices.`;
+  }
+  if (s.key === 'marche') return `${M} min de ${['', 'marche d\'un bon pas', 'marche active', 'marche rapide, avec des côtes si possible', 'marche très rapide, ou alterne 5 min de marche et 5 min de footing léger'][level]}.`;
+  if (s.key === 'velo') return `${Math.max(15, M - 10)} min de vélo ${['', 'à allure facile (tu peux parler)', 'à allure facile, avec 3 accélérations d\'1 min', 'avec 5 × (2 min soutenues + 2 min faciles)', 'avec 8 × (1 min intense + 1 min facile)'][level]}${/gainage/i.test(s.title) ? ', puis 10 min de gainage' : ''}.`;
+  if (s.key === 'course') {
+    const k = Math.max(0, week - runFrom);
+    if (level <= 1) return `${Math.min(4 + k, 10)} × (1 min de course + 2 min de marche), à l'allure conversation. Si ça tire, on marche.`;
+    if (level === 2) return `${Math.min(5 + k, 10)} × (2 min de course + 1 min de marche), à l'allure conversation.`;
+    if (level === 3) return `${Math.min(3 + k, 6)} × (5 min de course + 1 min de marche), allure facile.`;
+    return `${Math.min(25 + k * 5, 50)} min de course continue en endurance, puis 4 lignes droites de 20 s plus rapides.`;
+  }
+  if (s.key === 'balade') return `${M + 15} min de marche ${level >= 3 ? 'soutenue, avec du dénivelé si possible' : 'tranquille'}.`;
+  return s.detail;
+}

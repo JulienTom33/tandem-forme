@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
   iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices,
-  WEEKDAYS, availOf, allowedFor,
+  WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds,
 } from './program.js';
 import { EXERCISES, SESSIONS, GAINAGE, videoUrl } from './exercises.js';
 import { animSvg, hasAnim, startAnims } from './animations.js';
@@ -368,6 +368,13 @@ function profileForm(m, takenColor) {
     <span class="muted">Durée d'une séance</span>
     <div class="chips" data-single="minutes">${[20, 30, 45, 60].map((n) => `<button type="button" class="chip" data-v="${n}" aria-pressed="${availOf(m).minutes === n}">${n} min</button>`).join('')}</div>
   </div>
+  <div class="card white"><h3>Ton niveau sportif</h3>
+    <span class="muted small">5 questions rapides, réponds honnêtement : le programme s'adapte à ton niveau.</span>
+    ${LEVEL_QUESTIONS.map((x) => `<span class="small" style="font-weight:600">${esc(x.q)}</span><div class="chips" data-single="q_${x.id}">${x.a.map((a, i) => `<button type="button" class="chip" data-v="${i}" aria-pressed="${m.fitness?.answers?.[x.id] === i}">${esc(a)}</button>`).join('')}</div>`).join('')}
+    <div class="card" id="lvlBox"><span class="small muted">Ton niveau</span>
+      <div class="chips" data-single="level">${LEVELS.map((l) => `<button type="button" class="chip" data-v="${l.n}" aria-pressed="${levelOf(m) === l.n && !!m.fitness?.level}">${l.name}</button>`).join('')}</div>
+      <span class="small" id="lvlDesc">${m.fitness?.level ? esc(LEVELS[levelOf(m) - 1].desc) : 'Réponds aux questions : on te propose un niveau, que tu peux ajuster.'}</span></div>
+  </div>
   <div class="card white"><h3>Santé</h3>
     <p class="muted" style="margin:0">Les zones fragiles servent à écarter les exercices à risque de ton programme.</p>
     <div id="zones">${zones.map(zoneRow).join('')}</div>
@@ -399,9 +406,26 @@ function bindProfile(root) {
     document.documentElement.style.setProperty('--me', colorHex(b.dataset.color));
   });
   root.querySelectorAll('[data-multi] .chip').forEach((b) => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
-  root.querySelectorAll('[data-single] .chip').forEach((b) => b.onclick = () => { b.parentElement.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); });
+  root.querySelectorAll('[data-single] .chip').forEach((b) => b.onclick = () => {
+    b.parentElement.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true');
+    const group = b.parentElement.dataset.single;
+    if (group.startsWith('q_') || group === 'level') {
+      const ans = readAnswers(root);
+      let lvl = Number(root.querySelector('[data-single=level] .chip[aria-pressed=true]')?.dataset.v || 0);
+      if (group.startsWith('q_') && Object.keys(ans).length === LEVEL_QUESTIONS.length) {
+        lvl = levelFromAnswers(ans);
+        root.querySelectorAll('[data-single=level] .chip').forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.v) === lvl)));
+      }
+      const d = root.querySelector('#lvlDesc'); if (d && lvl) d.textContent = `${LEVELS[lvl - 1].desc}${group === 'level' ? '' : ' (proposé d\'après tes réponses, tu peux l\'ajuster)'}`;
+    }
+  });
   root.querySelector('#addZone').onclick = () => root.querySelector('#zones').insertAdjacentHTML('beforeend', zoneRow());
   root.addEventListener('click', (e) => { if (e.target.matches('[data-rmzone]')) e.target.closest('.zone').remove(); });
+}
+function readAnswers(root) {
+  const out = {};
+  for (const x of LEVEL_QUESTIONS) { const b = root.querySelector(`[data-single=q_${x.id}] .chip[aria-pressed=true]`); if (b) out[x.id] = Number(b.dataset.v); }
+  return out;
 }
 function readProfile(root) {
   const v = formData(root);
@@ -417,6 +441,14 @@ function readProfile(root) {
     height_cm: num(v.height_cm), start_weight: num(v.start_weight), goal_weight: num(v.goal_weight),
     health: { zones, note: v.health_note.trim() },
     nutrition: { allergens: multi('allergens'), diets: multi('diets'), dislikes: v.dislikes.trim() },
+    fitness: (() => {
+      const answers = readAnswers(root);
+      const lvl = Number(root.querySelector('[data-single=level] .chip[aria-pressed=true]')?.dataset.v || 0) || (Object.keys(answers).length ? levelFromAnswers(answers) : 0);
+      const prev = S.me?.fitness || {};
+      if (!lvl) return prev;
+      const changed = lvl !== prev.level;
+      return { ...prev, level: lvl, answers, assessed_at: changed || !prev.assessed_at ? new Date().toISOString() : prev.assessed_at, history: changed ? [...(prev.history || []), { level: lvl, at: new Date().toISOString(), by: 'test' }].slice(-20) : prev.history || [] };
+    })(),
     availability: {
       days: multi('days').map(Number),
       sessions: Number(root.querySelector('[data-single=sessions] .chip[aria-pressed=true]')?.dataset.v || 4),
@@ -441,7 +473,7 @@ function viewOnboarding(step = 0) {
         </ul></div>
       <div class="card"><span class="title">${captain ? 'Tu es le capitaine du tandem' : `${esc(partner)} est le capitaine du tandem`}</span>
         <span class="small">${captain ? `C'est toi qui règles le matériel et la durée du programme, pour vous deux. ${esc(partner)} pourra te faire des suggestions.` : `C'est ${esc(partner)} qui règle le matériel et la durée du programme. Toi, tu peux lui envoyer des suggestions depuis l'appli.`}</span></div>
-      <div class="card"><span class="title">Ça prend 3 minutes</span><span class="small">6 petites étapes. Tout reste modifiable plus tard dans « Mon profil ».</span></div>` },
+      <div class="card"><span class="title">Ça prend 3 minutes</span><span class="small">7 petites étapes. Tout reste modifiable plus tard dans « Mon profil ».</span></div>` },
     { title: 'Ta couleur', sub: 'Elle sert à te reconnaître partout : boutons, graphiques, défis.', body: `${cards[0]}<p class="small muted">La couleur déjà choisie par ${esc(partner)} est grisée.</p>` },
     { title: 'Toi', sub: 'Pour personnaliser tes objectifs et suivre tes progrès.', body: `${cards[1]}
       <div class="card"><span class="small"><b>Pourquoi ces infos ?</b> L'âge et la taille aident à fixer des objectifs réalistes. Le poids de départ sert de point de comparaison dans tes courbes, et l'objectif t'indique le chemin restant. Seul le prénom est obligatoire.</span>
@@ -450,11 +482,14 @@ function viewOnboarding(step = 0) {
       <div class="card"><span class="small"><b>Comment ça marche ?</b> Coche les jours où tu peux faire du sport, combien de séances tu vises par semaine et combien de temps tu as. Le programme place tes séances sur ces jours en les espaçant, en alternant renfo et cardio, avec la sortie la plus longue en fin de semaine.</span>
       <span class="small"><b>Conseil pour démarrer :</b> 3 séances de 30 min, c'est déjà très bien. Mieux vaut peu et régulier que trop et abandonner.</span>
       <span class="small">Si vous avez des jours en commun avec ${esc(partner)}, vos séances tombent ensemble quand c'est possible. Une respiration de 5 min est proposée chaque soir, en bonus.</span></div>` },
-    { title: 'Ta santé', sub: 'Pour que le programme évite les mouvements qui te font mal.', body: `${cards[3]}
+    { title: 'Ton niveau sportif', sub: 'Pour des séances ni trop faciles, ni trop dures.', body: `${cards[3]}
+      <div class="card"><span class="small"><b>À quoi ça sert ?</b> Ton niveau règle le nombre de tours, de répétitions, les temps de repos, la durée des positions tenues et l'allure en cardio. Les exercices plus difficiles (pompes classiques, squat sauté…) se débloquent aux niveaux supérieurs.</span>
+      <span class="small"><b>Et ensuite ?</b> Après chaque séance, tu dis si c'était trop facile, bien ou trop dur. Si c'est souvent trop facile (ou trop dur), l'appli te propose de changer de niveau. Tu peux aussi refaire ce test dans « Mon profil ».</span></div>` },
+    { title: 'Ta santé', sub: 'Pour que le programme évite les mouvements qui te font mal.', body: `${cards[4]}
       <div class="card"><span class="small"><b>Comment ça marche ?</b> Ajoute une zone fragile (épaule, nuque, genou…) : les exercices qui la sollicitent sont retirés de ton programme, et des exercices doux de renforcement peuvent être ajoutés. Exemple : une tendinite à l'épaule retire les pompes et le kettlebell swing.</span>
       <span class="small"><b>Rien à signaler ?</b> Passe simplement à l'étape suivante.</span>
       <span class="small muted">L'appli ne remplace pas un avis médical : en cas de douleur vive, arrête et consulte.</span></div>` },
-    { title: 'Ton alimentation', sub: 'Pour que les recettes proposées conviennent à vous deux.', body: `${cards[4]}
+    { title: 'Ton alimentation', sub: 'Pour que les recettes proposées conviennent à vous deux.', body: `${cards[5]}
       <div class="card"><span class="small"><b>Comment ça marche ?</b> Les allergies et régimes de vous deux sont combinés : une recette n'est proposée que si elle convient à chacun. Les allergènes sont calculés à partir des ingrédients et affichés sur chaque recette.</span>
       <span class="small"><b>Ce que tu n'aimes pas</b> : écris quelques mots séparés par des virgules (ex. « chou-fleur, lentilles »), les recettes qui en contiennent seront écartées.</span></div>` },
     { title: 'C\'est prêt !', sub: 'Voici comment démarrer.', body: `
@@ -495,6 +530,7 @@ function viewOnboarding(step = 0) {
       if (!p.availability.days.length) return ($e.textContent = 'Coche au moins un jour.');
       if (p.availability.sessions > p.availability.days.length) return ($e.textContent = `Tu as choisi ${p.availability.sessions} séances mais seulement ${p.availability.days.length} jour(s) : ajoute des jours ou réduis le nombre de séances.`);
     }
+    if (step === 4 && !p.fitness?.level) return ($e.textContent = 'Réponds aux questions ou choisis ton niveau.');
     if (step < n - 1) return goStep(step + 1);
     const btn = document.getElementById('next'); btn.disabled = true; btn.textContent = 'Enregistrement…';
     const { error } = await sb.from('members').update({ ...p, onboarded_at: new Date().toISOString() }).eq('id', S.me.id);
@@ -566,7 +602,7 @@ function viewGuide() {
     <button class="btn" id="replay">Relancer la visite guidée</button>
     ${sec('Premiers pas', `<p>1. L'un de vous inscrit le tandem avec vos deux e-mails. 2. Chacun reçoit un lien, crée son mot de passe et remplit son profil. 3. Le capitaine crée le programme dans Plus, puis « Matériel et programme ». C'est tout !</p><p>Pour installer l'appli : dans Safari ou Chrome, touchez Partager, puis « Sur l'écran d'accueil ».</p>`, true)}
     ${sec('Le capitaine', `<p>C'est la personne qui a inscrit le tandem. Elle coche le matériel disponible à la maison, choisit la durée (2 à 12 semaines), la date de début et la semaine où la course reprend. Le programme vaut pour vous deux, mais les exercices sont adaptés à chacun selon ses zones fragiles.</p><p>L'autre personne voit les réglages et peut envoyer des suggestions.</p>`)}
-    ${sec('Le programme', `<p>Lundi, mercredi et vendredi : renfo maison (échauffement au vélo si vous en avez un). Mardi et jeudi : marche active. Samedi : grande balade ou course douce. Dimanche : étirements. Chaque soir : 5 min de respiration.</p><p>Les séances s'allongent doucement au fil des semaines. Cochez-les dans « Aujourd'hui ». Si une séance ne passe pas, ce n'est pas grave : on reprend le lendemain.</p>`)}
+    ${sec('Le programme', `<p>Lundi, mercredi et vendredi : renfo maison (échauffement au vélo si vous en avez un). Mardi et jeudi : marche active. Samedi : grande balade ou course douce. Dimanche : étirements. Chaque soir : 5 min de respiration.</p><p>Les séances s'allongent doucement au fil des semaines. Cochez-les dans « Aujourd'hui ». Si une séance ne passe pas, ce n'est pas grave : on reprend le lendemain.</p><p><b>Le niveau</b> (Débutant, Reprise, Intermédiaire, Confirmé) est évalué à l'inscription par 5 questions. Il règle les tours, répétitions, repos, temps de gainage et l'allure en cardio, et débloque des variantes plus dures (pompes classiques, squat sauté, gainage latéral). Après chaque séance cochée, dis si c'était trop dur, bien ou trop facile : l'appli te propose de monter ou descendre de niveau, et de refaire le test toutes les 4 semaines (Mon profil).</p>`)}
     ${sec('Les repas', `<p>Pour chaque midi et chaque soir : 3 idées de la même famille (même viande ou poisson, même type de plat). Le midi privilégie les plats qui se transportent en gamelle. Le vendredi soir, un plat plaisir fait maison.</p><p>« C'est mangé » valide le repas. « On a mangé autre chose » demande ce que vous avez mangé (pour vous deux ou pour toi seul). Un joker par semaine et par personne pour un repas plaisir, sans culpabilité.</p><p>Les recettes sont prévues pour 4 portions (2 repas pour vous deux, ou 1 repas et 2 gamelles) ; le sélecteur de portions recalcule les quantités.</p>`)}
     ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
     ${sec('Le suivi et les montres', `<p>Onglet Suivi : chaque mesure en Jour, Semaine ou Mois, avec comparaison à la période précédente. Tout peut se saisir à la main (« Saisir ma journée », « + Activité », « + Pesée »). Une saisie à la main remplace les chiffres de la montre pour ce jour-là.</p><p>Garmin : collez votre clé personnelle Garmin Connect dans Plus, puis « Montres et sources » : vos activités arrivent toutes seules. Apple Watch : un raccourci iPhone envoie pas, sommeil et fréquence cardiaque chaque soir.</p>`)}
@@ -627,6 +663,8 @@ const planDay = (d) => S.plan?.data?.days?.[d];
 // À qui s'adresse une séance (les anciens programmes n'ont pas ce champ : pour tout le monde).
 const forOf = (s) => s.for || [S.me?.id, S.partner?.id].filter(Boolean);
 const countable = (s) => s.key !== 'respiration' && !s.optional;
+const planCtx = (d) => ({ week: planDay(d)?.week || 1, weeks: S.plan?.data?.weeks || 6, runFrom: Number(S.tandem?.settings?.run_from_week || 1), bike: (S.tandem?.settings?.equipment || []).includes('velo') });
+const textFor = (s, m, d) => { const c = planCtx(d); return sessionText(s, m, c.week, c.weeks, c.runFrom, c.bike); };
 function plannedFor(mid, fromDay, n = 7) {
   let t = 0; for (let i = 0; i < n; i++) t += (planDay(addDays(fromDay, i))?.sessions || []).filter((s) => countable(s) && forOf(s).includes(mid)).length;
   return t;
@@ -637,6 +675,45 @@ function weekLabel(d) {
 }
 
 // ---------- Aujourd'hui ----------
+// Ressenti après une séance : sert à adapter le niveau au fil des semaines.
+function askFeeling(day, key) {
+  openModal(`<h2>Bravo ! Comment c'était ?</h2>
+    <span class="muted small">Ta réponse aide l'appli à ajuster l'intensité de tes prochaines séances.</span>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn ghost" data-f="1">😮‍💨 Trop dur</button>
+      <button class="btn ghost" data-f="2">👍 C'était bien</button>
+      <button class="btn ghost" data-f="3">😎 Trop facile</button>
+    </div>
+    <button class="link" data-close>Passer</button>`, (root) => {
+    root.querySelectorAll('[data-f]').forEach((b) => b.onclick = async () => {
+      await sb.from('checks').update({ feeling: Number(b.dataset.f) }).match({ member_id: S.me.id, day, session_key: key });
+      closeModal(); toast('Merci, c\'est noté'); viewToday();
+    });
+  });
+}
+// Propose de changer de niveau si les dernières séances étaient souvent trop faciles ou trop dures.
+async function levelSuggestion() {
+  const since = addDays(today(), -14);
+  const { data } = await sb.from('checks').select('feeling,day').eq('member_id', S.me.id).gte('day', since).not('feeling', 'is', null);
+  const f = data || []; const lvl = levelOf(S.me); const fit = S.me.fitness || {};
+  const dismissed = fit.dismissed_at && Date.now() - new Date(fit.dismissed_at).getTime() < 7 * 86400000;
+  if (dismissed) return null;
+  if (f.length >= 4) {
+    const easy = f.filter((x) => x.feeling === 3).length / f.length; const hard = f.filter((x) => x.feeling === 1).length / f.length;
+    if (easy >= 0.6 && lvl < 4) return { to: lvl + 1, why: `${Math.round(easy * 100)} % de tes dernières séances étaient trop faciles.` };
+    if (hard >= 0.5 && lvl > 1) return { to: lvl - 1, why: `${Math.round(hard * 100)} % de tes dernières séances étaient trop dures.` };
+  }
+  if (fit.assessed_at && Date.now() - new Date(fit.assessed_at).getTime() > 28 * 86400000) return { retest: true, why: 'Ça fait 4 semaines : refais le test pour voir tes progrès.' };
+  return null;
+}
+async function setLevel(lvl, by) {
+  const prev = S.me.fitness || {};
+  const fitness = { ...prev, level: lvl, assessed_at: new Date().toISOString(), history: [...(prev.history || []), { level: lvl, at: new Date().toISOString(), by }].slice(-20) };
+  const { error } = await sb.from('members').update({ fitness }).eq('id', S.me.id);
+  if (error) return fail(error, 'Enregistrement impossible');
+  S.me.fitness = fitness;
+}
+
 async function viewToday() {
   const d = S.day; const pd = planDay(d);
   const monday = mondayOf(d); const sunday = addDays(monday, 6);
@@ -645,6 +722,7 @@ async function viewToday() {
     sb.from('meals').select('*').eq('tandem_id', S.me.tandem_id).eq('day', d),
     loadTrackData(d, d),
   ]);
+  const sugg = S.plan ? await levelSuggestion().catch(() => null) : null;
   const has = (mid, key, day = d) => (checks || []).some((c) => c.member_id === mid && c.session_key === key && c.day === day);
   const weekTotal = Math.max(...[S.me, S.partner].filter(Boolean).map((p) => plannedFor(p.id, monday)), 0);
   const doneBy = (mid) => (checks || []).filter((c) => c.member_id === mid && c.session_key !== 'respiration' && c.session_key !== 'mobilite').length;
@@ -653,13 +731,16 @@ async function viewToday() {
   <div class="wrap">
     ${S.partner && !S.partner.user_id ? `<div class="notice row between"><span>${esc(S.partner.first_name)} n'a pas encore rejoint le tandem.</span><button class="btn ghost sm" id="resend">Renvoyer le code</button></div>` : ''}
     ${weekTotal ? `<div class="grid2">${people.map((p) => { const tot = plannedFor(p.id, monday) || 1; return `<div class="card"><span class="small">${esc(p.first_name)} · ${Math.min(doneBy(p.id), tot)} / ${tot} séances cette semaine</span><div class="bar" style="background:var(--line)"><div style="width:${Math.round(Math.min(1, doneBy(p.id) / tot) * 100)}%;background:${colorHex(p.color)}"></div></div></div>`; }).join('')}</div>` : ''}
+    ${sugg ? `<div class="card white" style="border:2px solid var(--me)"><span class="title">${sugg.retest ? 'Refaire le test de niveau ?' : sugg.to > levelOf(S.me) ? `Passer au niveau ${esc(LEVELS[sugg.to - 1].name)} ?` : `Revenir au niveau ${esc(LEVELS[sugg.to - 1].name)} ?`}</span>
+      <span class="small">${esc(sugg.why)} ${sugg.retest ? '' : 'Les séances seront ajustées tout de suite (tours, répétitions, repos, exercices).'}</span>
+      <div class="row" style="flex-wrap:wrap">${sugg.retest ? '<button class="btn sm" data-go="profile">Refaire le test</button>' : `<button class="btn sm" id="lvlYes">Oui, on ajuste</button>`}<button class="btn ghost sm" id="lvlNo">Plus tard</button></div></div>` : ''}
     ${people.length === 2 ? duoBar(`Défi du jour : ${DAILY_DUO_GOAL.toLocaleString('fr-FR')} pas à deux`, DAILY_DUO_GOAL, people.map((p) => track.merged(p.id, d).steps), people) : ''}
     <h2>Sport du jour</h2>
     ${!S.plan ? `<div class="card"><span class="title">Pas encore de programme</span><span class="muted">${isCaptain() ? 'Règle le matériel et la durée, puis génère le programme.' : `${esc(S.partner?.first_name || 'Le capitaine')} règle le matériel et génère le programme.`}</span>${isCaptain() ? '<button class="btn" data-go="settings">Créer le programme</button>' : ''}</div>` : ''}
     ${(pd?.sessions || []).map((s) => { const who = people.filter((p) => forOf(s).includes(p.id)); return `
       <div class="card">
-        <div><span class="title">${esc(s.title)}</span>${who.length < people.length ? ` <span class="pill">Pour ${esc(who.map((p) => p.first_name).join(' et '))}</span>` : ''}${s.optional && s.key !== 'respiration' ? ' <span class="pill">Facultatif</span>' : ''}<div class="muted">${esc(s.detail)}</div></div>
-        ${s.per ? people.map((p) => s.per[p.id] ? `<div class="small"><b>${esc(p.first_name)} :</b> ${s.per[p.id].map((n) => `<button class="link small" data-ex="${esc(n)}" style="font-weight:500">${esc(n)}</button>`).join(' · ')}</div>` : '').join('') : ''}
+        <div><span class="title">${esc(s.title)}</span>${who.length < people.length ? ` <span class="pill">Pour ${esc(who.map((p) => p.first_name).join(' et '))}</span>` : ''}${s.optional && s.key !== 'respiration' ? ' <span class="pill">Facultatif</span>' : ''}<div class="muted">${esc(textFor(s, who.find((p) => p.id === S.me.id) || who[0] || S.me, d))}</div>${who.length > 1 && levelOf(who[0]) !== levelOf(who[1]) && textFor(s, who[0], d) !== textFor(s, who[1], d) ? `<div class="small muted"><b>${esc(who.find((p) => p.id !== S.me.id)?.first_name || '')} :</b> ${esc(textFor(s, who.find((p) => p.id !== S.me.id) || who[1], d))}</div>` : ''}</div>
+        ${s.per ? people.map((p) => s.per[p.id] ? `<div class="small"><b>${esc(p.first_name)} :</b> ${s.per[p.id].map((n0) => { const n = variantFor(n0, levelOf(p), p); return `<button class="link small" data-ex="${esc(n)}" style="font-weight:500">${esc(n)}</button>`; }).join(' · ')}</div>` : '').join('') : ''}
         <button class="btn ghost sm" data-howto="${esc(s.key)}|${esc(s.title)}">Comment faire ?</button>
         <div class="grid2">${who.map((p) => {
           const on = has(p.id, s.key); const mine = p.id === S.me.id;
@@ -681,7 +762,9 @@ async function viewToday() {
   bindDayNav();
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
   $app.querySelectorAll('[data-ex]').forEach((b) => b.onclick = () => showExercise(b.dataset.ex));
-  $app.querySelectorAll('[data-howto]').forEach((b) => b.onclick = () => { const [key, title] = b.dataset.howto.split('|'); showSession((pd?.sessions || []).find((x) => x.key === key && x.title === title)); });
+  document.getElementById('lvlYes')?.addEventListener('click', async () => { await setLevel(sugg.to, 'ressenti'); toast(`Niveau ${LEVELS[sugg.to - 1].name} : séances ajustées`); viewToday(); });
+  document.getElementById('lvlNo')?.addEventListener('click', async () => { const fitness = { ...(S.me.fitness || {}), dismissed_at: new Date().toISOString() }; await sb.from('members').update({ fitness }).eq('id', S.me.id); S.me.fitness = fitness; viewToday(); });
+  $app.querySelectorAll('[data-howto]').forEach((b) => b.onclick = () => { const [key, title] = b.dataset.howto.split('|'); showSession((pd?.sessions || []).find((x) => x.key === key && x.title === title), d); });
   $app.querySelectorAll('[data-check]').forEach((b) => b.onclick = async () => {
     b.disabled = true;
     const key = b.dataset.check; const on = b.getAttribute('aria-pressed') === 'true';
@@ -689,7 +772,8 @@ async function viewToday() {
       ? await sb.from('checks').delete().match({ member_id: S.me.id, day: d, session_key: key })
       : await sb.from('checks').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, day: d, session_key: key, source: 'manuel', done_at: new Date().toISOString() });
     if (res.error) fail(res.error, 'Enregistrement impossible');
-    viewToday();
+    await viewToday();
+    if (!on && !res.error && !['respiration', 'mobilite'].includes(key)) askFeeling(d, key);
   });
   document.getElementById('resend')?.addEventListener('click', async () => {
     const { error } = await sb.auth.signInWithOtp({ email: S.partner.email, options: { shouldCreateUser: false, emailRedirectTo: location.origin } });
@@ -1368,7 +1452,7 @@ function showDay(day) {
   const pd = planDay(day); if (!pd) return;
   openModal(`<div class="row between"><h2>${esc(cap(fmtDay(day)))}</h2></div>
     ${pd.sessions.map((s, i) => `<button class="card" data-si="${i}" style="border:0;text-align:left;cursor:pointer"><span class="title">${esc(s.title)}</span><span class="small muted">${esc(s.detail)}</span><span class="small" style="color:var(--me)">Comment faire ›</span></button>`).join('')}`, (root) => {
-    root.querySelectorAll('[data-si]').forEach((b) => b.onclick = () => showSession(pd.sessions[Number(b.dataset.si)]));
+    root.querySelectorAll('[data-si]').forEach((b) => b.onclick = () => showSession(pd.sessions[Number(b.dataset.si)], day));
   });
 }
 function exerciseHtml(name, open = false) {
@@ -1392,21 +1476,21 @@ function gainageHtml() {
   return `<h3>Le gainage, pas à pas</h3>
     <p class="small" style="margin:0">${esc(info.intro)}</p>
     <ul class="plain small">${info.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    ${list.map((g, i) => `<div class="card" style="gap:4px"><span class="small muted">Exercice ${i + 1} · ${esc(g.dose)} · ${esc(g.rest)}</span></div>${exerciseHtml(g.n, i === 0)}`).join('')}
+    ${list.map((g, i) => { const h = holdSeconds(levelOf(S.me)); const dose = g.dose.replace(/(\d+) à (\d+) s|(\d+) s/, () => `${h} s`).replace(/× 10\b/, `× ${[0, 8, 10, 12, 15][levelOf(S.me)]}`).replace(/× 15\b/, `× ${[0, 10, 15, 20, 25][levelOf(S.me)]}`); return `<div class="card" style="gap:4px"><span class="small muted">Exercice ${i + 1} · ${esc(dose)} · ${esc(g.rest)}</span></div>${exerciseHtml(variantFor(g.n, levelOf(S.me), S.me), i === 0)}`; }).join('')}
     ${removed ? `<span class="small muted">${removed} exercice(s) retiré(s) pour ménager tes zones fragiles.</span>` : ''}`;
 }
 function showExercise(name) {
   openModal(`<div class="row between"><h2>Exercice</h2></div>${exerciseHtml(name, true)}`);
   startAnims(meColor());
 }
-function showSession(s) {
+function showSession(s, day = S.day) {
   if (!s) return;
   const info = SESSIONS[s.key] || {};
   const people = [S.me, S.partner].filter(Boolean);
-  const mine = s.per?.[S.me.id] || (S.partner && s.per?.[S.partner.id]) || [];
-  const theirs = S.partner && s.per?.[S.partner.id] ? s.per[S.partner.id].filter((n) => !mine.includes(n)) : [];
+  const mine = (s.per?.[S.me.id] || (S.partner && s.per?.[S.partner.id]) || []).map((n) => variantFor(n, levelOf(S.me), S.me));
+  const theirs = S.partner && s.per?.[S.partner.id] ? s.per[S.partner.id].map((n) => variantFor(n, levelOf(S.partner), S.partner)).filter((n) => !mine.includes(n)) : [];
   openModal(`<div class="row between"><h2>${esc(s.title)}</h2></div>
-    <div class="card"><span class="title">Au programme</span><span class="small">${esc(s.detail)}</span></div>
+    <div class="card"><span class="title">Au programme · niveau ${esc(LEVELS[levelOf(S.me) - 1].name)}</span><span class="small">${esc(textFor(s, S.me, day))}</span></div>
     ${info.intro ? `<p class="small" style="margin:0">${esc(info.intro)}</p>` : ''}
     ${info.tips ? `<ul class="plain small">${info.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
     ${info.video ? `<a class="btn ghost sm" href="${videoUrl(info.video)}" target="_blank" rel="noopener">▶ Voir des vidéos</a>` : ''}
