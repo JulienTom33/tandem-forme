@@ -73,8 +73,13 @@ async function route() {
   if (!meta.password_set) return viewSetPassword('create');
   if (resetting || new URLSearchParams(location.search).has('reinit')) return viewSetPassword('reset');
   if (!S.me.onboarded_at) { $tabs.hidden = true; return viewOnboarding(); }
+  const qp = new URLSearchParams(location.search).get('polar');
+  if (qp) {
+    history.replaceState(null, '', location.pathname); S.view = 'sources';
+    setTimeout(() => toast({ ok: 'Polar est connecté, tes données arrivent !', refus: 'Connexion Polar annulée.', consentement: 'Accepte les autorisations dans Polar Flow, puis réessaie.', lien_expire: 'Le lien a expiré, réessaie.' }[qp] || 'Connexion Polar impossible, réessaie.'), 300);
+  }
   renderTabs(); await render();
-  autoSyncGarmin().catch(() => {});
+  autoSync().catch(() => {});
   let tourDone = !!meta.tour_done; try { tourDone = tourDone || localStorage.getItem('tf_tour_done') === '1'; } catch {}
   if (S.startTour || !tourDone) { S.startTour = false; setTimeout(() => startTour(0), 400); }
 }
@@ -883,7 +888,7 @@ function trackHeader(title, sub) {
   const mode = S.trackMode || 'semaine';
   return `<div class="hero"><div class="inner">
     <div class="daynav"><button data-shift="-1" aria-label="Période précédente">‹</button><div style="text-align:center;flex:1"><small>${sub}</small></div><button data-shift="1" aria-label="Période suivante">›</button></div>
-    <div class="row between"><h1>${title}</h1>
+    <div class="row between"><h1>${title} <button id="syncNow" aria-label="Synchroniser les montres" style="border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:10px;min-width:36px;min-height:36px;font-size:18px;cursor:pointer;vertical-align:middle">↻</button></h1>
       <div class="row" role="tablist" style="gap:0;background:rgba(255,255,255,.18);border-radius:12px;padding:3px">${[['jour', 'Jour'], ['semaine', 'Semaine'], ['mois', 'Mois']].map(([k, l]) => `<button role="tab" data-mode="${k}" aria-selected="${mode === k}" style="min-height:36px;padding:0 12px;border:0;border-radius:9px;font-weight:600;cursor:pointer;background:${mode === k ? '#fff' : 'transparent'};color:${mode === k ? 'var(--ink)' : '#fff'}">${l}</button>`).join('')}</div>
     </div></div></div>`;
 }
@@ -925,6 +930,12 @@ async function viewTrack() {
   return viewTrackWeek(people);
 }
 function bindTrackNav(step) {
+  document.getElementById('syncNow')?.addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true; e.currentTarget.textContent = '…';
+    const r = await syncAll(true);
+    toast(r.none ? 'Aucune montre connectée (Plus, puis « Montres et sources »)' : r.errors?.length ? r.errors[0] : r.changed ? 'Données à jour' : 'Déjà à jour');
+    viewTrack();
+  });
   $app.querySelector('[data-metric][aria-pressed=true]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   $app.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { S.trackMode = b.dataset.mode; viewTrack(); });
   $app.querySelectorAll('[data-metric]').forEach((b) => b.onclick = () => { S.trackMetric = b.dataset.metric; viewTrack(); });
@@ -1386,106 +1397,123 @@ function viewProfile() {
   };
 }
 
-async function garminCall(action, extra = {}) {
-  const { data, error } = await sb.functions.invoke('garmin', { body: { action, ...extra } });
-  if (error) { try { return { error: (await error.context.json()).error || 'Garmin indisponible' }; } catch { return { error: 'Pas de connexion internet.' }; } }
+// ---------- Montres et sources ----------
+async function providerCall(fn, action, extra = {}) {
+  const { data, error } = await sb.functions.invoke(fn, { body: { action, ...extra } });
+  if (error) { try { return { error: (await error.context.json()).error || 'Service indisponible' }; } catch { return { error: 'Pas de connexion internet.' }; } }
   return data || {};
 }
-// Synchro Garmin discrète à l'ouverture, au plus toutes les 3 heures.
-async function autoSyncGarmin() {
-  const { data } = await sb.from('connections').select('status,last_sync').eq('member_id', S.me.id).eq('provider', 'garmin').maybeSingle();
-  if (!data || data.status !== 'actif') return;
-  if (data.last_sync && Date.now() - new Date(data.last_sync).getTime() < 3 * 3600 * 1000) return;
-  const r = await garminCall('sync');
-  if (r.added) toast(`Garmin : ${r.added} nouvelle(s) activité(s)`);
+const garminCall = (action, extra) => providerCall('garmin', action, extra);
+const polarCall = (action, extra) => providerCall('polar', action, extra);
+
+// Synchronise Garmin et Polar : à l'ouverture de l'appli, au retour dessus, et sur demande.
+let syncing = null;
+async function syncAll(force = false) {
+  if (syncing) return syncing;
+  syncing = (async () => {
+    const { data } = await sb.from('connections').select('provider,status,last_sync').eq('member_id', S.me.id).in('provider', ['garmin', 'polar']);
+    const due = (data || []).filter((c) => c.status === 'actif' && (force || !c.last_sync || Date.now() - new Date(c.last_sync).getTime() > 5 * 60 * 1000));
+    if (!due.length) return { changed: false, none: !(data || []).length };
+    const res = await Promise.all(due.map((c) => providerCall(c.provider, 'sync')));
+    const changed = res.some((r) => (r.added || 0) + (r.days || 0) > 0);
+    const errors = res.filter((r) => r.error).map((r) => r.error);
+    return { changed, errors, added: res.reduce((t, r) => t + (r.added || 0), 0) };
+  })();
+  try { return await syncing; } finally { syncing = null; }
 }
+async function autoSync() {
+  const r = await syncAll(false);
+  if (r.changed && $modal.hidden && !document.getElementById('tour')) { if (r.added) toast(`${r.added} nouvelle(s) activité(s) importée(s)`); render(); }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.me?.onboarded_at && S.session) autoSync().catch(() => {}); });
 
 async function viewSources(newToken = '') {
   const { data: conns } = await sb.from('connections').select('*').eq('member_id', S.me.id);
-  const apple = (conns || []).find((c) => c.provider === 'apple');
-  const garmin = (conns || []).find((c) => c.provider === 'garmin');
+  const by = (p) => (conns || []).find((c) => c.provider === p);
+  const apple = by('apple'), garmin = by('garmin'), polar = by('polar');
   const since = (t) => t ? new Date(t).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-  const url = `${SUPABASE_URL}/functions/v1/ingest`;
+  const pill = (c) => c ? `<span class="pill ${c.status === 'actif' ? 'ok' : 'warn'}">${c.status === 'actif' ? 'Connecté' : c.status === 'en_attente' ? 'En attente du 1er envoi' : 'À reconnecter'}</span>` : '';
+  const appleUrl = newToken ? `${SUPABASE_URL}/functions/v1/ingest?token=${newToken}` : '';
   $app.innerHTML = header('Montres et sources', 'Tout est facultatif : la saisie à la main reste toujours possible.') + `<div class="wrap">
     <div class="card white">
-      <div class="row between"><span class="title">Apple Watch et Apple Santé</span>${apple ? `<span class="pill ${apple.status === 'actif' ? 'ok' : 'warn'}">${apple.status === 'actif' ? 'Connecté' : 'En attente du 1er envoi'}</span>` : ''}</div>
-      <span class="muted">Un raccourci iPhone envoie chaque soir tes pas, étages, fréquence cardiaque au repos, VFC et sommeil. Les séances Decathlon Coach ou Kinomap enregistrées dans Santé sont comptées dans tes données.</span>
-      ${apple?.last_sync ? `<span class="small">Dernier envoi : ${esc(since(apple.last_sync))}</span>` : ''}
-      ${newToken ? `
-        <div class="notice"><b>Ton jeton personnel</b> (il ne sera plus affiché, copie-le maintenant) :
-          <div style="font-family:monospace;word-break:break-all;margin:6px 0">${esc(newToken)}</div>
-          <button class="btn sm" id="copyTok">Copier le jeton</button></div>
-        <details class="card" open><summary class="title" style="cursor:pointer">Créer le raccourci (5 minutes)</summary>
-          <ol class="steps small">
-            <li>Ouvre l'app <b>Raccourcis</b>, touche <b>+</b>, nomme-le « Tandem Forme ».</li>
-            <li>Ajoute <b>Rechercher des échantillons de santé</b> : type <b>Pas</b>, date de début <b>est aujourd'hui</b>. Puis <b>Calculer les statistiques</b> : <b>Somme</b>.</li>
-            <li>Même chose pour <b>Étages montés</b> (Somme), <b>Variabilité de la fréquence cardiaque</b> (Moyenne) et <b>Fréquence cardiaque au repos</b> (Moyenne).</li>
-            <li>Sommeil (facultatif) : <b>Analyse du sommeil</b> sur les <b>12 dernières heures</b>, valeur <b>n'est pas</b> « Au lit » ni « Éveillé », puis <b>Obtenir les détails</b> : <b>Durée</b>, puis <b>Calculer les statistiques</b> : <b>Somme</b> (en heures).</li>
-            <li>Ajoute <b>Obtenir le contenu de l'URL</b> avec l'adresse ci-dessous. Méthode <b>POST</b>. En-tête <b>x-tandem-token</b> = ton jeton. Corps <b>JSON</b> avec les champs : <code>steps</code>, <code>floors</code>, <code>hrv</code>, <code>resting_hr</code>, <code>sleep_hours</code> (chacun = le résultat correspondant).</li>
-            <li>Lance le raccourci une fois : l'appli doit afficher « Connecté ».</li>
-            <li>Dans l'onglet <b>Automatisation</b> : <b>Heure de la journée</b>, 21:30, tous les jours, <b>Exécuter immédiatement</b>, et choisis « Tandem Forme ».</li>
-          </ol>
-          <span class="small">Adresse :</span>
-          <div style="font-family:monospace;word-break:break-all" class="small">${esc(url)}</div>
-          <button class="btn ghost sm" id="copyUrl">Copier l'adresse</button>
-        </details>` : `
-        <div class="row" style="flex-wrap:wrap">
-          <button class="btn ${apple ? 'ghost' : ''}" id="appleTok">${apple ? 'Générer un nouveau jeton' : 'Connecter mon Apple Watch'}</button>
-          ${apple ? '<button class="btn ghost" id="appleOff">Déconnecter</button>' : ''}
-        </div>`}
-    </div>
-    <div class="card white">
-      <div class="row between"><span class="title">Garmin</span>${garmin ? `<span class="pill ${garmin.status === 'actif' ? 'ok' : 'warn'}">${garmin.status === 'actif' ? 'Connecté' : 'À reconnecter'}</span>` : ''}</div>
-      <span class="muted">Tes activités Garmin (course, vélo, renfo, marche…) arrivent toutes seules dans Suivi, à chaque ouverture de l'appli. Pour les pas et le sommeil, passe plutôt par Apple Santé.</span>
+      <div class="row between"><span class="title">Garmin</span>${pill(garmin)}</div>
+      <span class="muted small">Activités, pas, étages, fréquence cardiaque, stress, sommeil et VFC. Mise à jour automatique à chaque ouverture de l'appli.</span>
       ${garmin?.last_sync ? `<span class="small">Dernière synchro : ${esc(since(garmin.last_sync))}</span>` : ''}
-      ${garmin ? `<div class="row" style="flex-wrap:wrap"><button class="btn sm" id="gSync">Synchroniser maintenant</button><button class="btn ghost sm" id="gOff">Déconnecter</button></div>
+      ${garmin ? `<div class="row" style="flex-wrap:wrap"><button class="btn sm" data-sync="garmin">Synchroniser maintenant</button><button class="btn ghost sm" data-off="garmin">Déconnecter</button></div>
         ${garmin.status !== 'actif' ? '<span class="small">La clé ne marche plus : déconnecte puis reconnecte avec une nouvelle clé.</span>' : ''}` : `
         <ol class="steps small">
-          <li>Sur ordinateur ou téléphone, ouvre <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener">la page « Personal API Key » de Garmin Connect</a> (Réglages, Compte).</li>
+          <li>Ouvre <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener">la page « Personal API Key » de Garmin Connect</a>.</li>
           <li><b>Create Key</b>, accepte les conditions, choisis la durée la plus longue, puis <b>Create</b>.</li>
           <li>Copie la clé (elle ne s'affiche qu'une fois) et colle-la ici.</li>
         </ol>
         <form id="gForm" class="row" style="gap:6px" novalidate><input name="key" type="password" autocomplete="off" placeholder="Clé personnelle Garmin" style="flex:1"><button class="btn">Connecter</button></form>
-        <p class="err" id="gErr" role="alert" style="margin:0"></p>
-        <span class="small muted">Ta clé est chiffrée sur le serveur et ne sert qu'à lire tes propres données. Tu peux la supprimer à tout moment depuis Garmin Connect.</span>`}
+        <p class="err" id="gErr" role="alert" style="margin:0"></p>`}
     </div>
-    <div class="card"><div class="row between"><span class="title">Polar</span><span class="pill">Bientôt</span></div><span class="muted">Connexion automatique via Polar Flow, en cours de préparation.</span></div>
-    <div class="card"><span class="title">Saisie manuelle</span><span class="muted">Pas, sommeil, fréquence cardiaque, activités, pesées.</span><button class="btn ghost" data-go="track">Aller au suivi</button></div>
+    <div class="card white">
+      <div class="row between"><span class="title">Polar</span>${pill(polar)}</div>
+      <span class="muted small">Séances, pas, minutes actives, sommeil, fréquence cardiaque et VFC de la nuit (Nightly Recharge). Mise à jour automatique à chaque ouverture.</span>
+      ${polar?.last_sync ? `<span class="small">Dernière synchro : ${esc(since(polar.last_sync))}</span>` : ''}
+      ${polar ? `<div class="row" style="flex-wrap:wrap"><button class="btn sm" data-sync="polar">Synchroniser maintenant</button><button class="btn ghost sm" data-off="polar">Déconnecter</button></div>
+        ${polar.status !== 'actif' ? '<span class="small">Polar a retiré l\'autorisation : déconnecte puis reconnecte.</span>' : ''}` : `
+        <span class="small">Un seul bouton : tu te connectes à ton compte Polar Flow, tu autorises Tandem Forme, et tu reviens ici automatiquement.</span>
+        <button class="btn" id="pConnect">Connecter mon compte Polar</button><p class="err" id="pErr" role="alert" style="margin:0"></p>`}
+    </div>
+    <div class="card white">
+      <div class="row between"><span class="title">Apple Watch et Apple Santé</span>${pill(apple)}</div>
+      <span class="muted small">Apple ne permet pas aux sites web de lire Santé. On passe par l'app gratuite à télécharger <b>Health Auto Export</b> : elle envoie tes données à Tandem Forme en arrière-plan, avec ta clé personnelle.</span>
+      ${apple?.last_sync ? `<span class="small">Dernier envoi : ${esc(since(apple.last_sync))}</span>` : ''}
+      ${newToken ? `
+        <div class="notice"><b>Ta clé Apple Santé</b> : c'est une adresse à coller dans Health Auto Export. Copie-la maintenant, elle ne sera plus affichée.
+          <div style="font-family:monospace;word-break:break-all;margin:6px 0;font-size:12px">${esc(appleUrl)}</div>
+          <button class="btn sm" id="copyUrl">Copier ma clé</button></div>
+        <ol class="steps small">
+          <li>Installe <a href="https://apps.apple.com/app/id1115567069" target="_blank" rel="noopener">Health Auto Export</a> et autorise l'accès à Santé.</li>
+          <li>Onglet <b>Automations</b>, <b>+</b>, type <b>REST API</b>.</li>
+          <li><b>URL</b> : colle ta clé. Format <b>JSON</b>, version <b>2</b>.</li>
+          <li><b>Data Type</b> : Health Metrics et Workouts. Métriques : Step Count, Flights Climbed, Resting Heart Rate, Heart Rate Variability, Heart Rate, Apple Exercise Time, Sleep Analysis.</li>
+          <li><b>Période</b> : « Since last sync », <b>Aggregation</b> : Days. Active l'automatisation.</li>
+          <li>Touche <b>Manual Export</b> une fois : l'appli doit afficher « Connecté ».</li>
+        </ol>
+        <span class="small muted">L'envoi automatique en arrière-plan demande l'option Premium de Health Auto Export (achat dans l'app). Sans elle, tu peux faire l'envoi à la main depuis l'app, ou tout saisir dans Suivi.</span>` : `
+        <div class="row" style="flex-wrap:wrap"><button class="btn ${apple ? 'ghost' : ''}" id="appleTok">${apple ? 'Générer une nouvelle clé' : 'Obtenir ma clé Apple Santé'}</button>
+        ${apple ? '<button class="btn ghost" data-off="apple">Déconnecter</button>' : ''}</div>`}
+    </div>
+    <div class="card"><span class="title">Saisie manuelle</span><span class="muted small">Pas, sommeil, fréquence cardiaque, activités, pesées : tout se saisit dans Suivi.</span><button class="btn ghost" data-go="track">Aller au suivi</button></div>
   </div>`;
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
-  const copy = async (t, msg) => { try { await navigator.clipboard.writeText(t); toast(msg); } catch { toast('Copie impossible : sélectionne le texte à la main'); } };
-  document.getElementById('copyTok')?.addEventListener('click', () => copy(newToken, 'Jeton copié'));
-  document.getElementById('copyUrl')?.addEventListener('click', () => copy(url, 'Adresse copiée'));
-  document.getElementById('appleTok')?.addEventListener('click', async () => {
-    if (apple && !confirm('Le jeton actuel cessera de fonctionner. Il faudra le remplacer dans ton raccourci. Continuer ?')) return;
-    const { data, error } = await sb.rpc('create_ingest_token', { p_provider: 'apple' });
-    if (error) return fail(error, 'Création du jeton impossible');
-    viewSources(data);
-  });
+  document.getElementById('copyUrl')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(appleUrl); toast('Clé copiée'); } catch { toast('Copie impossible : sélectionne la clé à la main'); } });
   document.getElementById('gForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const key = e.target.key.value.trim(); const $e = document.getElementById('gErr'); const b = e.target.querySelector('.btn');
     if (!key) return ($e.textContent = 'Colle ta clé Garmin.');
-    $e.textContent = ''; b.disabled = true; b.textContent = 'Vérification…';
+    $e.textContent = ''; b.disabled = true; b.textContent = 'Import en cours…';
     const r = await garminCall('connect', { api_key: key });
     b.disabled = false; b.textContent = 'Connecter';
     if (r.error) return ($e.textContent = r.error);
-    toast(`Garmin connecté : ${r.added} activité(s) importée(s)`); viewSources();
+    toast(`Garmin connecté : ${r.added} activité(s) et ${r.days} jour(s) importés`); viewSources();
   });
-  document.getElementById('gSync')?.addEventListener('click', async (e) => {
-    e.target.disabled = true; e.target.textContent = 'Synchro…';
-    const r = await garminCall('sync');
-    toast(r.error || (r.added ? `${r.added} nouvelle(s) activité(s)` : 'Déjà à jour')); viewSources();
+  document.getElementById('pConnect')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    const r = await polarCall('start');
+    if (r.error) { e.target.disabled = false; return (document.getElementById('pErr').textContent = r.error); }
+    location.href = r.url;
   });
-  document.getElementById('gOff')?.addEventListener('click', async () => {
-    if (!confirm('Déconnecter Garmin ? Les activités déjà importées sont conservées.')) return;
-    const r = await garminCall('disconnect'); toast(r.error || 'Garmin déconnecté'); viewSources();
+  $app.querySelectorAll('[data-sync]').forEach((b) => b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Synchro…';
+    const r = await providerCall(b.dataset.sync, 'sync', { full: true });
+    toast(r.error || `${r.added || 0} activité(s) et ${r.days || 0} jour(s) mis à jour`); viewSources();
   });
-  document.getElementById('appleOff')?.addEventListener('click', async () => {
-    if (!confirm('Déconnecter Apple Santé ? Les données déjà reçues sont conservées.')) return;
-    const { error } = await sb.rpc('revoke_ingest_token', { p_provider: 'apple' });
-    if (error) return fail(error, 'Déconnexion impossible');
-    toast('Apple Santé déconnecté'); viewSources();
+  $app.querySelectorAll('[data-off]').forEach((b) => b.onclick = async () => {
+    const p = b.dataset.off; const name = { garmin: 'Garmin', polar: 'Polar', apple: 'Apple Santé' }[p];
+    if (!confirm(`Déconnecter ${name} ? Les données déjà importées sont conservées.`)) return;
+    const r = p === 'apple' ? await sb.rpc('revoke_ingest_token', { p_provider: 'apple' }).then(({ error }) => (error ? { error: error.message } : {})) : await providerCall(p, 'disconnect');
+    toast(r.error || `${name} déconnecté`); viewSources();
+  });
+  document.getElementById('appleTok')?.addEventListener('click', async () => {
+    if (apple && !confirm('L\'ancienne clé cessera de fonctionner : il faudra coller la nouvelle dans Health Auto Export. Continuer ?')) return;
+    const { data, error } = await sb.rpc('create_ingest_token', { p_provider: 'apple' });
+    if (error) return fail(error, 'Création de la clé impossible');
+    viewSources(data);
   });
 }
 
