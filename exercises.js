@@ -140,11 +140,35 @@ export const EXERCISES = {
     easier: 'Assis sur une chaise, dos appuyé.',
     muscles: 'Diaphragme, abdominaux profonds', video: 'respiration abdominale allongé',
   },
+  'Planche bras tendus': {
+    how: ['Mains au sol sous les épaules, bras tendus, comme en haut d\'une pompe.', 'Recule les pieds pour que le corps forme une ligne droite de la tête aux talons.', 'Tiens 15 à 30 secondes en respirant normalement.'],
+    keys: ['Pousse le sol avec les mains pour ne pas t\'affaisser entre les épaules.', 'Les fesses ne montent pas et le dos ne se creuse pas.'],
+    easier: 'Genoux au sol, ou mains posées sur une chaise.',
+    muscles: 'Abdominaux, épaules', video: 'planche bras tendus gainage',
+  },
+  'Superman allongé sur le ventre': {
+    how: ['Allongé sur le ventre, bras tendus devant toi, front posé sur une serviette.', 'Décolle en même temps les bras et les jambes de quelques centimètres.', 'Tiens 2 à 3 secondes, puis repose doucement.'],
+    keys: ['Garde le regard vers le sol : la nuque reste dans l\'alignement, sans relever la tête.', 'Petits décollements : pas besoin de monter haut.'],
+    easier: 'Décolle seulement les bras, ou seulement les jambes.',
+    muscles: 'Bas du dos, fessiers, haut du dos', video: 'exercice superman lombaires débutant',
+  },
 };
+
+// Routine de gainage : ordre, dose et repos. Elle s'affiche dans les séances qui parlent de gainage.
+export const GAINAGE = [
+  { n: 'Gainage sur les avant-bras', dose: '3 × 20 à 40 s', rest: '30 s de repos' },
+  { n: 'Gainage latéral sur les genoux', dose: '2 × 20 s de chaque côté', rest: '20 s de repos' },
+  { n: 'Dead bug', dose: '2 × 10 (5 de chaque côté)', rest: '30 s de repos' },
+  { n: 'Bird dog (quadrupédie)', dose: '2 × 10 (5 de chaque côté)', rest: '30 s de repos' },
+  { n: 'Planche bras tendus', dose: '2 × 15 à 30 s', rest: '30 s de repos' },
+  { n: 'Superman allongé sur le ventre', dose: '2 × 10', rest: '30 s de repos' },
+  { n: 'Pont fessier', dose: '2 × 15', rest: '30 s de repos' },
+];
 
 // Explications des séances qui ne sont pas des circuits d'exercices.
 export const SESSIONS = {
   renfo: { intro: 'Un circuit simple : enchaîne les exercices ci-dessous, puis recommence le tour. Choisis une charge qui te permet de faire toutes les répétitions proprement, avec 2 ou 3 répétitions « en réserve ».', tips: ['Échauffe-toi 5 à 10 min (vélo ou marche sur place, rotations des épaules et des hanches).', 'Repose-toi 1 min entre les exercices et 2 min entre les tours.', 'Une gêne légère est normale, une douleur vive non : arrête l\'exercice.'] },
+  gainage: { intro: 'Le gainage renforce les muscles profonds du ventre et du dos : ils tiennent la colonne et protègent le dos au quotidien. Enchaîne les exercices ci-dessous dans l\'ordre, sur un tapis.', tips: ['Qualité avant durée : arrête la position dès que le dos se creuse ou que tu trembles trop.', 'Respire normalement pendant les positions tenues, ne bloque jamais ta respiration.', 'Au fil des semaines, ajoute 5 secondes aux positions tenues ou 2 répétitions.'] },
   velo: { intro: 'Pédalage à allure facile : tu dois pouvoir parler sans être essoufflé.', tips: ['Règle la selle : jambe presque tendue quand la pédale est en bas.', 'Vise une cadence régulière, environ 70 à 90 tours par minute, avec une résistance légère.', 'Termine par 2 à 3 min très tranquilles.'], video: 'réglage vélo d\'appartement position' },
   marche: { intro: 'Marche d\'un bon pas, plus vite qu\'en promenade : tu peux parler mais pas chanter.', tips: ['Balance les bras, regarde loin devant.', 'Commence et termine par 5 min plus tranquilles.', 'À deux, c\'est plus motivant : profitez-en pour discuter.'], video: 'marche active technique' },
   balade: { intro: 'Une longue marche tranquille, dehors si possible. Le but : bouger longtemps sans forcer.', tips: ['Choisis un parcours agréable (forêt, bord de l\'eau).', 'Prends de l\'eau.'] },

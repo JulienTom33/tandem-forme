@@ -56,6 +56,8 @@ const EX = [
   { n: 'Gainage latéral sur les genoux', eq: null, avoid: ['epaule', 'cotes'], g: 'tronc' },
   { n: 'Pallof press élastique', eq: 'elastiques', avoid: ['cotes'], g: 'tronc' },
   { n: 'Respiration ventrale allongé, jambes fléchies', eq: null, avoid: [], g: 'tronc' },
+  { n: 'Planche bras tendus', eq: null, avoid: ['poignet', 'epaule', 'cotes'], g: 'tronc' },
+  { n: 'Superman allongé sur le ventre', eq: null, avoid: ['dos', 'nuque'], g: 'tronc' },
 ];
 
 const DAY_MS = 86400000;
@@ -70,6 +72,12 @@ export function hash(str) {
   return h >>> 0;
 }
 
+// Un exercice convient-il à cette personne (ses zones fragiles) ?
+export function allowedFor(name, member) {
+  const e = EX.find((x) => x.n === name); if (!e) return true;
+  const zones = ((member?.health && member.health.zones) || []).map((z) => z.zone);
+  return !e.avoid.some((z) => zones.includes(z));
+}
 function zonesOf(member) {
   return ((member.health && member.health.zones) || []).map((z) => z.zone);
 }
@@ -149,7 +157,7 @@ export function generatePlan(settings, members) {
         } else if (kind === 'cardio') {
           const mins = Math.min(M + phase * 5, M + 15);
           if (canWalk) week[dIdx].push({ key: 'marche', title: 'Marche active', minutes: mins, member: m.id, detail: `${mins} min de marche d'un bon pas.` });
-          else if (hasBike) week[dIdx].push({ key: 'velo', title: 'Vélo', minutes: mins, member: m.id, detail: `${mins} min de vélo à allure facile (tu peux parler).` });
+          else if (hasBike) week[dIdx].push({ key: 'velo', title: 'Vélo et gainage', minutes: mins + 10, member: m.id, detail: `${mins} min de vélo à allure facile (tu peux parler), puis 10 min de gainage.` });
           else week[dIdx].push({ key: 'mobilite', title: 'Étirements et mobilité', minutes: 15, member: m.id, detail: '15 min de mobilité douce.' });
         } else {
           if (canRun && w >= runFrom) {

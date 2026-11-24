@@ -2,9 +2,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
   iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices,
-  WEEKDAYS, availOf,
+  WEEKDAYS, availOf, allowedFor,
 } from './program.js';
-import { EXERCISES, SESSIONS, videoUrl } from './exercises.js';
+import { EXERCISES, SESSIONS, GAINAGE, videoUrl } from './exercises.js';
 import { animSvg, hasAnim, startAnims } from './animations.js';
 
 const SUPABASE_URL = 'https://ktrsvnminsogkbxlxjpb.supabase.co';
@@ -1384,6 +1384,17 @@ function exerciseHtml(name, open = false) {
       <a class="link small" href="${videoUrl(e.video)}" target="_blank" rel="noopener">Voir aussi des vidéos sur YouTube ›</a>
     </div></details>`;
 }
+// Routine de gainage détaillée, filtrée selon les zones fragiles de la personne connectée.
+function gainageHtml() {
+  const info = SESSIONS.gainage;
+  const list = GAINAGE.filter((g) => allowedFor(g.n, S.me));
+  const removed = GAINAGE.length - list.length;
+  return `<h3>Le gainage, pas à pas</h3>
+    <p class="small" style="margin:0">${esc(info.intro)}</p>
+    <ul class="plain small">${info.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    ${list.map((g, i) => `<div class="card" style="gap:4px"><span class="small muted">Exercice ${i + 1} · ${esc(g.dose)} · ${esc(g.rest)}</span></div>${exerciseHtml(g.n, i === 0)}`).join('')}
+    ${removed ? `<span class="small muted">${removed} exercice(s) retiré(s) pour ménager tes zones fragiles.</span>` : ''}`;
+}
 function showExercise(name) {
   openModal(`<div class="row between"><h2>Exercice</h2></div>${exerciseHtml(name, true)}`);
   startAnims(meColor());
@@ -1400,7 +1411,8 @@ function showSession(s) {
     ${info.tips ? `<ul class="plain small">${info.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
     ${info.video ? `<a class="btn ghost sm" href="${videoUrl(info.video)}" target="_blank" rel="noopener">▶ Voir des vidéos</a>` : ''}
     ${mine.length ? `<h3>${people.length > 1 ? 'Tes exercices' : 'Les exercices'}</h3>${mine.map((n, i) => exerciseHtml(n, i === 0)).join('')}` : ''}
-    ${theirs.length ? `<h3>Différents pour ${esc(S.partner.first_name)}</h3><span class="small muted">Adaptés à ses zones fragiles.</span>${theirs.map((n) => exerciseHtml(n)).join('')}` : ''}`);
+    ${theirs.length ? `<h3>Différents pour ${esc(S.partner.first_name)}</h3><span class="small muted">Adaptés à ses zones fragiles.</span>${theirs.map((n) => exerciseHtml(n)).join('')}` : ''}
+    ${/gainage/i.test(`${s.title} ${s.detail}`) ? gainageHtml() : ''}`);
   startAnims(meColor());
 }
 
