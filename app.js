@@ -74,6 +74,7 @@ async function route() {
   if (resetting || new URLSearchParams(location.search).has('reinit')) return viewSetPassword('reset');
   if (!S.me.onboarded_at) { $tabs.hidden = true; return viewOnboarding(); }
   renderTabs(); render();
+  autoSyncGarmin().catch(() => {});
 }
 
 async function loadCore() {
@@ -816,9 +817,24 @@ function viewProfile() {
   };
 }
 
+async function garminCall(action, extra = {}) {
+  const { data, error } = await sb.functions.invoke('garmin', { body: { action, ...extra } });
+  if (error) { try { return { error: (await error.context.json()).error || 'Garmin indisponible' }; } catch { return { error: 'Pas de connexion internet.' }; } }
+  return data || {};
+}
+// Synchro Garmin discrète à l'ouverture, au plus toutes les 3 heures.
+async function autoSyncGarmin() {
+  const { data } = await sb.from('connections').select('status,last_sync').eq('member_id', S.me.id).eq('provider', 'garmin').maybeSingle();
+  if (!data || data.status !== 'actif') return;
+  if (data.last_sync && Date.now() - new Date(data.last_sync).getTime() < 3 * 3600 * 1000) return;
+  const r = await garminCall('sync');
+  if (r.added) toast(`Garmin : ${r.added} nouvelle(s) activité(s)`);
+}
+
 async function viewSources(newToken = '') {
   const { data: conns } = await sb.from('connections').select('*').eq('member_id', S.me.id);
   const apple = (conns || []).find((c) => c.provider === 'apple');
+  const garmin = (conns || []).find((c) => c.provider === 'garmin');
   const since = (t) => t ? new Date(t).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
   const url = `${SUPABASE_URL}/functions/v1/ingest`;
   $app.innerHTML = header('Montres et sources', 'Tout est facultatif : la saisie à la main reste toujours possible.') + `<div class="wrap">
@@ -849,7 +865,21 @@ async function viewSources(newToken = '') {
           ${apple ? '<button class="btn ghost" id="appleOff">Déconnecter</button>' : ''}
         </div>`}
     </div>
-    <div class="card"><div class="row between"><span class="title">Garmin</span><span class="pill">Bientôt</span></div><span class="muted">Connexion automatique via l'accès personnel Garmin Connect, en cours de préparation. En attendant, saisis tes chiffres dans Suivi.</span></div>
+    <div class="card white">
+      <div class="row between"><span class="title">Garmin</span>${garmin ? `<span class="pill ${garmin.status === 'actif' ? 'ok' : 'warn'}">${garmin.status === 'actif' ? 'Connecté' : 'À reconnecter'}</span>` : ''}</div>
+      <span class="muted">Tes activités Garmin (course, vélo, renfo, marche…) arrivent toutes seules dans Suivi, à chaque ouverture de l'appli. Pour les pas et le sommeil, passe plutôt par Apple Santé.</span>
+      ${garmin?.last_sync ? `<span class="small">Dernière synchro : ${esc(since(garmin.last_sync))}</span>` : ''}
+      ${garmin ? `<div class="row" style="flex-wrap:wrap"><button class="btn sm" id="gSync">Synchroniser maintenant</button><button class="btn ghost sm" id="gOff">Déconnecter</button></div>
+        ${garmin.status !== 'actif' ? '<span class="small">La clé ne marche plus : déconnecte puis reconnecte avec une nouvelle clé.</span>' : ''}` : `
+        <ol class="steps small">
+          <li>Sur ordinateur ou téléphone, ouvre <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener">la page « Personal API Key » de Garmin Connect</a> (Réglages, Compte).</li>
+          <li><b>Create Key</b>, accepte les conditions, choisis la durée la plus longue, puis <b>Create</b>.</li>
+          <li>Copie la clé (elle ne s'affiche qu'une fois) et colle-la ici.</li>
+        </ol>
+        <form id="gForm" class="row" style="gap:6px" novalidate><input name="key" type="password" autocomplete="off" placeholder="Clé personnelle Garmin" style="flex:1"><button class="btn">Connecter</button></form>
+        <p class="err" id="gErr" role="alert" style="margin:0"></p>
+        <span class="small muted">Ta clé est chiffrée sur le serveur et ne sert qu'à lire tes propres données. Tu peux la supprimer à tout moment depuis Garmin Connect.</span>`}
+    </div>
     <div class="card"><div class="row between"><span class="title">Polar</span><span class="pill">Bientôt</span></div><span class="muted">Connexion automatique via Polar Flow, en cours de préparation.</span></div>
     <div class="card"><span class="title">Saisie manuelle</span><span class="muted">Pas, sommeil, fréquence cardiaque, activités, pesées.</span><button class="btn ghost" data-go="track">Aller au suivi</button></div>
   </div>`;
@@ -862,6 +892,25 @@ async function viewSources(newToken = '') {
     const { data, error } = await sb.rpc('create_ingest_token', { p_provider: 'apple' });
     if (error) return fail(error, 'Création du jeton impossible');
     viewSources(data);
+  });
+  document.getElementById('gForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const key = e.target.key.value.trim(); const $e = document.getElementById('gErr'); const b = e.target.querySelector('.btn');
+    if (!key) return ($e.textContent = 'Colle ta clé Garmin.');
+    $e.textContent = ''; b.disabled = true; b.textContent = 'Vérification…';
+    const r = await garminCall('connect', { api_key: key });
+    b.disabled = false; b.textContent = 'Connecter';
+    if (r.error) return ($e.textContent = r.error);
+    toast(`Garmin connecté : ${r.added} activité(s) importée(s)`); viewSources();
+  });
+  document.getElementById('gSync')?.addEventListener('click', async (e) => {
+    e.target.disabled = true; e.target.textContent = 'Synchro…';
+    const r = await garminCall('sync');
+    toast(r.error || (r.added ? `${r.added} nouvelle(s) activité(s)` : 'Déjà à jour')); viewSources();
+  });
+  document.getElementById('gOff')?.addEventListener('click', async () => {
+    if (!confirm('Déconnecter Garmin ? Les activités déjà importées sont conservées.')) return;
+    const r = await garminCall('disconnect'); toast(r.error || 'Garmin déconnecté'); viewSources();
   });
   document.getElementById('appleOff')?.addEventListener('click', async () => {
     if (!confirm('Déconnecter Apple Santé ? Les données déjà reçues sont conservées.')) return;
