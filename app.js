@@ -62,7 +62,10 @@ async function boot() {
     if (!!session !== was) route();
   });
   window.addEventListener('hashchange', () => { if (!S.session) route(); });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.addEventListener('message', (e) => { if (e.data?.go && S.me?.onboarded_at) go(e.data.go); });
+  }
   route();
 }
 
@@ -76,6 +79,8 @@ async function route() {
   if (!meta.password_set) return viewSetPassword('create');
   if (resetting || new URLSearchParams(location.search).has('reinit')) return viewSetPassword('reset');
   if (!S.me.onboarded_at) { $tabs.hidden = true; return viewOnboarding(); }
+  const gq = new URLSearchParams(location.search).get('go');
+  if (gq && ['today', 'meals', 'defis', 'track', 'more', 'notifs'].includes(gq)) { history.replaceState(null, '', location.pathname); S.view = gq; }
   const qp = new URLSearchParams(location.search).get('polar');
   if (qp) {
     history.replaceState(null, '', location.pathname); S.view = 'sources';
@@ -607,6 +612,7 @@ function viewGuide() {
     ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
     ${sec('Le suivi et les montres', `<p>Onglet Suivi : chaque mesure en Jour, Semaine ou Mois, avec comparaison à la période précédente. Tout peut se saisir à la main (« Saisir ma journée », « + Activité », « + Pesée »). Une saisie à la main remplace les chiffres de la montre pour ce jour-là.</p><p>Garmin : collez votre clé personnelle Garmin Connect dans Plus, puis « Montres et sources » : vos activités arrivent toutes seules. Apple Watch : un raccourci iPhone envoie pas, sommeil et fréquence cardiaque chaque soir.</p>`)}
     ${sec('Les défis et les points', `<p>Jauge du jour à 4 paliers (2 500, 5 000, 7 500, 10 000 pas), marche rapide de 10 ou 20 min, séries de jours à 7 500 pas, défis à deux (20 000 pas par jour, 120 000 par semaine), points du mois et badges.</p><p>Barème : 1 pt par palier de pas · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max par jour) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</p>`)}
+    ${sec('Les notifications', `<p>Plus › Notifications › « Activer ». Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil (Safari › Partager › Sur l'écran d'accueil) et ouvre-la depuis l'icône : c'est obligatoire chez Apple (iOS 16.4 minimum). Sur Android, ça marche directement dans Chrome.</p><p>Tu choisis : rappel de séance (à ton heure), séance terminée par ton partenaire, repas à choisir (10 h), défi à deux (20 h), pesée du lundi (8 h), bilan du dimanche (19 h). Un rappel n'est envoyé que s'il sert : pas de rappel séance si elle est déjà faite.</p>`)}
     ${sec('Vos données', `<p>Elles sont hébergées en Europe (Supabase, Francfort) et ne sont visibles que par vous deux. Le journal est privé sauf si vous le partagez. Dans « Mon compte » : export de toutes tes données, changement de mot de passe et suppression définitive du compte.</p>`)}
     ${sec('Questions fréquentes', `<p><b>Je n'ai pas reçu l'e-mail.</b> Regarde dans les spams, puis utilise « Mot de passe oublié » sur l'écran de connexion.</p><p><b>Mon ou ma partenaire ne s'est pas encore connecté.</b> Sur « Aujourd'hui », un bouton permet de renvoyer son lien.</p><p><b>Je n'ai pas de montre.</b> Tout se saisit à la main, les défis marchent aussi.</p><p><b>Une recette ne nous plaît pas.</b> Ajoute l'ingrédient dans « Ce que tu n'aimes pas » (Mon profil).</p>`)}
     <h2>Un retour sur l'appli ?</h2>
@@ -648,7 +654,7 @@ function renderTabs() {
 }
 function go(view) { S.view = view; renderTabs(); render(); window.scrollTo(0, 0); }
 async function render() {
-  const views = { guide: viewGuide, today: viewToday, meals: viewMeals, journal: viewJournal, defis: viewChallenges, track: viewTrack, more: viewMore, program: viewProgram, settings: viewSettings, profile: viewProfile, account: viewAccount, sources: viewSources };
+  const views = { guide: viewGuide, today: viewToday, meals: viewMeals, journal: viewJournal, defis: viewChallenges, track: viewTrack, more: viewMore, program: viewProgram, settings: viewSettings, profile: viewProfile, account: viewAccount, sources: viewSources, notifs: viewNotifs };
   try { await (views[S.view] || viewToday)(); } catch (e) { fail(e, 'Affichage impossible'); }
 }
 function header(title, sub = '', withDayNav = false) {
@@ -735,6 +741,7 @@ async function viewToday() {
       <span class="small">${esc(sugg.why)} ${sugg.retest ? '' : 'Les séances seront ajustées tout de suite (tours, répétitions, repos, exercices).'}</span>
       <div class="row" style="flex-wrap:wrap">${sugg.retest ? '<button class="btn sm" data-go="profile">Refaire le test</button>' : `<button class="btn sm" id="lvlYes">Oui, on ajuste</button>`}<button class="btn ghost sm" id="lvlNo">Plus tard</button></div></div>` : ''}
     ${people.length === 2 ? duoBar(`Défi du jour : ${DAILY_DUO_GOAL.toLocaleString('fr-FR')} pas à deux`, DAILY_DUO_GOAL, people.map((p) => track.merged(p.id, d).steps), people) : ''}
+    ${pushInvite() ? `<div class="card white" id="pushInvite"><span class="title">🔔 Active les rappels</span><span class="small">Séance du jour, repas à choisir, défi à deux, bilan du dimanche. Tu choisis lesquels.</span><div class="row"><button class="btn sm" data-go="notifs">Activer</button><button class="btn ghost sm" id="pushLater">Plus tard</button></div></div>` : ''}
     <h2>Sport du jour</h2>
     ${!S.plan ? `<div class="card"><span class="title">Pas encore de programme</span><span class="muted">${isCaptain() ? 'Règle le matériel et la durée, puis génère le programme.' : `${esc(S.partner?.first_name || 'Le capitaine')} règle le matériel et génère le programme.`}</span>${isCaptain() ? '<button class="btn" data-go="settings">Créer le programme</button>' : ''}</div>` : ''}
     ${(pd?.sessions || []).map((s) => { const who = people.filter((p) => forOf(s).includes(p.id)); return `
@@ -761,6 +768,7 @@ async function viewToday() {
   </div>`;
   bindDayNav();
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
+  document.getElementById('pushLater')?.addEventListener('click', () => { try { localStorage.setItem('tf_push_later', String(Date.now())); } catch {} document.getElementById('pushInvite')?.remove(); });
   $app.querySelectorAll('[data-ex]').forEach((b) => b.onclick = () => showExercise(b.dataset.ex));
   document.getElementById('lvlYes')?.addEventListener('click', async () => { await setLevel(sugg.to, 'ressenti'); toast(`Niveau ${LEVELS[sugg.to - 1].name} : séances ajustées`); viewToday(); });
   document.getElementById('lvlNo')?.addEventListener('click', async () => { const fitness = { ...(S.me.fitness || {}), dismissed_at: new Date().toISOString() }; await sb.from('members').update({ fitness }).eq('id', S.me.id); S.me.fitness = fitness; viewToday(); });
@@ -1427,10 +1435,79 @@ function weightChart(weights, people) {
     <text x="${W - 8}" y="${H - 6}" font-size="10" fill="#5E6573" text-anchor="end">${fmtDay(iso(new Date(x1)), { day: 'numeric', month: 'short' })}</text></svg>`;
 }
 
+// ---------- Notifications ----------
+const NOTIF_DEFAULT = { seance: true, seance_hour: 18, repas: true, partenaire: true, duo: true, pesee: true, bilan: true };
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+function pushInvite() {
+  if (!pushSupported() || Notification.permission !== 'default') return false;
+  let later = 0; try { later = Number(localStorage.getItem('tf_push_later') || 0); } catch {}
+  return Date.now() - later > 7 * 864e5;
+}
+const b64uToBytes = (s) => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); };
+async function pushCall(body) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/push`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${session?.access_token || SUPABASE_KEY}` }, body: JSON.stringify(body) });
+  return r.json();
+}
+async function currentSub() {
+  if (!pushSupported()) return null;
+  const reg = await navigator.serviceWorker.ready; return reg.pushManager.getSubscription();
+}
+async function enablePush() {
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error(perm === 'denied' ? 'refus' : 'annule');
+  const reg = await navigator.serviceWorker.ready;
+  const { publicKey } = await pushCall({ action: 'vapid' });
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(publicKey) });
+  const j = sub.toJSON();
+  const { error } = await sb.from('push_subscriptions').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: navigator.userAgent.slice(0, 200) }, { onConflict: 'endpoint' });
+  if (error) throw error;
+}
+async function viewNotifs() {
+  const n = { ...NOTIF_DEFAULT, ...(S.me.notif || {}) };
+  const sub = await currentSub().catch(() => null);
+  const perm = pushSupported() ? Notification.permission : 'unsupported';
+  let status;
+  if (isIOS() && !isStandalone()) status = `<div class="notice"><b>Sur iPhone, une étape avant :</b><ol class="steps small"><li>Dans Safari, appuie sur <b>Partager</b> (le carré avec la flèche).</li><li>Choisis <b>Sur l'écran d'accueil</b>, puis <b>Ajouter</b>.</li><li>Ouvre Tandem Forme <b>depuis la nouvelle icône</b> et reviens ici.</li></ol><span class="small muted">Il faut iOS 16.4 ou plus récent.</span></div>`;
+  else if (perm === 'unsupported') status = '<div class="notice">Ce navigateur ne gère pas les notifications. Sur Android, utilise Chrome ; sur iPhone, ajoute l\'appli à l\'écran d\'accueil.</div>';
+  else if (perm === 'denied') status = `<div class="notice">Les notifications sont bloquées pour Tandem Forme. ${isIOS() ? 'Va dans Réglages › Notifications › Tandem Forme et autorise-les.' : 'Appuie sur le cadenas à côté de l\'adresse (ou Paramètres du téléphone › Applis › Tandem Forme) et autorise les notifications.'}</div>`;
+  else if (sub) status = '<div class="card"><span class="title">✅ Activées sur ce téléphone</span><div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" id="pTest">Envoyer un test</button><button class="btn ghost sm" id="pOff">Désactiver ici</button></div></div>';
+  else status = '<div class="card white"><span class="title">Pas encore activées sur ce téléphone</span><span class="small">Ton téléphone va te demander l\'autorisation : réponds « Autoriser ».</span><button class="btn" id="pOn">Activer les notifications</button></div>';
+  const ROWS = [['seance', 'Séance du jour', 'Un rappel à l\'heure choisie, seulement s\'il reste une séance à faire.'], ['partenaire', 'Séance de ton partenaire', `Quand ${esc(S.partner?.first_name || 'ton partenaire')} termine sa séance.`], ['repas', 'Repas à choisir', 'À 10 h, si le midi ou le soir n\'est pas encore choisi.'], ['duo', 'Défi à deux', 'À 20 h, si les 20 000 pas à deux ne sont pas encore atteints.'], ['pesee', 'Pesée du lundi', 'Le lundi à 8 h.'], ['bilan', 'Bilan de la semaine', 'Le dimanche à 19 h.']];
+  $app.innerHTML = header('Notifications', 'Des rappels utiles, jamais plus de quelques-uns par jour') + `<div class="wrap">
+    ${status}
+    <h2>Ce que tu reçois</h2>
+    <div class="card white" style="gap:12px">${ROWS.map(([k, t, d]) => `<label style="display:flex;flex-direction:row;justify-content:space-between;gap:12px;align-items:center"><span style="display:flex;flex-direction:column"><b>${t}</b><span class="small muted">${d}</span></span><input type="checkbox" data-n="${k}" ${n[k] ? 'checked' : ''} style="width:22px;height:22px;flex:none"></label>${k === 'seance' ? `<label class="small">Heure du rappel séance<select id="nHour">${[6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21].map((h) => `<option value="${h}" ${Number(n.seance_hour) === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` : ''}`).join('')}</div>
+    <span class="small muted">Les réglages valent pour tous tes appareils. Les rappels suivent l'heure de Paris.</span>
+  </div>`;
+  const save = async () => {
+    const notif = { ...n }; $app.querySelectorAll('[data-n]').forEach((c) => { notif[c.dataset.n] = c.checked; }); notif.seance_hour = Number(document.getElementById('nHour').value);
+    const { error } = await sb.from('members').update({ notif }).eq('id', S.me.id);
+    if (error) return fail(error, 'Enregistrement impossible');
+    S.me.notif = notif; Object.assign(n, notif); toast('Réglage enregistré');
+  };
+  $app.querySelectorAll('[data-n]').forEach((c) => c.onchange = save);
+  document.getElementById('nHour').onchange = save;
+  document.getElementById('pOn')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try { await enablePush(); await pushCall({ action: 'test' }); toast('C\'est activé !'); }
+    catch (err) { toast(err.message === 'refus' ? 'Autorisation refusée' : err.message === 'annule' ? 'Autorisation pas donnée' : 'Activation impossible, réessaie'); }
+    viewNotifs();
+  });
+  document.getElementById('pTest')?.addEventListener('click', async () => { const r = await pushCall({ action: 'test' }).catch(() => ({})); toast(r.sent ? 'Test envoyé' : 'Envoi impossible : désactive puis réactive'); });
+  document.getElementById('pOff')?.addEventListener('click', async () => {
+    const s = await currentSub(); if (s) { await sb.from('push_subscriptions').delete().eq('endpoint', s.endpoint); await s.unsubscribe(); }
+    toast('Désactivées sur ce téléphone'); viewNotifs();
+  });
+}
+
 // ---------- Plus ----------
 function viewMore() {
   $app.innerHTML = header('Plus') + `<div class="wrap">
-    ${[['guide', 'Guide de l\'appli', 'Tuto, visite guidée, FAQ et retours bêta'], ['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Garmin, Apple Watch, saisie manuelle'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
+    ${[['guide', 'Guide de l\'appli', 'Tuto, visite guidée, FAQ et retours bêta'], ['notifs', 'Notifications', 'Rappels de séance, repas, défi à deux'], ['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Garmin, Apple Watch, saisie manuelle'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
       .map(([v, t, s]) => `<button class="card" style="border:0;text-align:left;cursor:pointer" data-go="${v}"><span class="title">${t}</span><span class="muted">${s}</span></button>`).join('')}
   </div>`;
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
