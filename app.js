@@ -1,11 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
-  iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices,
+  iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices, courseChoices,
   WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds,
 } from './program.js';
 import { EXERCISES, SESSIONS, GAINAGE, videoUrl } from './exercises.js';
 import { animSvg, hasAnim, startAnims } from './animations.js';
+import { FRIDGE, FRIDGE_CATS, parseFree, matchRecipes, quickRecipe, allergensOf } from './frigo.js';
 
 const SUPABASE_URL = 'https://ktrsvnminsogkbxlxjpb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_KuNRSgfDThA_k2v7eatfUQ_ueIhzOyb';
@@ -110,7 +111,7 @@ async function loadCore() {
   S.tandem = tandem; S.plan = plan || null;
   if (!S.recipes.length) {
     const [{ data: rec }, { data: al }] = await Promise.all([
-      sb.from('recipes').select('id,name,minutes,servings,protein,dish_type,season,is_treat,lunchbox,kcal_portion'),
+      sb.from('recipes').select('id,name,minutes,servings,protein,dish_type,season,is_treat,lunchbox,kcal_portion,course'),
       sb.from('recipe_allergens').select('*'),
     ]);
     S.recipes = rec || [];
@@ -609,6 +610,7 @@ function viewGuide() {
     ${sec('Le capitaine', `<p>C'est la personne qui a inscrit le tandem. Elle coche le matériel disponible à la maison, choisit la durée (2 à 12 semaines), la date de début et la semaine où la course reprend. Le programme vaut pour vous deux, mais les exercices sont adaptés à chacun selon ses zones fragiles.</p><p>L'autre personne voit les réglages et peut envoyer des suggestions.</p>`)}
     ${sec('Le programme', `<p>Lundi, mercredi et vendredi : renfo maison (échauffement au vélo si vous en avez un). Mardi et jeudi : marche active. Samedi : grande balade ou course douce. Dimanche : étirements. Chaque soir : 5 min de respiration.</p><p>Les séances s'allongent doucement au fil des semaines. Cochez-les dans « Aujourd'hui ». Si une séance ne passe pas, ce n'est pas grave : on reprend le lendemain.</p><p><b>Le niveau</b> (Débutant, Reprise, Intermédiaire, Confirmé) est évalué à l'inscription par 5 questions. Il règle les tours, répétitions, repos, temps de gainage et l'allure en cardio, et débloque des variantes plus dures (pompes classiques, squat sauté, gainage latéral). Après chaque séance cochée, dis si c'était trop dur, bien ou trop facile : l'appli te propose de monter ou descendre de niveau, et de refaire le test toutes les 4 semaines (Mon profil).</p>`)}
     ${sec('Les repas', `<p>Pour chaque midi et chaque soir : 3 idées de la même famille (même viande ou poisson, même type de plat). Le midi privilégie les plats qui se transportent en gamelle. Le vendredi soir, un plat plaisir fait maison.</p><p>« C'est mangé » valide le repas. « On a mangé autre chose » demande ce que vous avez mangé (pour vous deux ou pour toi seul). Un joker par semaine et par personne pour un repas plaisir, sans culpabilité.</p><p>Les recettes sont prévues pour 4 portions (2 repas pour vous deux, ou 1 repas et 2 gamelles) ; le sélecteur de portions recalcule les quantités.</p>`)}
+    ${sec('Frigo, entrées et desserts', `<p><b>🧊 Avec ce qu'on a dans le frigo</b> (sous chaque repas) : coche tes ingrédients, l'appli te propose les recettes de la base qui collent le mieux (avec ce qu'il manque) et compose une recette minute pas à pas. « On fait ça » l'enregistre pour le repas.</p><p><b>Entrée et dessert</b> : totalement facultatifs, dans « ＋ Entrée et dessert » sous chaque repas. Des idées légères qui changent chaque jour, avec la recette et les calories.</p>`)}
     ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
     ${sec('Le suivi et les montres', `<p>Onglet Suivi : chaque mesure en Jour, Semaine ou Mois, avec comparaison à la période précédente. Tout peut se saisir à la main (« Saisir ma journée », « + Activité », « + Pesée »). Une saisie à la main remplace les chiffres de la montre pour ce jour-là.</p><p>Garmin : collez votre clé personnelle Garmin Connect dans Plus, puis « Montres et sources » : vos activités arrivent toutes seules. Apple Watch : un raccourci iPhone envoie pas, sommeil et fréquence cardiaque chaque soir.</p>`)}
     ${sec('Les défis et les points', `<p>Jauge du jour à 4 paliers (2 500, 5 000, 7 500, 10 000 pas), marche rapide de 10 ou 20 min, séries de jours à 7 500 pas, défis à deux (20 000 pas par jour, 120 000 par semaine), points du mois et badges.</p><p>Barème : 1 pt par palier de pas · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max par jour) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</p>`)}
@@ -797,7 +799,9 @@ async function viewMeals() {
   const d = S.day; const monday = mondayOf(d);
   const { data: mealsWeek } = await sb.from('meals').select('*').eq('tandem_id', S.me.tandem_id).gte('day', monday).lte('day', addDays(monday, 6));
   const meals = (mealsWeek || []).filter((m) => m.day === d);
-  const pool = eligibleRecipes(S.recipes, S.allergenMap, [S.me, S.partner].filter(Boolean));
+  const all = eligibleRecipes(S.recipes, S.allergenMap, [S.me, S.partner].filter(Boolean));
+  const pool = all.filter((r) => (r.course || 'plat') === 'plat');
+  const pools = { entree: all.filter((r) => r.course === 'entree'), dessert: all.filter((r) => r.course === 'dessert') };
   const cheats = weekCheats(mealsWeek);
   const friday = parseDay(d).getDay() === 5;
   $app.innerHTML = header('Repas', `Joker de la semaine : ${cheats ? 'utilisé' : 'disponible'}${friday ? ' · ce soir, plaisir fait maison' : ''}`, true) + `
@@ -806,17 +810,20 @@ async function viewMeals() {
     const choices = mealChoices(pool, d, slot);
     if (m?.recipe_id && !choices.some((c) => c.id === m.recipe_id)) { const r = S.recipes.find((x) => x.id === m.recipe_id); if (r) { choices.unshift(r); choices.length = Math.min(choices.length, 3); } }
     return `<section class="card white" data-slot="${slot}">
-      <div class="row between"><h2>${slot === 'midi' ? 'Midi' : 'Soir'}</h2>${m ? `<span class="pill ${m.status === 'fait' ? 'ok' : ''}">${{ choisi: 'Choisi', fait: 'Fait', remplace: 'Autre chose', saute: 'Sauté' }[m.status]}${m.member_id === null ? ' · nous deux' : ' · moi'}</span>` : ''}</div>
-      ${m?.status === 'remplace' ? `<div class="card"><span class="small muted">Vous avez mangé</span><span style="font-weight:600">${esc(m.eaten_text)}</span><span class="small muted">${esc({ maison: 'Fait maison', resto: 'Restaurant', pouce: 'Sur le pouce', livre: 'Livré' }[m.kind] || '')}${m.cheat ? ' · joker' : ''}</span></div>` : ''}
+      <div class="row between"><h2>${slot === 'midi' ? 'Midi' : 'Soir'}</h2>${m ? `<span class="pill ${m.status === 'fait' ? 'ok' : ''}">${m.kind === 'frigo' ? 'Recette du frigo' : { choisi: 'Choisi', fait: 'Fait', remplace: 'Autre chose', saute: 'Sauté' }[m.status]}${m.member_id === null ? ' · nous deux' : ' · moi'}</span>` : ''}</div>
+      ${m?.status === 'remplace' && m.kind === 'frigo' ? `<div class="card"><span class="small muted">🧊 Recette du frigo</span><span style="font-weight:600">${esc(m.eaten_text)}</span>${frigoSaved(m) ? '<button class="link small" data-frigo-see style="text-align:left">Revoir la recette ›</button>' : ''}</div>` : ''}
+      ${m?.status === 'remplace' && m.kind !== 'frigo' ? `<div class="card"><span class="small muted">Vous avez mangé</span><span style="font-weight:600">${esc(m.eaten_text)}</span><span class="small muted">${esc({ maison: 'Fait maison', resto: 'Restaurant', pouce: 'Sur le pouce', livre: 'Livré' }[m.kind] || '')}${m.cheat ? ' · joker' : ''}</span></div>` : ''}
       ${choices.map((r) => `<button class="choice" data-pick="${r.id}" aria-pressed="${m?.recipe_id === r.id && m.status !== 'remplace'}">
         <span style="font-weight:600">${esc(r.name)}</span>
         <span class="small muted">${r.minutes ? `${r.minutes} min` : ''}${r.kcal_portion ? ` · ~${r.kcal_portion} kcal` : ''}${r.lunchbox ? ' · gamelle' : ''}${r.is_treat ? ' · plaisir' : ''}${(S.allergenMap[r.id]?.allergens || []).length ? ` · ${(S.allergenMap[r.id].allergens).map((a) => (ALLERGENS.find((x) => x[0] === a) || [a, a])[1].toLowerCase()).join(', ')}` : ''}</span>
       </button>`).join('') || '<span class="muted">Aucune recette compatible avec vos allergies et régimes.</span>'}
       <div class="row" style="flex-wrap:wrap">
         ${m?.recipe_id && m.status !== 'remplace' ? `<button class="btn sm" data-done="${m.status === 'fait' ? 0 : 1}">${m.status === 'fait' ? 'Annuler « fait »' : 'C\'est mangé ✓'}</button><button class="btn soft sm" data-recipe="${m.recipe_id}">Voir la recette</button>` : ''}
+        <button class="btn ghost sm" data-frigo>🧊 Avec ce qu'on a dans le frigo</button>
         <button class="btn ghost sm" data-other>On a mangé autre chose</button>
         ${m ? '<button class="link" data-clear style="margin-left:auto">Effacer</button>' : ''}
       </div>
+      ${extrasHtml(slot, meals, pools, d)}
     </section>`;
   }).join('')}</div>`;
   bindDayNav();
@@ -827,10 +834,104 @@ async function viewMeals() {
     sec.querySelector('[data-done]')?.addEventListener('click', (e) => saveMeal(m, slot, { status: e.target.dataset.done === '1' ? 'fait' : 'choisi' }, m.member_id));
     sec.querySelector('[data-recipe]')?.addEventListener('click', (e) => showRecipe(e.target.dataset.recipe));
     sec.querySelector('[data-other]').onclick = () => otherMeal(m, slot, cheats);
+    sec.querySelector('[data-frigo]').onclick = () => fridgeModal(m, slot, all.filter((r) => (r.course || 'plat') === 'plat'));
+    sec.querySelector('[data-frigo-see]')?.addEventListener('click', () => showQuick(frigoSaved(m), null));
+    bindExtras(sec, slot, meals);
     sec.querySelector('[data-clear]')?.addEventListener('click', async () => { await sb.from('meals').delete().eq('id', m.id); viewMeals(); });
     sec.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('dblclick', () => showRecipe(b.dataset.pick)));
   });
 }
+// ---------- Entrée et dessert (facultatifs) ----------
+const EXTRA = [['entree', 'Entrée'], ['dessert', 'Dessert']];
+function extrasHtml(slot, meals, pools, d) {
+  const rows = EXTRA.map(([k, lab]) => {
+    const key = `${slot}_${k}`;
+    const m = meals.find((x) => x.slot === key);
+    const choices = courseChoices(pools[k], d, key);
+    if (m?.recipe_id && !choices.some((c) => c.id === m.recipe_id)) { const r = S.recipes.find((x) => x.id === m.recipe_id); if (r) choices.unshift(r); }
+    return `<div style="display:flex;flex-direction:column;gap:6px"><span class="small" style="font-weight:600">${lab} <span class="muted" style="font-weight:400">· facultatif</span>${m?.status === 'fait' ? ' <span class="pill ok">Fait</span>' : ''}</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${choices.slice(0, 3).map((r) => `<button class="chip chip-long" data-xpick="${key}|${r.id}" aria-pressed="${m?.recipe_id === r.id}">${esc(r.name)}${r.kcal_portion ? ` <span class="muted">~${r.kcal_portion} kcal</span>` : ''}</button>`).join('') || '<span class="small muted">Rien de compatible avec vos allergies.</span>'}</div>
+      ${m?.recipe_id ? `<div class="row" style="gap:12px"><button class="link small" data-xsee="${m.recipe_id}">Voir la recette</button><button class="link small" data-xdone="${key}">${m.status === 'fait' ? 'Annuler « fait »' : 'C\'est mangé ✓'}</button><button class="link small" data-xclear="${key}">Retirer</button></div>` : ''}</div>`;
+  }).join('');
+  const open = meals.some((x) => x.slot === `${slot}_entree` || x.slot === `${slot}_dessert`);
+  return `<details ${open ? 'open' : ''} style="margin-top:4px"><summary class="small" style="cursor:pointer;color:var(--me);font-weight:600">＋ Entrée et dessert (facultatif)</summary>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px"><span class="small muted">Pas obligatoire du tout : une entrée de légumes aide à moins manger de plat, et un dessert léger évite le grignotage.</span>${rows}</div></details>`;
+}
+function bindExtras(sec, slot, meals) {
+  const row = (key) => meals.find((x) => x.slot === key);
+  const save = async (key, patch) => {
+    const m = row(key);
+    const res = m ? await sb.from('meals').update({ ...patch, updated_by: S.me.id, updated_at: new Date().toISOString() }).eq('id', m.id)
+      : await sb.from('meals').insert({ tandem_id: S.me.tandem_id, member_id: null, day: S.day, slot: key, cheat: false, status: 'choisi', updated_by: S.me.id, ...patch });
+    if (res.error) return fail(res.error, 'Enregistrement impossible');
+    viewMeals();
+  };
+  sec.querySelectorAll('[data-xpick]').forEach((b) => b.onclick = () => { const [key, id] = b.dataset.xpick.split('|'); if (row(key)?.recipe_id === id) return showRecipe(id); save(key, { recipe_id: id, status: 'choisi' }); });
+  sec.querySelectorAll('[data-xsee]').forEach((b) => b.onclick = () => showRecipe(b.dataset.xsee));
+  sec.querySelectorAll('[data-xdone]').forEach((b) => b.onclick = () => { const m = row(b.dataset.xdone); save(b.dataset.xdone, { status: m.status === 'fait' ? 'choisi' : 'fait' }); });
+  sec.querySelectorAll('[data-xclear]').forEach((b) => b.onclick = async () => { await sb.from('meals').delete().eq('id', row(b.dataset.xclear).id); viewMeals(); });
+}
+
+// ---------- Avec ce qu'il y a dans le frigo ----------
+const frigoKey = (m) => `tf_frigo_${m.day}_${m.slot}`;
+function frigoSaved(m) { try { return JSON.parse(localStorage.getItem(frigoKey(m)) || 'null'); } catch { return null; } }
+let INGS = null;
+const QTY_RX = new RegExp("^[0-9.,\\/]+\\s*(kg|g|cl|l|c\\. à s\\.|c\\. à c\\.)?\\s*(de |d'|d’)?", 'i');
+const stripQty = (l) => l.replace(QTY_RX, '');
+async function allIngredients() {
+  if (INGS) return INGS;
+  const { data } = await sb.from('recipe_ingredients').select('recipe_id,label,ingredient_id');
+  INGS = {}; (data || []).forEach((l) => (INGS[l.recipe_id] ||= []).push(l));
+  return INGS;
+}
+function fridgeModal(m, slot, pool) {
+  let have = []; try { have = JSON.parse(sessionStorage.getItem('tf_frigo_have') || '[]'); } catch {}
+  openModal(`<h2>🧊 Qu'y a-t-il dans le frigo ?</h2>
+    <span class="small muted">Coche ce que tu as (sel, poivre, huile, épices : on suppose que c'est dans le placard). L'appli cherche dans vos recettes et te compose aussi une recette minute.</span>
+    ${FRIDGE_CATS.map(([c, lab]) => `<div><b class="small">${lab}</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${FRIDGE.filter((f) => f[2] === c).map((f) => `<button type="button" class="chip" data-fi="${f[0]}" aria-pressed="${have.includes(f[0])}">${esc(f[1])}</button>`).join('')}</div></div>`).join('')}
+    <label class="small">Autre chose ? (sépare par des virgules)<input id="fFree" placeholder="ex. reste de riz, curry, olives"></label>
+    <button class="btn" id="fGo">Trouver une recette</button>
+    <div id="fRes" style="display:flex;flex-direction:column;gap:10px"></div>`, (root) => {
+    root.querySelectorAll('[data-fi]').forEach((b) => b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); });
+    root.querySelector('#fGo').onclick = async () => {
+      const picked = [...root.querySelectorAll('[data-fi][aria-pressed=true]')].map((b) => b.dataset.fi);
+      const free = parseFree(root.querySelector('#fFree').value);
+      const ids = [...new Set([...picked, ...free.ids])];
+      if (!ids.length && !free.extra.length) return toast('Coche au moins un ingrédient');
+      try { sessionStorage.setItem('tf_frigo_have', JSON.stringify(ids)); } catch {}
+      const people = [S.me, S.partner].filter(Boolean);
+      const banned = new Set(people.flatMap((p) => p.nutrition?.allergens || []));
+      const warn = allergensOf(ids).filter((a) => banned.has(a)).map((a) => (ALLERGENS.find((x) => x[0] === a) || [a, a])[1].toLowerCase());
+      const found = matchRecipes(pool, await allIngredients(), ids, free.extra);
+      const quick = quickRecipe(ids, people.length, free.extra);
+      const res = root.querySelector('#fRes');
+      res.innerHTML = `${warn.length ? `<div class="notice small">Attention : tu as coché des ingrédients avec ${esc(warn.join(', '))}, une allergie déclarée dans le tandem.</div>` : ''}
+        ${quick ? `<div class="card white" style="border:2px solid var(--me)"><span class="small muted">Recette minute · ~${quick.minutes} min · ${people.length} portion${people.length > 1 ? 's' : ''}</span><span class="title">${esc(quick.title)}</span><div class="row" style="flex-wrap:wrap"><button class="btn sm" id="qSee">Voir la recette</button><button class="btn ghost sm" id="qPick">On fait ça</button></div></div>` : ''}
+        <b class="small">Dans vos recettes</b>
+        ${found.length ? found.map((x, i) => `<div class="card"><span style="font-weight:600">${esc(x.r.name)}</span><span class="small muted">Tu as ${x.ok.length} ingrédient${x.ok.length > 1 ? 's' : ''} sur ${x.ok.length + x.miss.length}${x.miss.length ? ` · il manque : ${esc(x.miss.slice(0, 4).map((l) => stripQty(l)).join(', '))}${x.miss.length > 4 ? '…' : ''}` : ' · tout y est !'}</span><div class="row" style="flex-wrap:wrap"><button class="btn soft sm" data-fsee="${x.r.id}">Voir</button><button class="btn ghost sm" data-fpick="${x.r.id}">Choisir</button></div></div>`).join('') : '<span class="small muted">Aucune recette de la base ne colle assez. La recette minute est faite pour ça !</span>'}`;
+      res.querySelectorAll('[data-fsee]').forEach((b) => b.onclick = () => showRecipe(b.dataset.fsee));
+      res.querySelectorAll('[data-fpick]').forEach((b) => b.onclick = () => saveMeal(m, slot, { recipe_id: b.dataset.fpick, status: 'choisi', eaten_text: null, kind: null, cheat: false }, null));
+      res.querySelector('#qSee')?.addEventListener('click', () => showQuick(quick, { m, slot }));
+      res.querySelector('#qPick')?.addEventListener('click', () => pickQuick(quick, m, slot));
+      res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+  });
+}
+function pickQuick(quick, m, slot) {
+  try { localStorage.setItem(`tf_frigo_${S.day}_${slot}`, JSON.stringify(quick)); } catch {}
+  saveMeal(m, slot, { recipe_id: null, status: 'remplace', eaten_text: quick.title, kind: 'frigo', cheat: false }, null);
+}
+function showQuick(q, ctx) {
+  if (!q) return;
+  openModal(`<h2>${esc(q.title)}</h2><div><span class="pill">~${q.minutes} min</span></div>
+    <b>Ingrédients</b><ul class="plain small">${q.ing.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    <b>Étapes</b><ol class="steps small">${q.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
+    <span class="small muted">Recette composée automatiquement à partir de ce que tu as : ajuste les quantités à ton appétit. Pense à ajouter des légumes s'il n'y en a pas.</span>
+    ${ctx ? '<button class="btn" id="qPick2">On fait ça</button>' : ''}`, (root) => {
+    root.querySelector('#qPick2')?.addEventListener('click', () => pickQuick(q, ctx.m, ctx.slot));
+  });
+}
+
 async function saveMeal(existing, slot, patch, memberId) {
   const row = { ...patch, updated_by: S.me.id, updated_at: new Date().toISOString() };
   let res;
@@ -1251,7 +1352,7 @@ async function viewChallenges() {
   const monthStart = `${end.slice(0, 8)}01`;
   const [{ merged, checks, weights }, { data: meals }, { data: allActs }] = await Promise.all([
     loadTrackData(from, end),
-    sb.from('meals').select('day,member_id,status').eq('tandem_id', S.me.tandem_id).gte('day', from).lte('day', end),
+    sb.from('meals').select('day,member_id,status,slot').eq('tandem_id', S.me.tandem_id).in('slot', ['midi', 'soir']).gte('day', from).lte('day', end),
     sb.from('activities').select('member_id,distance_km').eq('tandem_id', S.me.tandem_id),
   ]);
   const days90 = Array.from({ length: 90 }, (_, i) => addDays(from, i));

@@ -98,3 +98,5 @@ input[type=date]::-webkit-calendar-picker-indicator{margin-left:2px}
 @media (max-width:360px){.grid2{grid-template-columns:minmax(0,1fr)}}
 /* Sur iPhone, un champ date à côté d'un autre champ déborde souvent : on les empile */
 .grid2:has(input[type=date]),.grid2:has(input[type=time]){grid-template-columns:minmax(0,1fr)}
+.chip-long{min-height:0;height:auto;padding:8px 12px;border-radius:14px;text-align:left;line-height:1.3;font-weight:500}
+.chip-long[aria-pressed="true"] .muted{color:#fff;opacity:.85}

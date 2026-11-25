@@ -218,6 +218,14 @@ export function eligibleRecipes(recipes, allergenMap, members) {
   });
 }
 
+// Entrées et desserts facultatifs : 3 idées de saison qui tournent chaque jour.
+export function courseChoices(pool, dayStr, key) {
+  const s = season(dayStr);
+  const inSeason = (r) => (r.season || []).includes('toutes') || (r.season || []).includes(s);
+  const base = pool.filter(inSeason).length >= 3 ? pool.filter(inSeason) : pool;
+  return [...base].sort((a, b) => hash(dayStr + key + a.id) - hash(dayStr + key + b.id)).slice(0, 3);
+}
+
 // 3 propositions "similaires" pour un créneau : une principale + 2 de la même famille.
 export function mealChoices(pool, dayStr, slot) {
   const s = season(dayStr);
