@@ -612,7 +612,7 @@ function viewGuide() {
     ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
     ${sec('Le suivi et les montres', `<p>Onglet Suivi : chaque mesure en Jour, Semaine ou Mois, avec comparaison à la période précédente. Tout peut se saisir à la main (« Saisir ma journée », « + Activité », « + Pesée »). Une saisie à la main remplace les chiffres de la montre pour ce jour-là.</p><p>Garmin : collez votre clé personnelle Garmin Connect dans Plus, puis « Montres et sources » : vos activités arrivent toutes seules. Apple Watch : un raccourci iPhone envoie pas, sommeil et fréquence cardiaque chaque soir.</p>`)}
     ${sec('Les défis et les points', `<p>Jauge du jour à 4 paliers (2 500, 5 000, 7 500, 10 000 pas), marche rapide de 10 ou 20 min, séries de jours à 7 500 pas, défis à deux (20 000 pas par jour, 120 000 par semaine), points du mois et badges.</p><p>Barème : 1 pt par palier de pas · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max par jour) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</p>`)}
-    ${sec('Les notifications', `<p>Plus › Notifications › « Activer ». Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil (Safari › Partager › Sur l'écran d'accueil) et ouvre-la depuis l'icône : c'est obligatoire chez Apple (iOS 16.4 minimum). Sur Android, ça marche directement dans Chrome.</p><p>Tu choisis : rappel de séance (à ton heure), séance terminée par ton partenaire, repas à choisir (10 h), défi à deux (20 h), pesée du lundi (8 h), bilan du dimanche (19 h). Un rappel n'est envoyé que s'il sert : pas de rappel séance si elle est déjà faite.</p>`)}
+    ${sec('Les notifications', `<p>Plus › Notifications › « Activer ». Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil et ouvre-la depuis l'icône : c'est obligatoire chez Apple (iOS 16.4 minimum). Safari : Partager en bas › Sur l'écran d'accueil. Chrome : Partager en haut à droite dans la barre d'adresse › Sur l'écran d'accueil. Brave ou autre : Partager › Sur l'écran d'accueil ; si l'option manque, fais-le une fois depuis Safari. Reconnecte-toi une fois dans l'icône. Sur Android, ça marche directement dans Chrome.</p><p>Tu choisis : rappel de séance (à ton heure), séance terminée par ton partenaire, repas à choisir (10 h), défi à deux (20 h), pesée du lundi (8 h), bilan du dimanche (19 h). Un rappel n'est envoyé que s'il sert : pas de rappel séance si elle est déjà faite.</p>`)}
     ${sec('Vos données', `<p>Elles sont hébergées en Europe (Supabase, Francfort) et ne sont visibles que par vous deux. Le journal est privé sauf si vous le partagez. Dans « Mon compte » : export de toutes tes données, changement de mot de passe et suppression définitive du compte.</p>`)}
     ${sec('Questions fréquentes', `<p><b>Je n'ai pas reçu l'e-mail.</b> Regarde dans les spams, puis utilise « Mot de passe oublié » sur l'écran de connexion.</p><p><b>Mon ou ma partenaire ne s'est pas encore connecté.</b> Sur « Aujourd'hui », un bouton permet de renvoyer son lien.</p><p><b>Je n'ai pas de montre.</b> Tout se saisit à la main, les défis marchent aussi.</p><p><b>Une recette ne nous plaît pas.</b> Ajoute l'ingrédient dans « Ce que tu n'aimes pas » (Mon profil).</p>`)}
     <h2>Un retour sur l'appli ?</h2>
@@ -1441,7 +1441,8 @@ const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.p
 const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 function pushInvite() {
-  if (!pushSupported() || Notification.permission !== 'default') return false;
+  const iosTab = isIOS() && !isStandalone();
+  if (!iosTab && (!pushSupported() || Notification.permission !== 'default')) return false;
   let later = 0; try { later = Number(localStorage.getItem('tf_push_later') || 0); } catch {}
   return Date.now() - later > 7 * 864e5;
 }
@@ -1466,12 +1467,33 @@ async function enablePush() {
   const { error } = await sb.from('push_subscriptions').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: navigator.userAgent.slice(0, 200) }, { onConflict: 'endpoint' });
   if (error) throw error;
 }
+// Navigateur utilisé sur iPhone (Chrome, Brave, Edge, Firefox ou Safari).
+function iosBrowser() {
+  const ua = navigator.userAgent;
+  if (/CriOS/.test(ua)) return 'Chrome';
+  if (/EdgiOS/.test(ua)) return 'Edge';
+  if (/FxiOS/.test(ua)) return 'Firefox';
+  if (navigator.brave) return 'Brave';
+  return 'Safari';
+}
+function iosInstallHtml() {
+  const b = iosBrowser();
+  const steps = {
+    Safari: ['Appuie sur <b>Partager</b> (le carré avec une flèche, en bas de l\'écran).', 'Descends et choisis <b>Sur l\'écran d\'accueil</b>, laisse « Ouvrir comme app web » activé, puis <b>Ajouter</b>.'],
+    Chrome: ['Appuie sur <b>Partager</b> : l\'icône carré-flèche <b>en haut à droite, dans la barre d\'adresse</b> (fais défiler un peu vers le haut si la barre est réduite).', 'Choisis <b>Sur l\'écran d\'accueil</b>, puis <b>Ajouter</b>.'],
+    Edge: ['Appuie sur <b>Partager</b> dans la barre d\'adresse ou le menu ⋯.', 'Choisis <b>Sur l\'écran d\'accueil</b>, puis <b>Ajouter</b>.'],
+  }[b] || ['Appuie sur <b>Partager</b> (menu ⋯ puis Partager, ou l\'icône carré-flèche).', 'Cherche <b>Sur l\'écran d\'accueil</b> dans la liste. Si l\'option n\'y est pas, copie le lien ci-dessous et fais-le une fois depuis <b>Safari</b> : ensuite l\'icône marche toute seule, quel que soit ton navigateur habituel.'];
+  return `<div class="notice"><b>Sur iPhone, une étape avant (${b}) :</b><ol class="steps small">${steps.map((x) => `<li>${x}</li>`).join('')}<li>Ferme ${b} et ouvre Tandem Forme <b>depuis la nouvelle icône</b>.</li><li>Reconnecte-toi une fois (l'icône a sa propre session), puis reviens ici : Plus › Notifications.</li></ol>
+    ${b === 'Safari' ? '<span class="small">Tu es sur Brave ? Menu ⋯ › <b>Partager</b> › <b>Sur l\'écran d\'accueil</b>.</span>' : ''}
+    <span class="small muted">Apple n'autorise les notifications que pour les applis posées sur l'écran d'accueil, pas dans un onglet de navigateur. Il faut iOS 16.4 ou plus récent.</span>
+    <button class="btn ghost sm" id="copyLink" style="margin-top:8px">Copier le lien de l'appli</button></div>`;
+}
 async function viewNotifs() {
   const n = { ...NOTIF_DEFAULT, ...(S.me.notif || {}) };
   const sub = await currentSub().catch(() => null);
   const perm = pushSupported() ? Notification.permission : 'unsupported';
   let status;
-  if (isIOS() && !isStandalone()) status = `<div class="notice"><b>Sur iPhone, une étape avant :</b><ol class="steps small"><li>Dans Safari, appuie sur <b>Partager</b> (le carré avec la flèche).</li><li>Choisis <b>Sur l'écran d'accueil</b>, puis <b>Ajouter</b>.</li><li>Ouvre Tandem Forme <b>depuis la nouvelle icône</b> et reviens ici.</li></ol><span class="small muted">Il faut iOS 16.4 ou plus récent.</span></div>`;
+  if (isIOS() && !isStandalone()) status = iosInstallHtml();
   else if (perm === 'unsupported') status = '<div class="notice">Ce navigateur ne gère pas les notifications. Sur Android, utilise Chrome ; sur iPhone, ajoute l\'appli à l\'écran d\'accueil.</div>';
   else if (perm === 'denied') status = `<div class="notice">Les notifications sont bloquées pour Tandem Forme. ${isIOS() ? 'Va dans Réglages › Notifications › Tandem Forme et autorise-les.' : 'Appuie sur le cadenas à côté de l\'adresse (ou Paramètres du téléphone › Applis › Tandem Forme) et autorise les notifications.'}</div>`;
   else if (sub) status = '<div class="card"><span class="title">✅ Activées sur ce téléphone</span><div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" id="pTest">Envoyer un test</button><button class="btn ghost sm" id="pOff">Désactiver ici</button></div></div>';
@@ -1491,6 +1513,7 @@ async function viewNotifs() {
   };
   $app.querySelectorAll('[data-n]').forEach((c) => c.onchange = save);
   document.getElementById('nHour').onchange = save;
+  document.getElementById('copyLink')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.origin); toast('Lien copié'); } catch { toast(location.origin); } });
   document.getElementById('pOn')?.addEventListener('click', async (e) => {
     e.target.disabled = true;
     try { await enablePush(); await pushCall({ action: 'test' }); toast('C\'est activé !'); }
