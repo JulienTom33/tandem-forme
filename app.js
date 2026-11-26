@@ -474,7 +474,7 @@ function viewOnboarding(step = 0) {
         <ul class="plain small">
           <li><b>Un programme de sport</b> adapté à votre matériel et à vos petites douleurs, à cocher séance par séance.</li>
           <li><b>Des menus simples et équilibrés</b> : 3 idées par repas, filtrées selon vos allergies.</li>
-          <li><b>Un suivi</b> des pas, du sommeil, du poids… à la main ou depuis votre montre.</li>
+          <li><b>Un suivi</b> des pas, du sport et du sommeil, avec des courbes.</li>
           <li><b>Des défis à deux</b> pour se motiver : paliers de pas, séries, points et badges.</li>
         </ul></div>
       <div class="card"><span class="title">${captain ? 'Tu es le capitaine du tandem' : `${esc(partner)} est le capitaine du tandem`}</span>
@@ -501,7 +501,7 @@ function viewOnboarding(step = 0) {
     { title: 'C\'est prêt !', sub: 'Voici comment démarrer.', body: `
       <div class="card"><span class="title">1. ${captain ? 'Crée le programme' : `${esc(partner)} crée le programme`}</span><span class="small">${captain ? 'Dans Plus, puis « Matériel et programme » : coche votre matériel, choisis la durée (2 à 12 semaines) et la date de début.' : 'Dès que c\'est fait, tes séances apparaissent dans « Aujourd\'hui ».'}</span></div>
       <div class="card"><span class="title">2. Choisis tes repas</span><span class="small">Onglet Repas : touche une des 3 idées, puis « C'est mangé » après le repas. Si vous avez mangé autre chose, dis-le, sans culpabiliser.</span></div>
-      <div class="card"><span class="title">3. Note ta journée</span><span class="small">Onglet Suivi, à la main ou avec ta montre (Plus, puis « Montres et sources »).</span></div>
+      <div class="card"><span class="title">3. Note ta journée</span><span class="small">Onglet Suivi : tes pas et ton sommeil en 30 secondes, et ton sport en plus du programme.</span></div>
       <div class="card"><span class="title">Une visite guidée t'attend</span><span class="small">En 1 minute, on te montre où tout se trouve. Le guide complet est toujours dans Plus, puis « Guide de l'appli ».</span></div>` },
   ];
   const n = STEPS.length;
@@ -570,7 +570,7 @@ const TOUR = [
   { tab: 'meals', sel: '[data-other]', title: 'On a mangé autre chose ?', text: 'Aucun souci : dis ce que vous avez mangé. Tu as un joker par semaine pour un repas plaisir.' },
   { tab: 'defis', sel: '[data-tab=defis]', title: 'Défis', text: 'Paliers de pas, marche rapide, séries, points du mois et badges. Le barème complet est en bas de l\'écran.' },
   { tab: 'track', sel: '[data-tab=track]', title: 'Suivi', text: 'Toutes vos données en Jour, Semaine ou Mois : pas, sommeil, poids, fréquence cardiaque… et « Saisir ma journée » pour tout noter à la main.' },
-  { tab: 'more', sel: '[data-tab=more]', title: 'Plus', text: 'Journal, programme, réglages du capitaine, montres, profil, compte, et le guide complet de l\'appli. Tu peux relancer cette visite quand tu veux.' },
+  { tab: 'more', sel: '[data-tab=more]', title: 'Plus', text: 'Journal, programme, réglages du capitaine, notifications, profil, compte, et le guide complet de l\'appli. Tu peux relancer cette visite quand tu veux.' },
 ];
 async function startTour(i = 0) {
   const st = TOUR[i];
@@ -612,9 +612,9 @@ function viewGuide() {
     ${sec('Les repas', `<p>Pour chaque midi et chaque soir : 3 idées de la même famille (même viande ou poisson, même type de plat). Le midi privilégie les plats qui se transportent en gamelle. Le vendredi soir, un plat plaisir fait maison.</p><p>« C'est mangé » valide le repas. « On a mangé autre chose » demande ce que vous avez mangé (pour vous deux ou pour toi seul). Un joker par semaine et par personne pour un repas plaisir, sans culpabilité.</p><p>Les recettes sont prévues pour 4 portions (2 repas pour vous deux, ou 1 repas et 2 gamelles) ; le sélecteur de portions recalcule les quantités.</p>`)}
     ${sec('Frigo, entrées et desserts', `<p><b>🧊 Avec ce qu'on a dans le frigo</b> (sous chaque repas) : coche tes ingrédients, l'appli te propose les recettes de la base qui collent le mieux (avec ce qu'il manque) et compose une recette minute pas à pas. « On fait ça » l'enregistre pour le repas.</p><p><b>Entrée et dessert</b> : totalement facultatifs, dans « ＋ Entrée et dessert » sous chaque repas. Des idées légères qui changent chaque jour, avec la recette et les calories.</p>`)}
     ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
-    ${sec('Le suivi et les montres', `<p>Onglet Suivi : chaque mesure en Jour, Semaine ou Mois, avec comparaison à la période précédente. Tout peut se saisir à la main (« Saisir ma journée », « + Activité », « + Pesée »). Une saisie à la main remplace les chiffres de la montre pour ce jour-là.</p><p>Garmin : collez votre clé personnelle Garmin Connect dans Plus, puis « Montres et sources » : vos activités arrivent toutes seules. Apple Watch : un raccourci iPhone envoie pas, sommeil et fréquence cardiaque chaque soir.</p>`)}
+    ${sec('Le suivi', `<p>Onglet Suivi : trois mesures, les <b>pas</b>, le <b>sport</b> et le <b>sommeil</b>, en Jour, Semaine ou Mois, avec des courbes et la comparaison à la période précédente.</p><p>Chaque jour : « Saisir mes pas et mon sommeil » (le nombre de pas est dans l'appli Santé de l'iPhone ou Google Fit / Samsung Health sur Android). Les séances du programme cochées comptent automatiquement en minutes de sport ; « + Activité » sert pour le reste (marche, vélo, piscine…).</p><p>La connexion automatique aux montres (Garmin, Polar, Apple Watch) arrive plus tard.</p>`)}
     ${sec('Les défis et les points', `<p>Jauge du jour à 4 paliers (2 500, 5 000, 7 500, 10 000 pas), marche rapide de 10 ou 20 min, séries de jours à 7 500 pas, défis à deux (20 000 pas par jour, 120 000 par semaine), points du mois et badges.</p><p>Barème : 1 pt par palier de pas · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max par jour) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</p>`)}
-    ${sec('Les notifications', `<p>Plus › Notifications › « Activer ». Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil et ouvre-la depuis l'icône : c'est obligatoire chez Apple (iOS 16.4 minimum). Safari : Partager en bas › Sur l'écran d'accueil. Chrome : Partager en haut à droite dans la barre d'adresse › Sur l'écran d'accueil. Brave ou autre : Partager › Sur l'écran d'accueil ; si l'option manque, fais-le une fois depuis Safari. Reconnecte-toi une fois dans l'icône. Sur Android, ça marche directement dans Chrome.</p><p>Tu choisis : rappel de séance (à ton heure), séance terminée par ton partenaire, repas à choisir (10 h), défi à deux (20 h), pesée du lundi (8 h), bilan du dimanche (19 h). Un rappel n'est envoyé que s'il sert : pas de rappel séance si elle est déjà faite.</p>`)}
+    ${sec('Les notifications', `<p>Plus › Notifications › « Activer ». Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil et ouvre-la depuis l'icône : c'est obligatoire chez Apple (iOS 16.4 minimum). Safari : Partager en bas › Sur l'écran d'accueil. Chrome : Partager en haut à droite dans la barre d'adresse › Sur l'écran d'accueil. Brave ou autre : Partager › Sur l'écran d'accueil ; si l'option manque, fais-le une fois depuis Safari. Reconnecte-toi une fois dans l'icône. Sur Android, ça marche directement dans Chrome.</p><p>Tu choisis : rappel de séance (à ton heure), séance terminée par ton partenaire, repas à choisir (10 h), défi à deux (20 h), bilan du dimanche (19 h). Un rappel n'est envoyé que s'il sert : pas de rappel séance si elle est déjà faite.</p>`)}
     ${sec('Vos données', `<p>Elles sont hébergées en Europe (Supabase, Francfort) et ne sont visibles que par vous deux. Le journal est privé sauf si vous le partagez. Dans « Mon compte » : export de toutes tes données, changement de mot de passe et suppression définitive du compte.</p>`)}
     ${sec('Questions fréquentes', `<p><b>Je n'ai pas reçu l'e-mail.</b> Regarde dans les spams, puis utilise « Mot de passe oublié » sur l'écran de connexion.</p><p><b>Mon ou ma partenaire ne s'est pas encore connecté.</b> Sur « Aujourd'hui », un bouton permet de renvoyer son lien.</p><p><b>Je n'ai pas de montre.</b> Tout se saisit à la main, les défis marchent aussi.</p><p><b>Une recette ne nous plaît pas.</b> Ajoute l'ingrédient dans « Ce que tu n'aimes pas » (Mon profil).</p>`)}
     <h2>Un retour sur l'appli ?</h2>
@@ -1055,20 +1055,12 @@ async function viewJournal() {
 const hmFmt = (h) => `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
 const nf = (v, d = 0) => Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
 const METRICS = {
-  pas: { label: 'Pas', unit: 'pas', key: 'steps', agg: 'mean', total: true, goal: 8000, goalLabel: '8 000', short: (v) => (v >= 1000 ? `${nf(v / 1000, 1)}k` : nf(v)), fmt: (v) => nf(v) },
-  etages: { label: 'Étages', unit: 'étages', key: 'floors', agg: 'mean', total: true, goal: 10, goalLabel: '10', short: (v) => nf(v), fmt: (v) => nf(v) },
-  activite: { label: 'Activité', unit: 'minutes actives', key: 'act', agg: 'mean', total: true, goal: 30, goalLabel: '30 min', short: (v) => nf(v), fmt: (v) => `${nf(v)} min` },
-  distance: { label: 'Distance', unit: 'km en activité', key: 'km', agg: 'sum', goal: null, short: (v) => nf(v, 1), fmt: (v) => `${nf(v, 1)} km` },
-  seances: { label: 'Séances', unit: 'séances et activités', key: 'sessions', agg: 'sum', goal: null, short: (v) => nf(v), fmt: (v) => nf(v) },
+  pas: { label: 'Pas', unit: 'pas par jour', key: 'steps', agg: 'mean', total: true, goal: 8000, goalLabel: '8 000', short: (v) => (v >= 1000 ? `${nf(v / 1000, 1)}k` : nf(v)), fmt: (v) => nf(v) },
+  sport: { label: 'Sport', unit: 'minutes de sport', key: 'sport', agg: 'sum', total: false, goal: null, short: (v) => nf(v), fmt: (v) => (v >= 60 ? `${Math.floor(v / 60)} h ${String(Math.round(v % 60)).padStart(2, '0')}` : `${nf(v)} min`) },
   sommeil: { label: 'Sommeil', unit: 'heures par nuit', key: 'sleep', agg: 'mean', goal: 7, goalLabel: '7 h', short: (v) => nf(v, 1), fmt: hmFmt },
-  fc: { label: 'FC repos', unit: 'bpm', key: 'rhr', agg: 'mean', lowerBetter: true, goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} bpm` },
-  fcmoy: { label: 'FC moyenne', unit: 'bpm', key: 'hr_avg', agg: 'mean', goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} bpm` },
-  vfc: { label: 'VFC', unit: 'ms', key: 'hrv', agg: 'mean', goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} ms` },
-  stress: { label: 'Stress', unit: 'sur 100', key: 'stress', agg: 'mean', lowerBetter: true, goal: null, short: (v) => nf(v), fmt: (v) => nf(v) },
-  poids: { label: 'Poids', unit: 'kg', key: 'kg', agg: 'last', lowerBetter: true, goal: null, short: (v) => nf(v, 1), fmt: (v) => `${nf(v, 1)} kg` },
-  eau: { label: 'Eau', unit: 'verres par jour', key: 'water', agg: 'mean', total: true, goal: 6, goalLabel: '6 verres', short: (v) => nf(v), fmt: (v) => `${nf(v, 1)} verres` },
-  alcool: { label: 'Alcool', unit: 'verres', key: 'drinks', agg: 'sum', lowerBetter: true, goal: null, short: (v) => nf(v), fmt: (v) => `${nf(v)} verre${v > 1 ? 's' : ''}` },
 };
+// Connexions montres et Apple Santé : désactivées pour l'instant, saisie à la main uniquement.
+const WATCHES_ENABLED = false;
 const DAILY_DUO_GOAL = 20000;
 const WEEKLY_DUO_GOAL = 120000;
 const mean = (arr) => { const v = arr.filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
@@ -1103,6 +1095,9 @@ async function loadTrackData(from, to) {
     o.km = o.acts.some((a) => a.distance_km) ? o.acts.reduce((t, a) => t + Number(a.distance_km || 0), 0) : null;
     const ch = (checks || []).filter((c) => c.member_id === mid && c.day === day && c.session_key !== 'respiration').length;
     o.sessions = o.acts.length || ch ? Math.max(o.acts.length, ch) : null;
+    o.progMin = (checks || []).filter((c) => c.member_id === mid && c.day === day && c.session_key !== 'respiration')
+      .reduce((t, c) => t + ((planDay(day)?.sessions || []).find((x) => x.key === c.session_key)?.minutes || 0), 0);
+    o.sport = o.acts.length || o.progMin ? actMin + o.progMin : null;
     o.sleep = o.sleep_min == null ? null : o.sleep_min / 60;
     const w = (weights || []).find((x) => x.member_id === mid && x.day === day && x.kg != null);
     o.kg = w ? Number(w.kg) : null;
@@ -1117,7 +1112,7 @@ function trackHeader(title, sub) {
   const mode = S.trackMode || 'semaine';
   return `<div class="hero"><div class="inner">
     <div class="daynav"><button data-shift="-1" aria-label="Période précédente">‹</button><div style="text-align:center;flex:1"><small>${sub}</small></div><button data-shift="1" aria-label="Période suivante">›</button></div>
-    <div class="row between"><h1>${title} <button id="syncNow" aria-label="Synchroniser les montres" style="border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:10px;min-width:36px;min-height:36px;font-size:18px;cursor:pointer;vertical-align:middle">↻</button></h1>
+    <div class="row between"><h1>${title}</h1>
       <div class="row" role="tablist" style="gap:0;background:rgba(255,255,255,.18);border-radius:12px;padding:3px">${[['jour', 'Jour'], ['semaine', 'Semaine'], ['mois', 'Mois']].map(([k, l]) => `<button role="tab" data-mode="${k}" aria-selected="${mode === k}" style="min-height:36px;padding:0 12px;border:0;border-radius:9px;font-weight:600;cursor:pointer;background:${mode === k ? '#fff' : 'transparent'};color:${mode === k ? 'var(--ink)' : '#fff'}">${l}</button>`).join('')}</div>
     </div></div></div>`;
 }
@@ -1159,62 +1154,52 @@ async function viewTrack() {
   return viewTrackWeek(people);
 }
 function bindTrackNav(step) {
-  document.getElementById('syncNow')?.addEventListener('click', async (e) => {
-    e.currentTarget.disabled = true; e.currentTarget.textContent = '…';
-    const r = await syncAll(true);
-    toast(r.none ? 'Aucune montre connectée (Plus, puis « Montres et sources »)' : r.errors?.length ? r.errors[0] : r.changed ? 'Données à jour' : 'Déjà à jour');
-    viewTrack();
-  });
   $app.querySelector('[data-metric][aria-pressed=true]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   $app.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { S.trackMode = b.dataset.mode; viewTrack(); });
   $app.querySelectorAll('[data-metric]').forEach((b) => b.onclick = () => { S.trackMetric = b.dataset.metric; viewTrack(); });
   $app.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => { S.day = addDays(S.day, Number(b.dataset.shift) * step); viewTrack(); });
   document.getElementById('manual')?.addEventListener('click', () => manualDayForm(S.day));
   document.getElementById('addAct')?.addEventListener('click', () => activityForm(null, S.day));
-  document.getElementById('addW')?.addEventListener('click', () => weightForm());
 }
 
 async function viewTrackDay(people) {
   const d = S.day;
   const { merged } = await loadTrackData(d, d);
   const v = people.map((p) => merged(p.id, d));
-  const cell = (fn) => v.map((x) => `<td>${fn(x) ?? '—'}</td>`).join('');
-  const hm = (min) => (min == null ? null : hmFmt(min / 60));
+  const mine = v[0];
+  const sportTxt = (x) => (x.sport != null ? METRICS.sport.fmt(x.sport) : '—');
   $app.innerHTML = trackHeader('Suivi', esc(cap(fmtDay(d)))) + `<div class="wrap">
     ${people.length === 2 ? duoBar(`Objectif commun : ${nf(DAILY_DUO_GOAL)} pas`, DAILY_DUO_GOAL, v.map((x) => x.steps), people) : ''}
-    <div class="card white"><table class="mini"><tr><th></th>${people.map((p) => `<th style="color:${colorHex(p.color)}">${esc(p.first_name)}</th>`).join('')}</tr>
-      <tr><td>Pas</td>${cell((x) => (x.steps != null ? nf(x.steps) : null))}</tr>
-      <tr><td>Étages</td>${cell((x) => x.floors)}</tr>
-      <tr><td>Minutes actives</td>${cell((x) => (x.act != null ? `${x.act} min` : null))}</tr>
-      <tr><td>Distance</td>${cell((x) => (x.km != null ? `${nf(x.km, 1)} km` : null))}</tr>
-      <tr><td>FC au repos</td>${cell((x) => (x.rhr != null ? `${x.rhr} bpm` : null))}</tr>
-      <tr><td>FC moy. / max</td>${cell((x) => (x.hr_avg != null || x.hr_max != null ? `${x.hr_avg ?? '—'} / ${x.hr_max ?? '—'}` : null))}</tr>
-      <tr><td>Stress</td>${cell((x) => x.stress)}</tr>
-      <tr><td>VFC</td>${cell((x) => (x.hrv != null ? `${x.hrv} ms` : null))}</tr>
-      <tr><td>Sommeil</td>${cell((x) => hm(x.sleep_min))}</tr>
-      <tr><td>Poids</td>${cell((x) => (x.kg != null ? `${nf(x.kg, 1)} kg` : null))}</tr>
-      <tr><td>Eau</td>${cell((x) => (x.water != null ? `${x.water} verre(s)` : null))}</tr>
-      <tr><td>Alcool</td>${cell((x) => (x.drinks != null ? `${x.drinks} verre(s)` : null))}</tr>
-      <tr><td>Activités</td>${cell((x) => (x.acts.length ? x.acts.map((a) => `${esc(a.type)}${a.duration_min ? ` ${a.duration_min} min` : ''}`).join('<br>') : null))}</tr>
-    </table></div>
-    <div class="row" style="flex-wrap:wrap"><button class="btn" id="manual">Saisir ma journée</button><button class="btn ghost" id="addAct">+ Activité</button><button class="btn ghost" id="addW">+ Pesée</button></div>
-    <span class="small muted">Pas de montre ? Tout se saisit à la main. L'eau et l'alcool se notent dans le Journal.</span>
+    <div class="grid2">${people.map((p, i) => `<div class="card stat" style="border-top:3px solid ${colorHex(p.color)};gap:6px"><span class="small" style="font-weight:600;color:${colorHex(p.color)}">${esc(p.first_name)}</span>
+      <span class="small muted">👟 Pas</span><b>${v[i].steps != null ? nf(v[i].steps) : '—'}</b>
+      <span class="small muted">🏃 Sport</span><b>${sportTxt(v[i])}</b>
+      <span class="small muted">😴 Sommeil</span><b>${v[i].sleep != null ? hmFmt(v[i].sleep) : '—'}</b></div>`).join('')}</div>
+    <button class="btn block" id="manual">${mine.steps != null || mine.sleep != null ? 'Modifier mes pas et mon sommeil' : 'Saisir mes pas et mon sommeil'}</button>
+    <div class="row between"><h2>Sport du jour</h2><button class="btn ghost sm" id="addAct">+ Activité</button></div>
+    ${actList(people, v.flatMap((x) => x.acts))}
+    ${v.some((x) => x.progMin) ? `<span class="small muted">Séances du programme cochées : ${people.map((p, i) => `${esc(p.first_name)} ${v[i].progMin} min`).join(' · ')}. Elles comptent automatiquement, n'ajoute que le sport en plus.</span>` : '<span class="small muted">Les séances du programme cochées comptent automatiquement. Ajoute ici le reste : marche, vélo, piscine, foot…</span>'}
   </div>`;
   bindTrackNav(1);
+  bindActs(v.flatMap((x) => x.acts));
+}
+function actList(people, acts) {
+  return acts.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${nf(a.distance_km, 1)} km` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité ajoutée.</span>';
+}
+function bindActs(acts) {
+  $app.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => activityForm(acts.find((x) => x.id === el.dataset.act), S.day));
 }
 
 async function viewTrackWeek(people) {
   const monday = mondayOf(S.day); const sunday = addDays(monday, 6); const prevMon = addDays(monday, -7);
   const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i));
   const M = METRICS[S.trackMetric];
-  const { merged, acts, weights, checks } = await loadTrackData(prevMon, sunday);
+  const { merged, acts, checks } = await loadTrackData(prevMon, sunday);
   const cur = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
   const prev = people.map((p) => days.map((x) => merged(p.id, addDays(x, -7))[M.key]));
   const planned = (mid) => plannedFor(mid, monday);
   const done = (mid) => checks.filter((c) => c.member_id === mid && c.day >= monday && c.session_key !== 'respiration' && c.session_key !== 'mobilite').length;
   const stepsWeek = people.map((p) => sumOf(days.map((x) => merged(p.id, x).steps)));
   const pd = planDay(monday);
-  const lastW = (mid) => [...weights].filter((w) => w.member_id === mid && w.kg != null).pop();
   const weekActs = acts.filter((a) => a.start_at >= new Date(`${monday}T00:00:00`).toISOString());
   $app.innerHTML = trackHeader('Suivi', `${pd ? `Semaine ${pd.week} · ` : ''}${fmtDay(monday, { day: 'numeric', month: 'short' })} au ${fmtDay(sunday, { day: 'numeric', month: 'short' })}`) + `<div class="wrap">
     ${metricTabs()}
@@ -1222,14 +1207,12 @@ async function viewTrackWeek(people) {
       <div class="row between">${legend(people)}<span class="small muted">${esc(M.unit)}</span></div></div>
     ${statCards(M, people, cur, prev, 'semaine', (p) => (planned(p.id) ? `<span class="small">Séances du programme : ${Math.min(done(p.id), planned(p.id))} / ${planned(p.id)}</span>` : ''))}
     ${people.length === 2 ? duoBar(`Défi à deux : ${nf(WEEKLY_DUO_GOAL)} pas`, WEEKLY_DUO_GOAL, stepsWeek, people) : ''}
-    <div class="row between"><h2>Activités</h2><div class="row"><button class="btn ghost sm" id="manual">Saisir un jour</button><button class="btn ghost sm" id="addAct">+ Activité</button></div></div>
-    ${weekActs.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}${a.source !== 'manuel' ? ` <span class="pill">${esc({ garmin: 'Garmin', apple: 'Apple' }[a.source] || a.source)}</span>` : ''}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${nf(a.distance_km, 1)} km` : ''}${a.hr_avg ? ` · FC ${a.hr_avg}` : ''}${a.kcal ? ` · ${a.kcal} kcal` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité cette semaine.</span>'}
-    <div class="row between"><h2>Poids</h2><div class="row"><button class="btn ghost sm" id="histW">Historique</button><button class="btn ghost sm" id="addW">+ Pesée</button></div></div>
-    <div class="grid2">${people.map((p) => { const w = lastW(p.id); const diff = w && p.start_weight ? (w.kg - p.start_weight) : null; return `<div class="card stat"><span class="small" style="color:${colorHex(p.color)};font-weight:600">${esc(p.first_name)}</span><b>${w ? `${nf(w.kg, 1)} kg` : '—'}</b><span class="muted small">${diff != null ? `${diff > 0 ? '+' : ''}${nf(diff, 1)} kg depuis le départ` : ''}${p.goal_weight ? ` · objectif ${nf(p.goal_weight, 1)}` : ''}</span></div>`; }).join('')}</div>
+    <div class="row" style="flex-wrap:wrap"><button class="btn sm" id="manual">Saisir pas et sommeil</button><button class="btn ghost sm" id="addAct">+ Activité</button></div>
+    <h2>Sport de la semaine</h2>
+    ${actList(people, weekActs)}
   </div>`;
   bindTrackNav(7);
-  $app.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => activityForm(weekActs.find((x) => x.id === el.dataset.act), S.day));
-  document.getElementById('histW').onclick = () => weightHistory(weights);
+  bindActs(weekActs);
 }
 
 async function viewTrackMonth(people) {
@@ -1278,35 +1261,28 @@ function lineChart(series, days, M) {
 async function manualDayForm(day) {
   const { data } = await sb.from('daily_metrics').select('*').eq('member_id', S.me.id).eq('day', day).eq('source', 'manuel').maybeSingle();
   const m = data || {};
-  openModal(`<div class="row between"><h2>Ma journée</h2></div>
-    <span class="muted">Ce que tu saisis ici remplace les chiffres de la montre pour ce jour-là.</span>
-    <form id="m" style="display:flex;flex-direction:column;gap:10px" novalidate>
-      <label>Jour<input name="day" type="date" value="${day}"></label>
-      <div class="grid2">
-        <label>Pas<input name="steps" inputmode="numeric" value="${esc(m.steps)}"></label>
-        <label>Étages<input name="floors" inputmode="numeric" value="${esc(m.floors)}"></label>
-        <label>Sommeil (h)<input name="sleep_h" inputmode="decimal" value="${m.sleep_min != null ? (m.sleep_min / 60).toFixed(1).replace('.', ',') : ''}"></label>
-        <label>Minutes actives<input name="active_min" inputmode="numeric" value="${esc(m.active_min)}"></label>
-        <label>FC au repos<input name="rhr" inputmode="numeric" value="${esc(m.rhr)}"></label>
-        <label>FC moyenne<input name="hr_avg" inputmode="numeric" value="${esc(m.hr_avg)}"></label>
-        <label>FC max<input name="hr_max" inputmode="numeric" value="${esc(m.hr_max)}"></label>
-        <label>Stress (0–100)<input name="stress" inputmode="numeric" value="${esc(m.stress)}"></label>
-        <label>VFC (ms)<input name="hrv" inputmode="numeric" value="${esc(m.hrv)}"></label>
-      </div>
+  const sh = m.sleep_min != null ? Math.floor(m.sleep_min / 60) : ''; const sm = m.sleep_min != null ? m.sleep_min % 60 : '';
+  openModal(`<h2>Mes pas et mon sommeil</h2>
+    <form id="m" style="display:flex;flex-direction:column;gap:12px" novalidate>
+      <label>Jour<input name="day" type="date" value="${day}" max="${today()}"></label>
+      <label>👟 Pas de la journée<input name="steps" inputmode="numeric" placeholder="ex. 8500" value="${esc(m.steps)}"></label>
+      <span class="small muted">Le chiffre est dans l'appli Santé (iPhone) ou Google Fit / Samsung Health (Android), ou sur ta montre.</span>
+      <div><span class="small" style="font-weight:600">😴 Sommeil de la nuit précédente</span>
+        <div class="grid2" style="margin-top:6px"><label class="small">Heures<input name="sleep_h" inputmode="numeric" placeholder="7" value="${sh}"></label><label class="small">Minutes<input name="sleep_m" inputmode="numeric" placeholder="30" value="${sm}"></label></div></div>
       <p class="err" id="merr" role="alert" style="margin:0"></p>
       <button class="btn block">Enregistrer</button>
+      <span class="small muted">Pour le sport, utilise « + Activité ». Les séances du programme cochées comptent toutes seules.</span>
     </form>`, (root) => root.querySelector('#m').onsubmit = async (e) => {
     e.preventDefault(); const v = formData(e.target); const $e = root.querySelector('#merr');
-    const sleep = num(v.sleep_h);
-    const rules = [[int(v.steps), 0, 200000, 'Pas'], [int(v.floors), 0, 2000, 'Étages'], [sleep, 0, 24, 'Sommeil'], [int(v.rhr), 25, 200, 'FC au repos'], [int(v.hr_avg), 25, 230, 'FC moyenne'], [int(v.hr_max), 25, 240, 'FC max'], [int(v.stress), 0, 100, 'Stress'], [int(v.hrv), 1, 400, 'VFC'], [int(v.active_min), 0, 1440, 'Minutes actives']];
-    for (const [val, lo, hi, l] of rules) if (val != null && (Number.isNaN(val) || val < lo || val > hi)) return ($e.textContent = `${l} : valeur entre ${lo} et ${nf(hi)}.`);
-    const { error } = await sb.from('daily_metrics').upsert({
-      member_id: S.me.id, tandem_id: S.me.tandem_id, day: v.day || day, source: 'manuel',
-      steps: int(v.steps), floors: int(v.floors), rhr: int(v.rhr), hr_avg: int(v.hr_avg), hr_max: int(v.hr_max), stress: int(v.stress), hrv: int(v.hrv), active_min: int(v.active_min),
-      sleep_min: sleep != null ? Math.round(sleep * 60) : null, updated_at: new Date().toISOString(),
-    });
+    const steps = int(String(v.steps || '').replace(/\s/g, '')); const h = int(v.sleep_h); const mi = int(v.sleep_m);
+    if (steps != null && (Number.isNaN(steps) || steps < 0 || steps > 150000)) return ($e.textContent = 'Pas : un nombre entre 0 et 150 000.');
+    if (h != null && (Number.isNaN(h) || h < 0 || h > 16)) return ($e.textContent = 'Sommeil : entre 0 et 16 heures.');
+    if (mi != null && (Number.isNaN(mi) || mi < 0 || mi > 59)) return ($e.textContent = 'Minutes : entre 0 et 59.');
+    if (steps == null && h == null && mi == null) return ($e.textContent = 'Indique au moins tes pas ou ton sommeil.');
+    const sleep = h == null && mi == null ? null : (h || 0) * 60 + (mi || 0);
+    const { error } = await sb.from('daily_metrics').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, day: v.day || day, source: 'manuel', steps, sleep_min: sleep, updated_at: new Date().toISOString() });
     if (error) return ($e.textContent = `Enregistrement impossible : ${error.message}`);
-    closeModal(); toast('Journée enregistrée'); render();
+    closeModal(); toast('Enregistré'); render();
   });
 }
 function weightForm() {
@@ -1494,7 +1470,7 @@ function legend(people) {
 // Barres groupées : une couleur par personne, un groupe par jour de la semaine.
 function barChart(series, days, fmt, goal = null, goalLabel = '') {
   const all = series.flatMap((s) => s.values).filter((v) => v != null);
-  if (!all.length) return '<span class="muted">Pas encore de données cette semaine. Elles arrivent avec la montre ou la saisie à la main.</span>';
+  if (!all.length) return '<span class="muted">Pas encore de données cette semaine. Saisis tes pas et ton sommeil avec le bouton ci-dessous.</span>';
   const W = 330, H = 170, top = 18, bottom = 24, left = 4;
   const max = Math.max(...all, goal || 0) * 1.12 || 1;
   const gw = (W - left) / 7; const bw = Math.min(16, (gw - 8) / series.length);
@@ -1537,7 +1513,7 @@ function weightChart(weights, people) {
 }
 
 // ---------- Notifications ----------
-const NOTIF_DEFAULT = { seance: true, seance_hour: 18, repas: true, partenaire: true, duo: true, pesee: true, bilan: true };
+const NOTIF_DEFAULT = { seance: true, seance_hour: 18, repas: true, partenaire: true, duo: true, pesee: false, bilan: true };
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -1599,7 +1575,7 @@ async function viewNotifs() {
   else if (perm === 'denied') status = `<div class="notice">Les notifications sont bloquées pour Tandem Forme. ${isIOS() ? 'Va dans Réglages › Notifications › Tandem Forme et autorise-les.' : 'Appuie sur le cadenas à côté de l\'adresse (ou Paramètres du téléphone › Applis › Tandem Forme) et autorise les notifications.'}</div>`;
   else if (sub) status = '<div class="card"><span class="title">✅ Activées sur ce téléphone</span><div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" id="pTest">Envoyer un test</button><button class="btn ghost sm" id="pOff">Désactiver ici</button></div></div>';
   else status = '<div class="card white"><span class="title">Pas encore activées sur ce téléphone</span><span class="small">Ton téléphone va te demander l\'autorisation : réponds « Autoriser ».</span><button class="btn" id="pOn">Activer les notifications</button></div>';
-  const ROWS = [['seance', 'Séance du jour', 'Un rappel à l\'heure choisie, seulement s\'il reste une séance à faire.'], ['partenaire', 'Séance de ton partenaire', `Quand ${esc(S.partner?.first_name || 'ton partenaire')} termine sa séance.`], ['repas', 'Repas à choisir', 'À 10 h, si le midi ou le soir n\'est pas encore choisi.'], ['duo', 'Défi à deux', 'À 20 h, si les 20 000 pas à deux ne sont pas encore atteints.'], ['pesee', 'Pesée du lundi', 'Le lundi à 8 h.'], ['bilan', 'Bilan de la semaine', 'Le dimanche à 19 h.']];
+  const ROWS = [['seance', 'Séance du jour', 'Un rappel à l\'heure choisie, seulement s\'il reste une séance à faire.'], ['partenaire', 'Séance de ton partenaire', `Quand ${esc(S.partner?.first_name || 'ton partenaire')} termine sa séance.`], ['repas', 'Repas à choisir', 'À 10 h, si le midi ou le soir n\'est pas encore choisi.'], ['duo', 'Défi à deux', 'À 20 h, si les 20 000 pas à deux ne sont pas encore atteints.'], ['bilan', 'Bilan de la semaine', 'Le dimanche à 19 h.']];
   $app.innerHTML = header('Notifications', 'Des rappels utiles, jamais plus de quelques-uns par jour') + `<div class="wrap">
     ${status}
     <h2>Ce que tu reçois</h2>
@@ -1631,7 +1607,7 @@ async function viewNotifs() {
 // ---------- Plus ----------
 function viewMore() {
   $app.innerHTML = header('Plus') + `<div class="wrap">
-    ${[['guide', 'Guide de l\'appli', 'Tuto, visite guidée, FAQ et retours bêta'], ['notifs', 'Notifications', 'Rappels de séance, repas, défi à deux'], ['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Garmin, Apple Watch, saisie manuelle'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
+    ${[['guide', 'Guide de l\'appli', 'Tuto, visite guidée, FAQ et retours bêta'], ['notifs', 'Notifications', 'Rappels de séance, repas, défi à deux'], ['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Bientôt disponible'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
       .map(([v, t, s]) => `<button class="card" style="border:0;text-align:left;cursor:pointer" data-go="${v}"><span class="title">${t}</span><span class="muted">${s}</span></button>`).join('')}
   </div>`;
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
@@ -1803,12 +1779,21 @@ async function syncAll(force = false) {
   try { return await syncing; } finally { syncing = null; }
 }
 async function autoSync() {
+  if (!WATCHES_ENABLED) return;
   const r = await syncAll(false);
   if (r.changed && $modal.hidden && !document.getElementById('tour')) { if (r.added) toast(`${r.added} nouvelle(s) activité(s) importée(s)`); render(); }
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.me?.onboarded_at && S.session) autoSync().catch(() => {}); });
 
 async function viewSources(newToken = '') {
+  if (!WATCHES_ENABLED) {
+    $app.innerHTML = header('Montres et sources', 'Bientôt disponible') + `<div class="wrap">
+      <div class="notice">La connexion automatique aux montres et aux applis santé arrive plus tard. En attendant, tout se saisit à la main dans l'onglet <b>Suivi</b> : 30 secondes par jour.</div>
+      ${['Garmin', 'Polar', 'Apple Santé / Apple Watch'].map((n) => `<div class="card" style="opacity:.55"><div class="row between"><span class="title">${n}</span><span class="pill">Bientôt</span></div><button class="btn ghost sm" disabled>Connecter</button></div>`).join('')}
+      <button class="btn" data-go="track">Aller au Suivi</button></div>`;
+    $app.querySelector('[data-go]').onclick = () => go('track');
+    return;
+  }
   const { data: conns } = await sb.from('connections').select('*').eq('member_id', S.me.id);
   const by = (p) => (conns || []).find((c) => c.provider === p);
   const apple = by('apple'), garmin = by('garmin'), polar = by('polar');
