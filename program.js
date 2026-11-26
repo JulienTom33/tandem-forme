@@ -129,14 +129,15 @@ const ROTATION = {
 };
 
 // settings : { equipment:[], weeks, start_date, run_from_week } ; chaque membre a ses disponibilités (jours, séances par semaine, durée).
+const CARDIO_MACHINES = ['velo', 'tapis_course', 'rameur', 'elliptique', 'corde', 'course'];
 export function generatePlan(settings, members) {
-  const eq = new Set(settings.equipment || []);
+  const eq = new Set(settings.equipment || []); eq.delete('aucun');
   const weeks = Math.min(12, Math.max(2, Number(settings.weeks) || 6));
   const start = mondayOf(settings.start_date);
   const runFrom = Number(settings.run_from_week || 1);
   const hasBike = eq.has('velo');
   const canRun = eq.has('course');
-  const canWalk = eq.has('marche') || !eq.size;
+  const canWalk = eq.has('marche') || ![...eq].some((k) => CARDIO_MACHINES.includes(k));
   const days = {};
   const runCount = Object.fromEntries(members.map((m) => [m.id, 0]));
   for (let w = 1; w <= weeks; w++) {
@@ -269,6 +270,9 @@ export const LEVEL_QUESTIONS = [
   { id: 'push', q: 'Les pompes, c\'est…', a: ['Impossible, même contre une table', 'Quelques-unes contre une table', '5 à 10 sur les genoux', '10 classiques ou plus'] },
   { id: 'plank', q: 'Gainage sur les avant-bras, tu tiens…', a: ['Moins de 15 s', '15 à 30 s', '30 à 60 s', 'Plus d\'1 min'] },
 ];
+// Question à part (ne compte pas dans le niveau) : elle fixe le point de départ du plan de course.
+export const RUN_QUESTION = { id: 'run', q: 'Courir sans t\'arrêter, à petite allure, tu tiens…', a: ['Je ne cours pas du tout', '1 à 2 min', '5 à 10 min', 'Environ 20 min', '30 min ou plus'] };
+export const runLabel = (m) => (m?.fitness?.run == null ? null : RUN_QUESTION.a[m.fitness.run]);
 export function levelFromAnswers(ans) {
   const vals = LEVEL_QUESTIONS.map((x) => Number(ans?.[x.id] ?? 0));
   const score = vals.reduce((a, b) => a + b, 0); // 0 à 15
@@ -336,10 +340,12 @@ const C25K = [
   ...Array(3).fill(['30 min de course sans t\'arrêter : c\'est le 5 km !', 30]),
 ];
 // Point de départ selon le niveau (semaine 1, 3 ou 5 du plan, ou après le plan), décalé par les points hebdo.
+// Avec le test de course : semaine 1 (ne court pas), 3 (1 à 2 min), 5 (5 à 10 min), 6 (20 min) ou après le plan (30 min).
 const C25K_START = [0, 0, 6, 12, 27];
+const RUN_START = [0, 6, 12, 15, 27];
 export function c25kStep(idx, member) {
-  const lvl = levelOf(member);
-  const c = Math.max(0, idx + C25K_START[lvl] + Number(member?.fitness?.run_shift || 0));
+  const lvl = levelOf(member); const run = member?.fitness?.run;
+  const c = Math.max(0, idx + (run != null ? RUN_START[run] : C25K_START[lvl]) + Number(member?.fitness?.run_shift || 0));
   if (c < C25K.length) {
     const [txt, mins] = C25K[c];
     const wk = Math.floor(c / 3) + 1, run = (c % 3) + 1;

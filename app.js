@@ -2,10 +2,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
   iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices, courseChoices,
-  WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds, weekLoad, SOURCES,
+  WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, RUN_QUESTION, runLabel, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds, weekLoad, SOURCES,
 } from './program.js';
 import { EXERCISES, SESSIONS, GAINAGE, videoUrl } from './exercises.js';
 import { animSvg, hasAnim, startAnims } from './animations.js';
+import { BREATH, runBreath } from './breath.js';
 import { FRIDGE, FRIDGE_CATS, parseFree, matchRecipes, quickRecipe, allergensOf } from './frigo.js';
 
 const SUPABASE_URL = 'https://ktrsvnminsogkbxlxjpb.supabase.co';
@@ -377,14 +378,17 @@ function profileForm(m, takenColor) {
   <div class="card white"><h3>Ton niveau sportif</h3>
     <span class="muted small">5 questions rapides, réponds honnêtement : le programme s'adapte à ton niveau.</span>
     ${LEVEL_QUESTIONS.map((x) => `<span class="small" style="font-weight:600">${esc(x.q)}</span><div class="chips" data-single="q_${x.id}">${x.a.map((a, i) => `<button type="button" class="chip" data-v="${i}" aria-pressed="${m.fitness?.answers?.[x.id] === i}">${esc(a)}</button>`).join('')}</div>`).join('')}
+    <span class="small" style="font-weight:600">${esc(RUN_QUESTION.q)}</span>
+    <div class="chips" data-single="run">${RUN_QUESTION.a.map((a, i) => `<button type="button" class="chip" data-v="${i}" aria-pressed="${m.fitness?.run === i}">${esc(a)}</button>`).join('')}</div>
+    <span class="small muted">Sert à caler le plan de course si vous cochez « Course dehors ».</span>
     <div class="card" id="lvlBox"><span class="small muted">Ton niveau</span>
       <div class="chips" data-single="level">${LEVELS.map((l) => `<button type="button" class="chip" data-v="${l.n}" aria-pressed="${levelOf(m) === l.n && !!m.fitness?.level}">${l.name}</button>`).join('')}</div>
       <span class="small" id="lvlDesc">${m.fitness?.level ? esc(LEVELS[levelOf(m) - 1].desc) : 'Réponds aux questions : on te propose un niveau, que tu peux ajuster.'}</span></div>
   </div>
   <div class="card white"><h3>Santé</h3>
-    <p class="muted" style="margin:0">Les zones fragiles servent à écarter les exercices à risque de ton programme.</p>
+    <p class="muted" style="margin:0">Touche sur le dessin les zones douloureuses ou fragiles : les exercices à risque sont retirés de ton programme.</p>
+    ${bodyMapHtml()}
     <div id="zones">${zones.map(zoneRow).join('')}</div>
-    <button type="button" class="btn ghost sm" id="addZone">+ Ajouter une zone</button>
     <label>Autre chose à savoir<textarea name="health_note">${esc(h.note)}</textarea></label>
   </div>
   <div class="card white"><h3>Alimentation</h3>
@@ -395,14 +399,78 @@ function profileForm(m, takenColor) {
     <label>Ce que tu n'aimes pas (séparé par des virgules)<input name="dislikes" value="${esc(n.dislikes)}" placeholder="ex. chou-fleur, lentilles"></label>
   </div>`;
 }
+const ZONE_LABEL = (z, side) => `${(ZONES.find((x) => x[0] === z) || [z, z])[1]}${side === 'gauche' ? ' gauche' : side === 'droit' ? ' droit' : side === 'deux' ? ' (les deux)' : ''}`;
 function zoneRow(z = {}) {
-  return `<div class="card zone" style="margin-bottom:8px">
+  return `<div class="card zone" style="margin-bottom:8px;border-left:4px solid var(--danger)">
+    <div class="row between"><b>${esc(ZONE_LABEL(z.zone || ZONES[0][0], z.side))}</b><button type="button" class="link" data-rmzone style="color:var(--danger)">Retirer</button></div>
     <div class="grid2"><label>Zone<select name="z_zone">${ZONES.map(([v, l]) => `<option value="${v}" ${z.zone === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     <label>Côté<select name="z_side">${[['', '—'], ['gauche', 'Gauche'], ['droit', 'Droit'], ['deux', 'Les deux']].map(([v, l]) => `<option value="${v}" ${z.side === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
     <div class="grid2"><label>Type<select name="z_type">${ZONE_TYPES.map(([v, l]) => `<option value="${v}" ${z.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-    <label>Intensité<select name="z_int">${[['legere', 'Légère'], ['moderee', 'Modérée'], ['forte', 'Forte']].map(([v, l]) => `<option value="${v}" ${z.intensity === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
-    <label>Mouvements à éviter<input name="z_avoid" value="${esc(z.avoid)}" placeholder="ex. bras au-dessus de la tête"></label>
-    <button type="button" class="link" data-rmzone style="color:var(--danger)">Retirer cette zone</button></div>`;
+    <label>Intensité<select name="z_int">${[['legere', 'Légère'], ['moderee', 'Modérée'], ['forte', 'Forte']].map(([v, l]) => `<option value="${v}" ${(z.intensity || 'moderee') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+    <label>Mouvements à éviter (facultatif)<input name="z_avoid" value="${esc(z.avoid)}" placeholder="ex. bras au-dessus de la tête"></label></div>`;
+}
+// Silhouette de face et de dos ; chaque point est une zone (de face, ta droite est à gauche du dessin).
+const BODY_SPOTS = [
+  ['epaule', 'droit', 31, 47], ['epaule', 'gauche', 69, 47], ['coude', 'droit', 23, 84], ['coude', 'gauche', 77, 84],
+  ['poignet', 'droit', 18, 114], ['poignet', 'gauche', 82, 114], ['cotes', 'droit', 41, 74], ['cotes', 'gauche', 59, 74],
+  ['hanche', 'droit', 39, 114], ['hanche', 'gauche', 61, 114], ['genou', 'droit', 41, 163], ['genou', 'gauche', 59, 163],
+  ['cheville', 'droit', 41, 207], ['cheville', 'gauche', 59, 207],
+  ['nuque', '', 160, 36], ['epaule', 'gauche', 141, 47], ['epaule', 'droit', 179, 47], ['dos', '', 160, 100],
+  ['hanche', 'gauche', 149, 116], ['hanche', 'droit', 171, 116],
+];
+function bodyFigure(cx) {
+  const g = '#DCE0E7';
+  return `<circle cx="${cx}" cy="17" r="11" fill="${g}"/><rect x="${cx - 4}" y="26" width="8" height="10" fill="${g}"/>
+    <path d="M${cx - 20} 42 Q${cx} 36 ${cx + 20} 42 L${cx + 15} 98 L${cx + 17} 122 L${cx - 17} 122 L${cx - 15} 98 Z" fill="${g}"/>
+    ${[-1, 1].map((k) => `<polyline points="${cx + 20 * k},45 ${cx + 27 * k},84 ${cx + 32 * k},114" fill="none" stroke="${g}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="${cx + 9 * k},120 ${cx + 9 * k},163 ${cx + 9 * k},212" fill="none" stroke="${g}" stroke-width="12" stroke-linecap="round"/>`).join('')}`;
+}
+function bodyMapHtml() {
+  return `<div class="bodymap" style="max-width:340px;margin:0 auto;width:100%">
+    <svg viewBox="0 0 210 238" role="group" aria-label="Choisis les zones douloureuses sur le corps" style="width:100%;display:block">
+      ${bodyFigure(50)}${bodyFigure(160)}
+      <text x="50" y="234" text-anchor="middle" font-size="10" fill="#5E6573">De face</text><text x="160" y="234" text-anchor="middle" font-size="10" fill="#5E6573">De dos</text>
+      ${BODY_SPOTS.map(([z, side, x, y]) => `<g data-spot="${z}|${side}" role="button" tabindex="0" aria-label="${esc(ZONE_LABEL(z, side))}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="13" fill="transparent"/><circle class="dot" cx="${x}" cy="${y}" r="6.5" fill="#fff" stroke="#A9B0BC" stroke-width="2"/></g>`).join('')}
+    </svg>
+    <span class="small muted" style="display:block;text-align:center">Touche un point : il passe en rouge. De face, ta droite est à gauche du dessin.</span></div>`;
+}
+function readZones(root) {
+  return [...root.querySelectorAll('.zone')].map((z) => ({
+    zone: z.querySelector('[name=z_zone]').value, side: z.querySelector('[name=z_side]').value,
+    type: z.querySelector('[name=z_type]').value, intensity: z.querySelector('[name=z_int]').value,
+    avoid: z.querySelector('[name=z_avoid]').value.trim(),
+  }));
+}
+function refreshBodyMap(root) {
+  const zs = readZones(root);
+  root.querySelectorAll('[data-spot]').forEach((g) => {
+    const [z, side] = g.dataset.spot.split('|');
+    const on = zs.some((x) => x.zone === z && (!side || !x.side || x.side === side || x.side === 'deux'));
+    const dot = g.querySelector('.dot'); dot.setAttribute('fill', on ? 'var(--danger)' : '#fff'); dot.setAttribute('stroke', on ? 'var(--danger)' : '#A9B0BC'); dot.setAttribute('r', on ? 8 : 6.5);
+  });
+  root.querySelectorAll('.zone').forEach((row) => { row.querySelector('b').textContent = ZONE_LABEL(row.querySelector('[name=z_zone]').value, row.querySelector('[name=z_side]').value); });
+}
+function bindZones(root) {
+  const box = root.querySelector('#zones'); if (!box) return;
+  const pick = (g) => {
+    const [z, side] = g.dataset.spot.split('|');
+    const rows = [...root.querySelectorAll('.zone')];
+    const hit = rows.find((r) => r.querySelector('[name=z_zone]').value === z && (!side || [side, 'deux', ''].includes(r.querySelector('[name=z_side]').value)));
+    if (hit) {
+      const cur = hit.querySelector('[name=z_side]').value;
+      if (side && cur === 'deux') hit.querySelector('[name=z_side]').value = side === 'droit' ? 'gauche' : 'droit';
+      else hit.remove();
+    } else {
+      const other = rows.find((r) => r.querySelector('[name=z_zone]').value === z && side && r.querySelector('[name=z_side]').value !== side);
+      if (other) other.querySelector('[name=z_side]').value = 'deux';
+      else { box.insertAdjacentHTML('beforeend', zoneRow({ zone: z, side, type: 'douleur', intensity: 'moderee' })); box.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    }
+    refreshBodyMap(root);
+  };
+  root.querySelectorAll('[data-spot]').forEach((g) => { g.style.outline = 'none'; g.onclick = () => pick(g); g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(g); } }; });
+  box.addEventListener('click', (e) => { if (e.target.matches('[data-rmzone]')) { e.target.closest('.zone').remove(); refreshBodyMap(root); } });
+  box.addEventListener('change', () => refreshBodyMap(root));
+  refreshBodyMap(root);
 }
 function bindProfile(root) {
   root.querySelectorAll('.swatch').forEach((b) => b.onclick = () => {
@@ -425,8 +493,7 @@ function bindProfile(root) {
       const d = root.querySelector('#lvlDesc'); if (d && lvl) d.textContent = `${LEVELS[lvl - 1].desc}${group === 'level' ? '' : ' (proposé d\'après tes réponses, tu peux l\'ajuster)'}`;
     }
   });
-  root.querySelector('#addZone').onclick = () => root.querySelector('#zones').insertAdjacentHTML('beforeend', zoneRow());
-  root.addEventListener('click', (e) => { if (e.target.matches('[data-rmzone]')) e.target.closest('.zone').remove(); });
+  bindZones(root);
 }
 function readAnswers(root) {
   const out = {};
@@ -436,11 +503,7 @@ function readAnswers(root) {
 function readProfile(root) {
   const v = formData(root);
   const multi = (k) => [...root.querySelectorAll(`[data-multi=${k}] .chip[aria-pressed=true]`)].map((b) => b.dataset.v);
-  const zones = [...root.querySelectorAll('.zone')].map((z) => ({
-    zone: z.querySelector('[name=z_zone]').value, side: z.querySelector('[name=z_side]').value,
-    type: z.querySelector('[name=z_type]').value, intensity: z.querySelector('[name=z_int]').value,
-    avoid: z.querySelector('[name=z_avoid]').value.trim(),
-  }));
+  const zones = readZones(root);
   return {
     color: v.color || null, first_name: v.first_name.trim(), last_name: v.last_name.trim() || null,
     birth_date: v.birth_date || null, sex: v.sex || null,
@@ -451,9 +514,11 @@ function readProfile(root) {
       const answers = readAnswers(root);
       const lvl = Number(root.querySelector('[data-single=level] .chip[aria-pressed=true]')?.dataset.v || 0) || (Object.keys(answers).length ? levelFromAnswers(answers) : 0);
       const prev = S.me?.fitness || {};
-      if (!lvl) return prev;
+      const runB = root.querySelector('[data-single=run] .chip[aria-pressed=true]');
+      const run = runB ? Number(runB.dataset.v) : prev.run;
+      if (!lvl) return run != null ? { ...prev, run } : prev;
       const changed = lvl !== prev.level;
-      return { ...prev, level: lvl, answers, assessed_at: changed || !prev.assessed_at ? new Date().toISOString() : prev.assessed_at, history: changed ? [...(prev.history || []), { level: lvl, at: new Date().toISOString(), by: 'test' }].slice(-20) : prev.history || [] };
+      return { ...prev, run, level: lvl, answers, assessed_at: changed || !prev.assessed_at ? new Date().toISOString() : prev.assessed_at, history: changed ? [...(prev.history || []), { level: lvl, at: new Date().toISOString(), by: 'test' }].slice(-20) : prev.history || [] };
     })(),
     availability: {
       days: multi('days').map(Number),
@@ -560,6 +625,7 @@ function restoreDraft(f, d) {
   f.querySelectorAll('.swatch').forEach((b) => b.setAttribute('aria-pressed', b.dataset.color === d.values.color));
   if (d.values.color) document.documentElement.style.setProperty('--me', colorHex(d.values.color));
   f.querySelector('#zones').innerHTML = d.zones.map(zoneRow).join('');
+  refreshBodyMap(f);
 }
 
 // ---------- visite guidée ----------
@@ -763,7 +829,7 @@ async function viewToday() {
       <div class="card">
         <div><span class="title">${esc(s.title)}</span>${who.length < people.length ? ` <span class="pill">Pour ${esc(who.map((p) => p.first_name).join(' et '))}</span>` : ''}${s.optional && s.key !== 'respiration' ? ' <span class="pill">Facultatif</span>' : ''}<div class="muted">${esc(textFor(s, who.find((p) => p.id === S.me.id) || who[0] || S.me, d))}</div>${who.length > 1 && levelOf(who[0]) !== levelOf(who[1]) && textFor(s, who[0], d) !== textFor(s, who[1], d) ? `<div class="small muted"><b>${esc(who.find((p) => p.id !== S.me.id)?.first_name || '')} :</b> ${esc(textFor(s, who.find((p) => p.id !== S.me.id) || who[1], d))}</div>` : ''}</div>
         ${s.per ? people.map((p) => s.per[p.id] ? `<div class="small"><b>${esc(p.first_name)} :</b> ${s.per[p.id].map((n0) => { const n = variantFor(n0, levelOf(p), p); return `<button class="link small" data-ex="${esc(n)}" style="font-weight:500">${esc(n)}</button>`; }).join(' · ')}</div>` : '').join('') : ''}
-        <button class="btn ghost sm" data-howto="${esc(s.key)}|${esc(s.title)}">Comment faire ?</button>
+        <button class="btn ${s.key === 'respiration' ? 'soft' : 'ghost'} sm" data-howto="${esc(s.key)}|${esc(s.title)}">${s.key === 'respiration' ? '▶ Lancer une séance guidée' : 'Comment faire ?'}</button>
         <div class="grid2">${who.map((p) => {
           const on = has(p.id, s.key); const mine = p.id === S.me.id;
           return `<button class="toggle" style="--c:${colorHex(p.color)}" aria-pressed="${on}" ${mine ? `data-check="${s.key}"` : 'disabled'}>${esc(p.first_name)} · ${on ? 'fait ✓' : (mine ? 'à faire' : 'pas encore')}</button>`;
@@ -1547,6 +1613,51 @@ function weightChart(weights, people) {
     <text x="${W - 8}" y="${H - 6}" font-size="10" fill="#5E6573" text-anchor="end">${fmtDay(iso(new Date(x1)), { day: 'numeric', month: 'short' })}</text></svg>`;
 }
 
+// ---------- Respiration guidée ----------
+function breathModal(day = today()) {
+  let pref = {}; try { pref = JSON.parse(localStorage.getItem('tf_breath') || '{}'); } catch {}
+  let pick = BREATH.find((b) => b.id === pref.id) || BREATH[0]; let mins = pref.mins || pick.mins;
+  let sound = pref.sound ?? true; let vib = pref.vib ?? true;
+  const canVib = 'vibrate' in navigator;
+  openModal(`<h2>Respiration guidée</h2>
+    <span class="small muted">Assieds-toi le dos droit ou allonge-toi. Suis la bulle : elle monte quand tu inspires, descend quand tu expires.</span>
+    <div style="display:flex;flex-direction:column;gap:8px">${BREATH.map((b) => `<button type="button" class="card" data-br="${b.id}" aria-pressed="${b.id === pick.id}" style="border:2px solid ${b.id === pick.id ? 'var(--me)' : 'transparent'};text-align:left;cursor:pointer"><span class="title">${b.emoji} ${esc(b.name)}</span><span class="small muted">${esc(b.desc)}</span></button>`).join('')}</div>
+    <div><b class="small">Durée</b><div class="chips" style="margin-top:6px">${[1, 3, 5, 10].map((m) => `<button type="button" class="chip" data-bm="${m}" aria-pressed="${m === mins}">${m} min</button>`).join('')}</div></div>
+    <div class="chips"><button type="button" class="chip" id="bSound" aria-pressed="${sound}">🔊 Guide sonore</button>${canVib ? `<button type="button" class="chip" id="bVib" aria-pressed="${vib}">📳 Vibrations</button>` : ''}</div>
+    <button class="btn" id="bGo">Commencer</button>`, (root) => {
+    root.querySelectorAll('[data-br]').forEach((b) => b.onclick = () => { pick = BREATH.find((x) => x.id === b.dataset.br); mins = pick.mins; root.querySelectorAll('[data-br]').forEach((x) => x.style.borderColor = x === b ? 'var(--me)' : 'transparent'); root.querySelectorAll('[data-bm]').forEach((x) => x.setAttribute('aria-pressed', Number(x.dataset.bm) === mins)); });
+    root.querySelectorAll('[data-bm]').forEach((b) => b.onclick = () => { mins = Number(b.dataset.bm); root.querySelectorAll('[data-bm]').forEach((x) => x.setAttribute('aria-pressed', x === b)); });
+    root.querySelector('#bSound').onclick = (e) => { sound = !sound; e.currentTarget.setAttribute('aria-pressed', sound); };
+    root.querySelector('#bVib')?.addEventListener('click', (e) => { vib = !vib; e.currentTarget.setAttribute('aria-pressed', vib); });
+    root.querySelector('#bGo').onclick = () => { try { localStorage.setItem('tf_breath', JSON.stringify({ id: pick.id, mins, sound, vib })); } catch {} breathRun(pick, mins, { sound, vib }, day); };
+  });
+}
+function breathRun(pick, mins, opts, day) {
+  openModal(`<h2>${pick.emoji} ${esc(pick.name)}</h2>
+    <svg id="bSvg" viewBox="0 0 320 230" style="width:100%;display:block;background:#F3F5F8;border-radius:16px" role="img" aria-label="Guide de respiration"></svg>
+    <div class="row between"><span class="small muted">Temps restant</span><b id="bLeft">${mins}:00</b></div>
+    <div style="height:6px;border-radius:99px;background:var(--line);overflow:hidden"><div id="bBar" style="height:100%;width:0;background:var(--me)"></div></div>
+    <div class="grid2"><button class="btn ghost" id="bPause">Pause</button><button class="btn ghost" id="bStop">Arrêter</button></div>`, (root) => {
+    const total = mins * 60; let paused = false;
+    const ctl = runBreath(root.querySelector('#bSvg'), pick.phases, total, {
+      color: meColor(), sound: opts.sound, vibrate: opts.vib,
+      onTick: (left) => { root.querySelector('#bLeft').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; root.querySelector('#bBar').style.width = `${((total - left) / total) * 100}%`; },
+      onEnd: () => breathDone(pick, mins, day),
+    });
+    root.querySelector('#bPause').onclick = (e) => { paused = !paused; paused ? ctl.pause() : ctl.resume(); e.currentTarget.textContent = paused ? 'Reprendre' : 'Pause'; };
+    root.querySelector('#bStop').onclick = () => { ctl.stop(); breathModal(day); };
+  });
+}
+async function breathDone(pick, mins, day) {
+  const planned = (planDay(day)?.sessions || []).some((s) => s.key === 'respiration' && forOf(s).includes(S.me.id));
+  if (planned) await sb.from('checks').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, day, session_key: 'respiration', source: 'manuel', done_at: new Date().toISOString() });
+  openModal(`<div style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center"><span style="font-size:48px">🌿</span><h2>Bravo !</h2>
+    <span>${mins} min de ${esc(pick.name.toLowerCase())}. Prends quelques secondes avant de te relever.</span>
+    ${planned ? '<span class="small muted">Séance de respiration cochée pour aujourd\'hui.</span>' : ''}
+    <button class="btn" data-close style="align-self:stretch">Terminer</button></div>`);
+  if (S.view === 'today') viewToday();
+}
+
 // ---------- Notifications ----------
 const NOTIF_DEFAULT = { seance: true, seance_hour: 18, repas: true, partenaire: true, duo: true, pesee: true, bilan: true };
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -1642,10 +1753,10 @@ async function viewNotifs() {
 // ---------- Plus ----------
 function viewMore() {
   $app.innerHTML = header('Plus') + `<div class="wrap">
-    ${[['guide', 'Guide de l\'appli', 'Tuto, visite guidée, FAQ et retours bêta'], ['notifs', 'Notifications', 'Rappels de séance, repas, défi à deux'], ['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Bientôt disponible'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
+    ${[['guide', 'Guide de l\'appli', 'Tuto, visite guidée, FAQ et retours bêta'], ['notifs', 'Notifications', 'Rappels de séance, repas, défi à deux'], ['breath', 'Respiration guidée', 'Cohérence cardiaque, relaxation, sommeil'], ['journal', 'Journal', 'Alcool, eau, écarts du jour'], ['program', 'Programme', 'Les séances semaine par semaine'], ['settings', 'Matériel et programme', isCaptain() ? 'Réglages du capitaine' : 'Consultation et suggestions'], ['profile', 'Mon profil', 'Couleur, santé, alimentation'], ['sources', 'Montres et sources', 'Bientôt disponible'], ['account', 'Mon compte', 'Export, déconnexion, suppression']]
       .map(([v, t, s]) => `<button class="card" style="border:0;text-align:left;cursor:pointer" data-go="${v}"><span class="title">${t}</span><span class="muted">${s}</span></button>`).join('')}
   </div>`;
-  $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
+  $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => (b.dataset.go === 'breath' ? breathModal(today()) : go(b.dataset.go)));
 }
 
 async function viewProgram() {
@@ -1689,6 +1800,40 @@ function sourcesHtml() {
       ${SOURCES.map(([t, d, u]) => `<span><b>${esc(t)}</b> : ${esc(d)} <a class="link" href="${u}" target="_blank" rel="noopener">Source ›</a></span>`).join('')}
       <span class="muted">Ce n'est pas un avis médical. En cas de problème de santé, de douleur ou de doute, demande l'avis de ton médecin avant de commencer.</span>
     </div></details>`;
+}
+
+// Test de niveau (et de course) à faire avant de démarrer un programme.
+function levelTestModal(then, needRun = true) {
+  const fit = S.me.fitness || {}; const ans = { ...(fit.answers || {}) }; let run = fit.run ?? null;
+  openModal(`<h2>Ton niveau sportif</h2>
+    <span class="small muted">Avant de démarrer, 1 minute pour régler le programme sur ton niveau. Réponds honnêtement.</span>
+    ${LEVEL_QUESTIONS.map((x) => `<div><b class="small">${esc(x.q)}</b><div class="chips" style="margin-top:6px">${x.a.map((a, i) => `<button type="button" class="chip" data-lq="${x.id}" data-v="${i}" aria-pressed="${ans[x.id] === i}">${esc(a)}</button>`).join('')}</div></div>`).join('')}
+    <div><b class="small">${esc(RUN_QUESTION.q)}</b>${needRun ? '' : ' <span class="small muted">(utile si la course est cochée)</span>'}<div class="chips" style="margin-top:6px">${RUN_QUESTION.a.map((a, i) => `<button type="button" class="chip" data-run="${i}" aria-pressed="${run === i}">${esc(a)}</button>`).join('')}</div></div>
+    <div class="card" id="ltRes" hidden></div>
+    <p class="err" id="ltErr" role="alert" style="margin:0"></p>
+    <button class="btn" id="ltSave">Valider mon niveau</button>`, (root) => {
+    const show = () => {
+      const box = root.querySelector('#ltRes');
+      if (Object.keys(ans).length < LEVEL_QUESTIONS.length) { box.hidden = true; return; }
+      const l = levelFromAnswers(ans); box.hidden = false;
+      box.innerHTML = `<span class="small muted">Ton niveau</span><span class="title">${esc(LEVELS[l - 1].name)}</span><span class="small">${esc(LEVELS[l - 1].desc)}</span>${run != null ? `<span class="small">Course : ${['départ en semaine 1 du plan Couch to 5K', 'départ en semaine 3 du plan', 'départ en semaine 5 du plan', 'départ en semaine 6 du plan', 'après le plan : course continue de 30 min et plus'][run]}.</span>` : ''}`;
+    };
+    root.querySelectorAll('[data-lq]').forEach((b) => b.onclick = () => { ans[b.dataset.lq] = Number(b.dataset.v); root.querySelectorAll(`[data-lq="${b.dataset.lq}"]`).forEach((x) => x.setAttribute('aria-pressed', x === b)); show(); });
+    root.querySelectorAll('[data-run]').forEach((b) => b.onclick = () => { run = Number(b.dataset.run); root.querySelectorAll('[data-run]').forEach((x) => x.setAttribute('aria-pressed', x === b)); show(); });
+    show();
+    root.querySelector('#ltSave').onclick = async (e) => {
+      if (Object.keys(ans).length < LEVEL_QUESTIONS.length) return (root.querySelector('#ltErr').textContent = 'Réponds aux 5 premières questions.');
+      if (needRun && run == null) return (root.querySelector('#ltErr').textContent = 'Réponds aussi à la question sur la course.');
+      e.target.disabled = true;
+      const level = levelFromAnswers(ans); const now = new Date().toISOString();
+      const fitness = { ...fit, level, answers: ans, run: run ?? fit.run, run_shift: 0, assessed_at: now, history: [...(fit.history || []), { level, at: now, by: 'test' }].slice(-20) };
+      const { error } = await sb.from('members').update({ fitness }).eq('id', S.me.id);
+      if (error) { e.target.disabled = false; return fail(error, 'Enregistrement impossible'); }
+      S.me.fitness = fitness; closeModal(); toast(`Niveau ${LEVELS[level - 1].name} enregistré`);
+      if (S.plan) await regenerateFrom(addDays(today(), 1));
+      then?.();
+    };
+  });
 }
 
 // ---------- Adapter le programme en cours ----------
@@ -1769,7 +1914,8 @@ async function reviewModal(week) {
       ${id === 'nombre' ? `<div class="chips" id="nombreNew" style="margin-top:6px" hidden>${[1, 2, 3, 4, 5, 6].map((n) => `<button type="button" class="chip" data-nses="${n}" aria-pressed="${a.sessions === n}">${n} par semaine</button>`).join('')}</div>` : ''}</div>`).join('')}
     ${hasRun ? `<div><b class="small">La course (plan Couch to 5K) ?</b><div class="chips" style="margin-top:6px">${['Trop facile', 'Bien', 'Trop dure'].map((o, i) => `<button type="button" class="chip" data-q="course" data-v="${i}" aria-pressed="${ans.course === i}">${o}</button>`).join('')}</div></div>` : ''}
     ${exos.length ? `<div><b class="small">Les exercices de renfo : lesquels changer ?</b><span class="small muted" style="display:block">Touche ceux que tu n'aimes pas ou qui ne te vont pas : ils seront remplacés.</span><div class="chips" style="margin-top:6px">${exos.map((n) => `<button type="button" class="chip" data-ex="${esc(n)}" aria-pressed="${excluded.has(n)}">👎 ${esc(variantFor(n, levelOf(S.me), S.me))}</button>`).join('')}</div></div>` : ''}
-    <div><b class="small">Une douleur ou une gêne pendant le sport ?</b><div class="chips" style="margin-top:6px">${ZONES.map(([z, l]) => `<button type="button" class="chip" data-zone="${z}" aria-pressed="false">${l}</button>`).join('')}</div></div>
+    <div><b class="small">Tes douleurs ou gênes ont-elles changé ?</b><div class="chips" style="margin-top:6px">${['Non, rien de nouveau', 'Oui, je mets à jour'].map((o, i) => `<button type="button" class="chip" data-q="douleur" data-v="${i}" aria-pressed="${ans.douleur === i}">${o}</button>`).join('')}</div>
+      <div id="rvBody" hidden style="margin-top:8px;display:flex;flex-direction:column;gap:8px"><span class="small muted">Touche les zones qui font mal maintenant ; retire celles qui vont mieux.</span>${bodyMapHtml()}<div id="zones">${((S.me.health || {}).zones || []).map(zoneRow).join('')}</div></div></div>
     <label class="small">Ce qui va, ce qui ne va pas (facultatif)<textarea id="rvNote" placeholder="ex. le mardi c'est compliqué, j'adore le vélo">${esc(ans.note || '')}</textarea></label>
     <button class="btn" id="rvNext">Voir ce qui va changer</button>`, (root) => {
     root.querySelectorAll('[data-q]').forEach((b) => b.onclick = () => {
@@ -1777,18 +1923,20 @@ async function reviewModal(week) {
       root.querySelectorAll(`[data-q="${b.dataset.q}"]`).forEach((x) => x.setAttribute('aria-pressed', x === b));
       if (b.dataset.q === 'duree') root.querySelector('#dureeNew').hidden = ans.duree === 1;
       if (b.dataset.q === 'nombre') root.querySelector('#nombreNew').hidden = ans.nombre === 1;
+      if (b.dataset.q === 'douleur') root.querySelector('#rvBody').hidden = ans.douleur !== 1;
     });
+    bindZones(root);
     if (ans.duree != null && ans.duree !== 1) root.querySelector('#dureeNew').hidden = false;
     if (ans.nombre != null && ans.nombre !== 1) root.querySelector('#nombreNew').hidden = false;
     const single = (sel) => root.querySelectorAll(sel).forEach((b) => b.onclick = () => root.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x === b)));
     single('[data-nmin]'); single('[data-nses]');
-    root.querySelectorAll('[data-ex],[data-zone]').forEach((b) => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
+    root.querySelectorAll('[data-ex]').forEach((b) => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
     root.querySelector('#rvNext').onclick = () => {
       if (ans.global == null || ans.forme == null) return toast('Réponds au moins aux deux premières questions');
       ans.note = root.querySelector('#rvNote').value.trim().slice(0, 1000);
       ans.excluded = [...root.querySelectorAll('[data-ex][aria-pressed=true]')].map((b) => b.dataset.ex);
       ans.kept = exos.filter((n) => !ans.excluded.includes(n));
-      ans.zones = [...root.querySelectorAll('[data-zone][aria-pressed=true]')].map((b) => b.dataset.zone);
+      ans.zonesNew = ans.douleur === 1 ? readZones(root) : null;
       ans.minutes = ans.duree != null && ans.duree !== 1 ? Number(root.querySelector('[data-nmin][aria-pressed=true]')?.dataset.nmin || a.minutes) : a.minutes;
       ans.sessions = ans.nombre != null && ans.nombre !== 1 ? Number(root.querySelector('[data-nses][aria-pressed=true]')?.dataset.nses || a.sessions) : a.sessions;
       reviewSummary(week, ans);
@@ -1807,7 +1955,11 @@ function reviewChanges(ans) {
   const newEx = ans.excluded.filter((n) => !(fit.excluded || []).includes(n)); const back = (fit.excluded || []).filter((n) => ans.kept.includes(n));
   if (newEx.length) out.push({ id: 'exclude', txt: `Remplacer : ${newEx.join(', ')}.` });
   if (back.length) out.push({ id: 'include', txt: `Remettre : ${back.join(', ')}.` });
-  if (ans.zones.length) out.push({ id: 'zones', txt: `Ménager : ${ans.zones.map((z) => ZONES.find((x) => x[0] === z)[1].toLowerCase()).join(', ')} (exercices à risque retirés). Si la douleur dure, parles-en à un médecin.` });
+  if (ans.zonesNew) {
+    const key = (z) => `${z.zone}|${z.side || ''}`; const before = ((S.me.health || {}).zones || []);
+    const added = ans.zonesNew.filter((z) => !before.some((b) => key(b) === key(z))); const gone = before.filter((b) => !ans.zonesNew.some((z) => key(z) === key(b)));
+    if (added.length || gone.length || JSON.stringify(before) !== JSON.stringify(ans.zonesNew)) out.push({ id: 'zones', txt: [added.length ? `Ménager : ${added.map((z) => ZONE_LABEL(z.zone, z.side).toLowerCase()).join(', ')} (exercices à risque retirés). Si la douleur dure, parles-en à un médecin.` : '', gone.length ? `Ça va mieux : ${gone.map((z) => ZONE_LABEL(z.zone, z.side).toLowerCase()).join(', ')} (exercices remis progressivement).` : '', !added.length && !gone.length ? 'Mettre à jour tes douleurs (type ou intensité).' : ''].filter(Boolean).join(' ') });
+  }
   if (ans.global === 2 && !out.some((c) => c.id === 'level')) out.push({ id: 'info', txt: 'Un peu dur, c\'est normal en progressant : on garde le niveau.' });
   return out;
 }
@@ -1831,7 +1983,7 @@ function reviewSummary(week, ans) {
         if (c.id === 'run') fit.run_shift = Number(fit.run_shift || 0) + c.to;
         if (c.id === 'exclude') fit.excluded = [...new Set([...(fit.excluded || []), ...ans.excluded])];
         if (c.id === 'include') fit.excluded = (fit.excluded || []).filter((n) => !ans.kept.includes(n));
-        if (c.id === 'zones') for (const z of ans.zones) if (!health.zones.some((x) => x.zone === z)) health.zones.push({ zone: z, type: 'douleur', note: 'Signalé au point hebdo' });
+        if (c.id === 'zones') health.zones = ans.zonesNew;
       }
       const patch = keep.length ? { fitness: fit, availability: av, health } : {};
       if (keep.length) {
@@ -1926,6 +2078,7 @@ function showExercise(name) {
 }
 function showSession(s, day = S.day) {
   if (!s) return;
+  if (s.key === 'respiration') return breathModal(day);
   const info = SESSIONS[s.key] || {};
   const people = [S.me, S.partner].filter(Boolean);
   const mine = (s.per?.[S.me.id] || (S.partner && s.per?.[S.partner.id]) || []).map((n) => variantFor(n, levelOf(S.me), S.me));
@@ -1962,20 +2115,34 @@ async function viewSettings() {
       </ul></details>
     <div class="card white"><h3>Disponibilités</h3>
       ${[S.me, S.partner].filter(Boolean).map((p) => { const a = availOf(p); return `<span class="small"><b style="color:${colorHex(p.color)}">${esc(p.first_name)}</b> : ${a.sessions} séance(s) de ${a.minutes} min par semaine, le ${a.days.map((d) => WEEKDAYS[d].toLowerCase()).join(', ')}.</span>`; }).join('')}
-      <span class="small muted">À modifier par chacun dans Plus, puis « Mon profil ». Régénère ensuite le programme.</span></div>
+      <span class="small muted">Chacun les change dans Programme › « Changer durée et nombre de séances » : ses séances à venir s'adaptent.</span></div>
+    <div class="card white"><h3>Vos niveaux</h3>
+      ${[S.me, S.partner].filter(Boolean).map((p) => `<span class="small"><b style="color:${colorHex(p.color)}">${esc(p.first_name)}</b> : ${p.fitness?.level ? `niveau ${esc(LEVELS[levelOf(p) - 1].name)}` : '<span style="color:var(--danger)">test à faire</span>'} · course : ${runLabel(p) ? esc(runLabel(p).toLowerCase()) : '<span class="muted">pas encore renseignée</span>'}</span>`).join('')}
+      <span class="small muted">Le niveau règle les séries et les variantes ; la réponse sur la course fixe la semaine de départ du plan Couch to 5K.</span>
+      <button type="button" class="btn ghost sm" id="myTest">${S.me.fitness?.level ? 'Refaire mon test' : 'Faire mon test (1 min)'}</button></div>
+    <div class="card white"><h3>Matériel</h3>
+      <button type="button" class="chip" data-eq="aucun" aria-pressed="${eq.has('aucun')}" ${capt ? '' : 'disabled'} style="align-self:flex-start">🏠 Je n'ai pas de matériel</button>
+      <span class="small muted">Programme au poids du corps, avec de la marche (et de la course si tu coches « Course dehors »). Sinon, coche ce que vous avez ci-dessous.</span></div>
     ${EQUIPMENT.map(([g, items]) => `<div class="card white"><h3>${g}</h3><div class="chips">${items.map(([v, l]) => `<button type="button" class="chip" data-eq="${v}" aria-pressed="${eq.has(v)}" ${capt ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>`).join('')}
     <div class="card white"><h3>Programme</h3>
       <span class="muted">Durée</span>
       <div class="chips">${[4, 6, 8, 9, 12].map((w) => `<button type="button" class="chip" data-weeks="${w}" aria-pressed="${(st.weeks || 6) === w}" ${canPlan && !S.plan ? '' : 'disabled'}>${w} semaines${w === 9 ? ' (Couch to 5K)' : ''}</button>`).join('')}</div>
       <div class="grid2"><label>Début (lundi)<input type="date" name="start" value="${esc(S.plan ? S.plan.data.start_date : (st.start_date && st.start_date >= mondayOf(today()) ? st.start_date : addDays(mondayOf(today()), 7)))}" ${canPlan && !S.plan ? '' : 'disabled'}></label>
       <label>Course à partir de la semaine<input name="run_from" inputmode="numeric" value="${esc(st.run_from_week || 1)}" ${canPlan && !S.plan ? '' : 'disabled'}></label></div>
+      ${!S.plan && S.partner && !S.partner.fitness?.level ? `<span class="small notice">${esc(S.partner.first_name)} n'a pas encore fait son test de niveau : son programme partira du niveau Reprise, et s'ajustera quand il ou elle l'aura fait (Plus › Mon profil).</span>` : ''}
       ${!S.plan ? '<button class="btn block">Créer le programme</button>' : capt ? '<button class="btn block">Appliquer le matériel à partir de demain</button><span class="muted small">Le passé et les séances cochées ne bougent pas. Pour changer la durée ou la date, recommence le programme (dans Programme).</span>' : ''}
     </div>
     ${capt ? '' : `<div class="card white"><h3>Une suggestion pour ${esc(captainName)} ?</h3><textarea id="sg" placeholder="ex. on a acheté un step"></textarea><button type="button" class="btn" id="sendSg">Envoyer</button></div>`}
     ${(sugg || []).length ? `<div class="card"><h3>Suggestions</h3>${sugg.map((x) => `<div class="row between"><span>${esc(x.text)}</span>${capt ? `<button type="button" class="btn ghost sm" data-sg="${x.id}">Vu</button>` : ''}</div>`).join('')}</div>` : ''}
   </form>`;
   const f = document.getElementById('s');
-  f.querySelectorAll('[data-eq]').forEach((b) => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
+  const KEEP = ['marche', 'course'];
+  f.querySelectorAll('[data-eq]').forEach((b) => b.onclick = () => {
+    const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on);
+    if (on && b.dataset.eq === 'aucun') f.querySelectorAll('[data-eq]').forEach((x) => { if (x !== b && !KEEP.includes(x.dataset.eq)) x.setAttribute('aria-pressed', 'false'); });
+    if (on && b.dataset.eq !== 'aucun' && !KEEP.includes(b.dataset.eq)) f.querySelector('[data-eq=aucun]').setAttribute('aria-pressed', 'false');
+  });
+  document.getElementById('myTest').onclick = () => levelTestModal(() => viewSettings());
   f.querySelectorAll('[data-weeks]').forEach((b) => b.onclick = () => { f.querySelectorAll('[data-weeks]').forEach((x) => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); });
   f.querySelectorAll('[data-sg]').forEach((b) => b.onclick = async () => { await sb.from('suggestions').update({ done: true }).eq('id', b.dataset.sg); viewSettings(); });
   document.getElementById('sendSg')?.addEventListener('click', async () => {
@@ -1992,6 +2159,8 @@ async function viewSettings() {
       start_date: mondayOf(f.querySelector('[name=start]').value || today()),
       run_from_week: Math.max(1, int(f.querySelector('[name=run_from]').value) || 1),
     } : { ...st, equipment: [...f.querySelectorAll('[data-eq][aria-pressed=true]')].map((b) => b.dataset.eq) };
+    const needRun = (settings.equipment || []).includes('course');
+    if (!S.plan && (!S.me.fitness?.level || (needRun && S.me.fitness?.run == null))) return levelTestModal(() => f.requestSubmit(), needRun);
     const btn = f.querySelector('.btn.block'); btn.disabled = true; btn.textContent = 'Un instant…';
     if (capt) {
       const r1 = await sb.from('tandems').update({ settings }).eq('id', S.tandem.id);
