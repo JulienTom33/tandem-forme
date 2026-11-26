@@ -128,16 +128,19 @@ const ROTATION = {
   5: ['renfo', 'cardio', 'renfo', 'cardio', 'long'], 6: ['renfo', 'cardio', 'renfo', 'cardio', 'renfo', 'long'],
 };
 
-// settings : { equipment:[], weeks, start_date, run_from_week } ; chaque membre a ses disponibilités (jours, séances par semaine, durée).
+// settings : { equipment:[], weeks, start_date, run_from_week, mode } ; chaque membre a ses disponibilités (jours, séances par semaine, durée).
+// En couple, le matériel est celui de la maison (réglages du tandem) ; en duo, chacun a le sien (members.equipment).
 const CARDIO_MACHINES = ['velo', 'tapis_course', 'rameur', 'elliptique', 'corde', 'course'];
+export function equipmentOf(settings, member) {
+  const list = settings.mode === 'duo' ? (member?.equipment || []) : (settings.equipment || []);
+  const eq = new Set(list); eq.delete('aucun');
+  return { eq, hasBike: eq.has('velo'), canRun: eq.has('course'), canWalk: eq.has('marche') || ![...eq].some((k) => CARDIO_MACHINES.includes(k)) };
+}
 export function generatePlan(settings, members) {
-  const eq = new Set(settings.equipment || []); eq.delete('aucun');
   const weeks = Math.min(12, Math.max(2, Number(settings.weeks) || 6));
   const start = mondayOf(settings.start_date);
   const runFrom = Number(settings.run_from_week || 1);
-  const hasBike = eq.has('velo');
-  const canRun = eq.has('course');
-  const canWalk = eq.has('marche') || ![...eq].some((k) => CARDIO_MACHINES.includes(k));
+  const duo = settings.mode === 'duo';
   const days = {};
   const runCount = Object.fromEntries(members.map((m) => [m.id, 0]));
   for (let w = 1; w <= weeks; w++) {
@@ -145,6 +148,7 @@ export function generatePlan(settings, members) {
     const reps = ['10 à 12', '12', '12 à 15'][phase];
     const week = Array.from({ length: 7 }, () => []);
     for (const m of members) {
+      const { eq, hasBike, canRun, canWalk } = equipmentOf(settings, m);
       const av = availOf(m); const M = av.minutes;
       const chosen = spread(av.days, av.sessions);
       const kinds = ROTATION[chosen.length] || ROTATION[4];
@@ -187,7 +191,7 @@ export function generatePlan(settings, members) {
       const list = [];
       for (const s of week[k]) {
         const twin = list.find((x) => x.key === s.key && x.title === s.title);
-        if (twin) { twin.for.push(s.member); if (s.exercises) twin.per[s.member] = s.exercises; if (s.run != null) twin.runs[s.member] = s.run; twin.mins[s.member] = s.minutes; if (members.length > 1 && twin.for.length > 1 && !/ensemble/.test(twin.title) && s.key !== 'renfo') twin.title += ' ensemble'; continue; }
+        if (twin) { twin.for.push(s.member); if (s.exercises) twin.per[s.member] = s.exercises; if (s.run != null) twin.runs[s.member] = s.run; twin.mins[s.member] = s.minutes; if (!duo && members.length > 1 && twin.for.length > 1 && !/ensemble/.test(twin.title) && s.key !== 'renfo') twin.title += ' ensemble'; continue; }
         list.push({ key: s.key, title: s.title, detail: s.detail, minutes: s.minutes, mins: { [s.member]: s.minutes }, optional: s.optional || false, for: [s.member], ...(s.exercises ? { per: { [s.member]: s.exercises } } : {}), ...(s.run != null ? { runs: { [s.member]: s.run } } : {}) });
       }
       list.push({ key: 'respiration', title: 'Respiration du soir', detail: 'Cohérence cardiaque : 5 min, inspirer 5 s, expirer 5 s.', for: members.map((m) => m.id), optional: true });

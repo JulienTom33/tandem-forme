@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
   iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices, courseChoices,
-  WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, RUN_QUESTION, runLabel, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds, weekLoad, SOURCES,
+  WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, RUN_QUESTION, runLabel, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds, weekLoad, SOURCES, equipmentOf,
 } from './program.js';
 import { EXERCISES, SESSIONS, GAINAGE, videoUrl } from './exercises.js';
 import { animSvg, hasAnim, startAnims } from './animations.js';
@@ -281,23 +281,41 @@ function viewSetPassword(mode = 'create') {
   };
 }
 
-function viewRegister(err = '') {
+const isDuo = () => S.tandem?.mode === 'duo';
+const MODES = {
+  couple: { title: 'En couple', emoji: '🏠', sub: 'Vous vivez sous le même toit : même matériel à la maison, repas en commun.', partner: 'Ton ou ta partenaire', capt: 'c\'est toi qui régleras le matériel de la maison et la durée du programme' },
+  duo: { title: 'En duo', emoji: '🤝', sub: 'Deux amis, chacun chez soi : chacun indique son propre matériel, vous suivez le programme et les défis ensemble.', partner: 'Ton binôme', capt: 'c\'est toi qui choisiras la durée du programme ; chacun indique son matériel et son niveau dans son profil' },
+};
+function viewRegister(err = '', mode = null) {
+  if (!mode) {
+    $app.innerHTML = `
+    <div class="hero"><div class="inner"><h1>Inscrire notre tandem</h1><small>Vous faites le programme à deux : en couple ou entre amis ?</small></div></div>
+    <div class="wrap">
+      ${Object.entries(MODES).map(([k, m]) => `<button class="card white" data-mode="${k}" style="text-align:left;cursor:pointer;border:2px solid var(--line)"><span style="font-size:30px">${m.emoji}</span><span class="title">${m.title}</span><span class="small">${m.sub}</span><span class="small" style="color:var(--me);font-weight:600">Choisir ›</span></button>`).join('')}
+      <a href="#" class="link" id="toLogin">J'ai déjà un compte</a>
+    </div>`;
+    document.getElementById('toLogin').onclick = (e) => { e.preventDefault(); location.hash = ''; viewLogin(); };
+    $app.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => viewRegister('', b.dataset.mode));
+    return;
+  }
+  const M = MODES[mode];
   $app.innerHTML = `
-  <div class="hero"><div class="inner"><h1>Inscrire notre tandem</h1><small>Une personne inscrit les deux. Chacun reçoit un lien par e-mail pour créer son mot de passe et remplir son profil.</small></div></div>
+  <div class="hero"><div class="inner"><h1>${M.emoji} Tandem ${mode === 'duo' ? 'en duo' : 'en couple'}</h1><small>Une personne inscrit les deux. Chacun reçoit un lien par e-mail pour créer son mot de passe et remplir son profil.</small></div></div>
   <div class="wrap">
     <div class="card"><span class="title">Comment ça marche ?</span>
       <ol class="steps small">
-        <li>Tu remplis tes infos et celles de ton ou ta partenaire, puis tu envoies.</li>
+        <li>Tu remplis tes infos et celles de ${mode === 'duo' ? 'ton binôme' : 'ton ou ta partenaire'}, puis tu envoies.</li>
         <li>Vous recevez chacun un e-mail avec un lien (pensez aux spams).</li>
-        <li>Chacun ouvre son lien sur son téléphone, crée son mot de passe et remplit son profil en 3 minutes : couleur, infos, <b>jours et nombre de séances de sport selon ses disponibilités</b>, santé et alimentation.</li>
+        <li>Chacun ouvre son lien sur son téléphone, crée son mot de passe et remplit son profil en 3 minutes : couleur, infos, <b>disponibilités</b>, ${mode === 'duo' ? '<b>son matériel à la maison</b>, ' : ''}<b>son niveau</b>, santé et alimentation.</li>
       </ol>
-      <span class="small">Tu deviens le <b>capitaine</b> : c'est toi qui régleras le matériel et le programme pour vous deux.</span></div>
+      <span class="small">Tu deviens le <b>capitaine</b> : ${M.capt}.</span>
+      <button type="button" class="link small" id="chMode" style="text-align:left">Changer : ${mode === 'duo' ? 'nous sommes en couple' : 'nous sommes deux amis'} ›</button></div>
     <form id="f" class="card white" novalidate>
       <h3>Toi</h3>
       <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
       <div class="grid2"><label>Prénom<input name="me_first" required autocomplete="given-name"></label><label>Nom<input name="me_last" autocomplete="family-name"></label></div>
       <label>E-mail<input name="me_email" type="email" required autocomplete="email"></label>
-      <div class="sep"></div><h3>Ton ou ta partenaire</h3>
+      <div class="sep"></div><h3>${M.partner}</h3>
       <div class="grid2"><label>Prénom<input name="p_first" required></label><label>Nom<input name="p_last"></label></div>
       <label>E-mail<input name="p_email" type="email" required></label>
       <p class="muted small" style="margin:0">L'e-mail sert à vous connecter et à récupérer l'accès si vous oubliez votre mot de passe. Vous pourrez supprimer vos comptes à tout moment.</p>
@@ -307,6 +325,7 @@ function viewRegister(err = '') {
     <a href="#" class="link" id="toLogin">J'ai déjà un compte</a>
   </div>`;
   document.getElementById('toLogin').onclick = (e) => { e.preventDefault(); location.hash = ''; viewLogin(); };
+  document.getElementById('chMode').onclick = () => viewRegister('', mode === 'duo' ? 'couple' : 'duo');
   const f = document.getElementById('f');
   f.onsubmit = async (e) => {
     e.preventDefault();
@@ -319,7 +338,7 @@ function viewRegister(err = '') {
     $e.textContent = ''; btn.disabled = true; btn.textContent = 'Envoi…';
     const { data, error } = await sb.functions.invoke('register', {
       body: {
-        website: v.website, redirect: location.origin,
+        website: v.website, redirect: location.origin, mode,
         me: { first_name: v.me_first, last_name: v.me_last, email: v.me_email },
         partner: { first_name: v.p_first, last_name: v.p_last, email: v.p_email },
       },
@@ -331,7 +350,7 @@ function viewRegister(err = '') {
     }
     S.loginEmail = v.me_email.trim().toLowerCase();
     history.replaceState(null, '', location.pathname);
-    const failed = Object.values(data?.sent || {}).some((s) => s !== 'envoye');
+    const failed = Object.values(data?.sent || {}).some((x) => x !== 'envoye');
     viewRegistered(v.p_first, failed);
   };
 }
@@ -378,6 +397,7 @@ function profileForm(m, takenColor) {
     <div class="chips" data-single="sessions">${[2, 3, 4, 5, 6].map((n) => `<button type="button" class="chip" data-v="${n}" aria-pressed="${availOf(m).sessions === n}">${n}</button>`).join('')}</div>
     <span class="muted">Durée d'une séance</span>
     <div class="chips" data-single="minutes">${[20, 30, 45, 60].map((n) => `<button type="button" class="chip" data-v="${n}" aria-pressed="${availOf(m).minutes === n}">${n} min</button>`).join('')}</div>
+    ${isDuo() ? equipPicker(m.equipment || []) : ''}
   </div>
   <div class="card white"><h3>Ton niveau sportif</h3>
     <span class="muted small">5 questions rapides, réponds honnêtement : le programme s'adapte à ton niveau.</span>
@@ -477,6 +497,7 @@ function bindZones(root) {
   refreshBodyMap(root);
 }
 function bindProfile(root) {
+  bindEquipPicker(root);
   root.querySelectorAll('.swatch').forEach((b) => b.onclick = () => {
     root.querySelectorAll('.swatch').forEach((x) => x.setAttribute('aria-pressed', 'false'));
     b.setAttribute('aria-pressed', 'true');
@@ -504,6 +525,22 @@ function readAnswers(root) {
   for (const x of LEVEL_QUESTIONS) { const b = root.querySelector(`[data-single=q_${x.id}] .chip[aria-pressed=true]`); if (b) out[x.id] = Number(b.dataset.v); }
   return out;
 }
+// En duo, chacun indique le matériel qu'il a chez lui.
+function equipPicker(list) {
+  const on = new Set(list);
+  return `<div class="sep"></div><h3 style="margin:0">Ton matériel à la maison</h3>
+    <span class="muted small">Le programme ne te propose que des exercices faisables avec ce que tu as.</span>
+    <div class="chips" data-eqp><button type="button" class="chip" data-v="aucun" aria-pressed="${on.has('aucun')}">🏠 Je n'ai pas de matériel</button></div>
+    ${EQUIPMENT.map(([g, items]) => `<span class="small" style="font-weight:600">${g}</span><div class="chips" data-eqp>${items.map(([k, l]) => `<button type="button" class="chip" data-v="${k}" aria-pressed="${on.has(k)}">${esc(l)}</button>`).join('')}</div>`).join('')}`;
+}
+function bindEquipPicker(root) {
+  const KEEP = ['marche', 'course'];
+  root.querySelectorAll('[data-eqp] .chip').forEach((b) => b.addEventListener('click', () => {
+    const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on);
+    if (on && b.dataset.v === 'aucun') root.querySelectorAll('[data-eqp] .chip').forEach((x) => { if (x !== b && !KEEP.includes(x.dataset.v)) x.setAttribute('aria-pressed', 'false'); });
+    if (on && b.dataset.v !== 'aucun' && !KEEP.includes(b.dataset.v)) root.querySelector('[data-eqp] [data-v=aucun]')?.setAttribute('aria-pressed', 'false');
+  }));
+}
 function readProfile(root) {
   const v = formData(root);
   const multi = (k) => [...root.querySelectorAll(`[data-multi=${k}] .chip[aria-pressed=true]`)].map((b) => b.dataset.v);
@@ -529,6 +566,7 @@ function readProfile(root) {
       sessions: Number(root.querySelector('[data-single=sessions] .chip[aria-pressed=true]')?.dataset.v || 4),
       minutes: Number(root.querySelector('[data-single=minutes] .chip[aria-pressed=true]')?.dataset.v || 30),
     },
+    ...(root.querySelector('[data-eqp]') ? { equipment: [...root.querySelectorAll('[data-eqp] .chip[aria-pressed=true]')].map((b) => b.dataset.v) } : {}),
   };
 }
 
@@ -553,7 +591,7 @@ function viewOnboarding(step = 0) {
     { title: 'Toi', sub: 'Pour personnaliser tes objectifs et suivre tes progrès.', body: `${cards[1]}
       <div class="card"><span class="small"><b>Pourquoi ces infos ?</b> L'âge et la taille aident à fixer des objectifs réalistes. Le poids de départ sert de point de comparaison dans tes courbes, et l'objectif t'indique le chemin restant. Seul le prénom est obligatoire.</span>
       <span class="small"><b>Qui les voit ?</b> Toi et ${esc(partner)} uniquement.</span></div>` },
-    { title: 'Ton temps pour le sport', sub: 'Pour que le programme tienne dans ta semaine.', body: `${cards[2]}
+    { title: isDuo() ? 'Ton temps et ton matériel' : 'Ton temps pour le sport', sub: isDuo() ? 'Pour que le programme tienne dans ta semaine, avec ce que tu as chez toi.' : 'Pour que le programme tienne dans ta semaine.', body: `${cards[2]}
       <div class="card"><span class="small"><b>Comment ça marche ?</b> Coche les jours où tu peux faire du sport, combien de séances tu vises par semaine et combien de temps tu as. Le programme place tes séances sur ces jours en les espaçant, en alternant renfo et cardio, avec la sortie la plus longue en fin de semaine.</span>
       <span class="small"><b>Conseil pour démarrer :</b> 3 séances de 30 min, c'est déjà très bien. Mieux vaut peu et régulier que trop et abandonner.</span>
       <span class="small">Si vous avez des jours en commun avec ${esc(partner)}, vos séances tombent ensemble quand c'est possible. Une respiration de 5 min est proposée chaque soir, en bonus.</span></div>` },
@@ -604,6 +642,7 @@ function viewOnboarding(step = 0) {
     if (step === 3) {
       if (!p.availability.days.length) return ($e.textContent = 'Coche au moins un jour.');
       if (p.availability.sessions > p.availability.days.length) return ($e.textContent = `Tu as choisi ${p.availability.sessions} séances mais seulement ${p.availability.days.length} jour(s) : ajoute des jours ou réduis le nombre de séances.`);
+      if (isDuo() && !p.equipment?.length) return ($e.textContent = 'Indique ton matériel, ou « Je n\'ai pas de matériel ».');
     }
     if (step === 4 && !p.fitness?.level) return ($e.textContent = 'Réponds aux questions ou choisis ton niveau.');
     if (step < n - 1) return goStep(step + 1);
@@ -683,6 +722,7 @@ function viewGuide() {
     ${sec('Frigo, entrées et desserts', `<p><b>🧊 Avec ce qu'on a dans le frigo</b> (sous chaque repas) : coche tes ingrédients, l'appli te propose les recettes de la base qui collent le mieux (avec ce qu'il manque) et compose une recette minute pas à pas. « On fait ça » l'enregistre pour le repas.</p><p><b>Entrée et dessert</b> : totalement facultatifs, dans « ＋ Entrée et dessert » sous chaque repas. Des idées légères qui changent chaque jour, avec la recette et les calories.</p>`)}
     ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
     ${sec('Le suivi', `<p>Onglet Suivi : les <b>pas</b>, le <b>sport</b>, le <b>sommeil</b> et le <b>poids</b>, en Jour, Semaine ou Mois, avec des courbes et la comparaison à la période précédente.</p><p>Chaque jour : « Saisir pas et sommeil » (le nombre de pas est dans l'appli Santé de l'iPhone ou Google Fit / Samsung Health sur Android), « Pesée » pour le poids. Les séances du programme cochées comptent automatiquement en minutes de sport ; « + Activité » sert pour le reste : le sport, la durée, la FC moyenne et ton ressenti de 1 (c'était dur) à 5 (très fort).</p><p>La connexion automatique aux montres (Garmin, Polar, Apple Watch) arrive plus tard.</p>`)}
+    ${sec('En couple ou en duo', `<p>À l'inscription, vous choisissez : <b>en couple</b> (sous le même toit : le capitaine coche le matériel de la maison) ou <b>en duo</b> (deux amis, chacun chez soi : chacun indique son propre matériel dans son profil, et le programme de chacun en tient compte).</p><p>Dans les deux cas, le capitaine choisit la durée du programme, chacun fait son test de niveau, et vous partagez le suivi, les défis et les repas.</p>`)}
     ${sec('Le programme évolue avec vous', `<p><b>Le point de la semaine</b> (du vendredi au lundi, sur Aujourd'hui ou dans Programme) : quelques questions sur la difficulté, la forme, la durée, le nombre de séances, la course, les exercices à changer et les douleurs. L'appli propose les changements, tu valides, et tes séances s'adaptent à partir de lundi.</p><p><b>Changer la durée ou le nombre de séances</b> à tout moment : Programme › « Changer durée et nombre de séances ».</p><p><b>Recommencer</b> avec un nouveau programme : Programme › en bas. Le programme est commun, donc ton binôme doit accepter. Les séances faites restent enregistrées.</p><p><b>D'où viennent les séances ?</b> Des recommandations de l'OMS (endurance et renforcement par semaine), du plan Couch to 5K du NHS pour la course, et des repères de l'American College of Sports Medicine pour le renforcement.</p>`)}
     ${sec('Les défis et les points', `<p>Jauge du jour à 4 paliers (2 500, 5 000, 7 500, 10 000 pas), marche rapide de 10 ou 20 min, séries de jours à 7 500 pas, défis à deux (20 000 pas par jour, 120 000 par semaine), points du mois et badges.</p><p>Barème : 1 pt par palier de pas · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max par jour) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</p>`)}
     ${sec('Les notifications', `<p>Plus › Notifications › « Activer ». Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil et ouvre-la depuis l'icône : c'est obligatoire chez Apple (iOS 16.4 minimum). Safari : Partager en bas › Sur l'écran d'accueil. Chrome : Partager en haut à droite dans la barre d'adresse › Sur l'écran d'accueil. Brave ou autre : Partager › Sur l'écran d'accueil ; si l'option manque, fais-le une fois depuis Safari. Reconnecte-toi une fois dans l'icône. Sur Android, ça marche directement dans Chrome.</p><p>Tu choisis : rappel de séance (à ton heure), séance terminée par ton partenaire, repas à choisir (10 h), défi à deux (20 h), bilan du dimanche (19 h). Un rappel n'est envoyé que s'il sert : pas de rappel séance si elle est déjà faite.</p>`)}
@@ -742,8 +782,9 @@ const planDay = (d) => S.plan?.data?.days?.[d];
 // À qui s'adresse une séance (les anciens programmes n'ont pas ce champ : pour tout le monde).
 const forOf = (s) => s.for || [S.me?.id, S.partner?.id].filter(Boolean);
 const countable = (s) => s.key !== 'respiration' && !s.optional;
-const planCtx = (d) => ({ week: planDay(d)?.week || 1, weeks: S.plan?.data?.weeks || 6, runFrom: Number(S.tandem?.settings?.run_from_week || 1), bike: (S.tandem?.settings?.equipment || []).includes('velo') });
-const textFor = (s, m, d) => { const c = planCtx(d); return sessionText(s, m, c.week, c.weeks, c.runFrom, c.bike); };
+const planSettings = () => ({ ...(S.tandem?.settings || {}), mode: S.tandem?.mode || 'couple' });
+const planCtx = (d) => ({ week: planDay(d)?.week || 1, weeks: S.plan?.data?.weeks || 6, runFrom: Number(S.tandem?.settings?.run_from_week || 1) });
+const textFor = (s, m, d) => { const c = planCtx(d); return sessionText(s, m, c.week, c.weeks, c.runFrom, equipmentOf(planSettings(), m).hasBike); };
 function plannedFor(mid, fromDay, n = 7) {
   let t = 0; for (let i = 0; i < n; i++) t += (planDay(addDays(fromDay, i))?.sessions || []).filter((s) => countable(s) && forOf(s).includes(mid)).length;
   return t;
@@ -1918,7 +1959,7 @@ async function freshMembers() {
 // Recalcule les séances à partir d'un jour donné ; le passé (et les séances cochées) ne bouge pas.
 async function regenerateFrom(fromDay) {
   const members = await freshMembers();
-  const old = S.plan.data; const st = S.tandem.settings || {};
+  const old = S.plan.data; const st = planSettings();
   const fresh = generatePlan({ ...st, start_date: old.start_date, weeks: old.weeks }, members);
   const days = {};
   for (const [d, v] of Object.entries(old.days)) if (d < fromDay) days[d] = v;
@@ -2166,6 +2207,34 @@ function showSession(s, day = S.day) {
   startAnims(meColor());
 }
 
+function duoEquipCard() {
+  return `<div class="card white"><h3>Le matériel de chacun</h3>
+      ${[S.me, S.partner].filter(Boolean).map((p) => `<span class="small"><b style="color:${colorHex(p.color)}">${esc(p.first_name)}</b> : ${p.equipment?.length ? esc(eqLabels(p.equipment)) : '<span style="color:var(--danger)">pas encore renseigné</span>'}</span>`).join('')}
+      <span class="small muted">En duo, chacun a son propre matériel chez lui : le programme de chacun en tient compte.</span>
+      <button type="button" class="btn ghost sm" id="myEq">Modifier mon matériel</button></div>`;
+}
+function coupleEquipCards(eq, capt) {
+  return `    <div class="card white"><h3>Matériel</h3>
+      <button type="button" class="chip" data-eq="aucun" aria-pressed="${eq.has('aucun')}" ${capt ? '' : 'disabled'} style="align-self:flex-start">🏠 Je n'ai pas de matériel</button>
+      <span class="small muted">Programme au poids du corps, avec de la marche (et de la course si tu coches « Course dehors »). Sinon, coche ce que vous avez ci-dessous.</span></div>
+    ${EQUIPMENT.map(([g, items]) => `<div class="card white"><h3>${g}</h3><div class="chips">${items.map(([v, l]) => `<button type="button" class="chip" data-eq="${v}" aria-pressed="${eq.has(v)}" ${capt ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>`).join('')}`;
+}
+const eqLabels = (list) => list.map((k) => (k === 'aucun' ? 'aucun matériel' : (EQUIPMENT.flatMap((g) => g[1]).find((x) => x[0] === k) || [k, k])[1])).join(', ');
+function equipModal() {
+  openModal(`<h2>Mon matériel</h2>${equipPicker(S.me.equipment || [])}<p class="err" id="eqErr" role="alert" style="margin:0"></p><button class="btn" id="eqSave">Enregistrer</button>`, (root) => {
+    bindEquipPicker(root);
+    root.querySelector('#eqSave').onclick = async (e) => {
+      const equipment = [...root.querySelectorAll('[data-eqp] .chip[aria-pressed=true]')].map((b) => b.dataset.v);
+      if (!equipment.length) return (root.querySelector('#eqErr').textContent = 'Coche ton matériel, ou « Je n\'ai pas de matériel ».');
+      e.target.disabled = true;
+      const { error } = await sb.from('members').update({ equipment }).eq('id', S.me.id);
+      if (error) { e.target.disabled = false; return fail(error, 'Enregistrement impossible'); }
+      S.me.equipment = equipment;
+      if (S.plan) await regenerateFrom(addDays(today(), 1));
+      closeModal(); toast(S.plan ? 'Matériel enregistré, séances mises à jour dès demain' : 'Matériel enregistré'); render();
+    };
+  });
+}
 async function viewSettings() {
   const st = S.tandem.settings || {};
   const eq = new Set(st.equipment || []);
@@ -2173,11 +2242,11 @@ async function viewSettings() {
   const captainName = capt ? 'toi' : (S.partner?.first_name || 'le capitaine');
   const canPlan = capt || !S.plan;
   const { data: sugg } = await sb.from('suggestions').select('*').eq('tandem_id', S.me.tandem_id).eq('done', false).order('created_at', { ascending: false });
-  $app.innerHTML = header('Matériel et programme', capt ? 'Tu es le capitaine : tes réglages valent pour vous deux.' : `Réglé par ${esc(captainName)}. Tu peux lui faire des suggestions.`) + `
+  $app.innerHTML = header(isDuo() ? 'Programme du duo' : 'Matériel et programme', isDuo() ? (capt ? 'Tu es le capitaine : tu choisis la durée du programme. Chacun gère son matériel.' : `${esc(captainName)} choisit la durée ; toi, ton matériel et ton niveau.`) : capt ? 'Tu es le capitaine : tes réglages valent pour vous deux.' : `Réglé par ${esc(captainName)}. Tu peux lui faire des suggestions.`) + `
   <form id="s" class="wrap">
     <details class="card" ${S.plan ? '' : 'open'}><summary class="title" style="cursor:pointer">Comment ça marche ?</summary>
       <ul class="plain small" style="margin-top:8px">
-        <li><b>Matériel</b> : coche tout ce que vous avez à la maison. Le programme ne propose que des exercices faisables avec ce matériel (ou au poids du corps).</li>
+        <li><b>Matériel</b> : ${isDuo() ? 'en duo, chacun indique son matériel (bouton « Modifier mon matériel » ou Mon profil).' : 'coche tout ce que vous avez à la maison.'} Le programme ne propose que des exercices faisables avec ce matériel (ou au poids du corps).</li>
         <li><b>Durée</b> : de 2 à 12 semaines. Les séances deviennent un peu plus longues et plus intenses au fil des semaines.</li>
         <li><b>Début</b> : toujours un lundi.</li>
         <li><b>Course</b> : si « Course dehors » est cochée, choisis la semaine où elle reprend. Avant, le samedi reste une grande balade.</li>
@@ -2192,17 +2261,14 @@ async function viewSettings() {
       ${[S.me, S.partner].filter(Boolean).map((p) => `<span class="small"><b style="color:${colorHex(p.color)}">${esc(p.first_name)}</b> : ${p.fitness?.level ? `niveau ${esc(LEVELS[levelOf(p) - 1].name)}` : '<span style="color:var(--danger)">test à faire</span>'} · course : ${runLabel(p) ? esc(runLabel(p).toLowerCase()) : '<span class="muted">pas encore renseignée</span>'}</span>`).join('')}
       <span class="small muted">Le niveau règle les séries et les variantes ; la réponse sur la course fixe la semaine de départ du plan Couch to 5K.</span>
       <button type="button" class="btn ghost sm" id="myTest">${S.me.fitness?.level ? 'Refaire mon test' : 'Faire mon test (1 min)'}</button></div>
-    <div class="card white"><h3>Matériel</h3>
-      <button type="button" class="chip" data-eq="aucun" aria-pressed="${eq.has('aucun')}" ${capt ? '' : 'disabled'} style="align-self:flex-start">🏠 Je n'ai pas de matériel</button>
-      <span class="small muted">Programme au poids du corps, avec de la marche (et de la course si tu coches « Course dehors »). Sinon, coche ce que vous avez ci-dessous.</span></div>
-    ${EQUIPMENT.map(([g, items]) => `<div class="card white"><h3>${g}</h3><div class="chips">${items.map(([v, l]) => `<button type="button" class="chip" data-eq="${v}" aria-pressed="${eq.has(v)}" ${capt ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>`).join('')}
+    ${isDuo() ? duoEquipCard() : coupleEquipCards(eq, capt)}
     <div class="card white"><h3>Programme</h3>
       <span class="muted">Durée</span>
       <div class="chips">${[4, 6, 8, 9, 12].map((w) => `<button type="button" class="chip" data-weeks="${w}" aria-pressed="${(st.weeks || 6) === w}" ${canPlan && !S.plan ? '' : 'disabled'}>${w} semaines${w === 9 ? ' (Couch to 5K)' : ''}</button>`).join('')}</div>
       <div class="grid2"><label>Début (lundi)<input type="date" name="start" value="${esc(S.plan ? S.plan.data.start_date : (st.start_date && st.start_date >= mondayOf(today()) ? st.start_date : addDays(mondayOf(today()), 7)))}" ${canPlan && !S.plan ? '' : 'disabled'}></label>
       <label>Course à partir de la semaine<input name="run_from" inputmode="numeric" value="${esc(st.run_from_week || 1)}" ${canPlan && !S.plan ? '' : 'disabled'}></label></div>
       ${!S.plan && S.partner && !S.partner.fitness?.level ? `<span class="small notice">${esc(S.partner.first_name)} n'a pas encore fait son test de niveau : son programme partira du niveau Reprise, et s'ajustera quand il ou elle l'aura fait (Plus › Mon profil).</span>` : ''}
-      ${!S.plan ? '<button class="btn block">Créer le programme</button>' : capt ? '<button class="btn block">Appliquer le matériel à partir de demain</button><span class="muted small">Le passé et les séances cochées ne bougent pas. Pour changer la durée ou la date, recommence le programme (dans Programme).</span>' : ''}
+      ${!S.plan ? '<button class="btn block">Créer le programme</button>' : isDuo() ? '<span class="muted small">Programme en cours. Pour changer la durée ou la date, recommence le programme (dans Programme), avec l\'accord de ton binôme.</span>' : capt ? '<button class="btn block">Appliquer le matériel à partir de demain</button><span class="muted small">Le passé et les séances cochées ne bougent pas. Pour changer la durée ou la date, recommence le programme (dans Programme).</span>' : ''}
     </div>
     ${capt ? '' : `<div class="card white"><h3>Une suggestion pour ${esc(captainName)} ?</h3><textarea id="sg" placeholder="ex. on a acheté un step"></textarea><button type="button" class="btn" id="sendSg">Envoyer</button></div>`}
     ${(sugg || []).length ? `<div class="card"><h3>Suggestions</h3>${sugg.map((x) => `<div class="row between"><span>${esc(x.text)}</span>${capt ? `<button type="button" class="btn ghost sm" data-sg="${x.id}">Vu</button>` : ''}</div>`).join('')}</div>` : ''}
@@ -2215,6 +2281,7 @@ async function viewSettings() {
     if (on && b.dataset.eq !== 'aucun' && !KEEP.includes(b.dataset.eq)) f.querySelector('[data-eq=aucun]').setAttribute('aria-pressed', 'false');
   });
   document.getElementById('myTest').onclick = () => levelTestModal(() => viewSettings());
+  document.getElementById('myEq')?.addEventListener('click', () => equipModal());
   f.querySelectorAll('[data-weeks]').forEach((b) => b.onclick = () => { f.querySelectorAll('[data-weeks]').forEach((x) => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); });
   f.querySelectorAll('[data-sg]').forEach((b) => b.onclick = async () => { await sb.from('suggestions').update({ done: true }).eq('id', b.dataset.sg); viewSettings(); });
   document.getElementById('sendSg')?.addEventListener('click', async () => {
@@ -2231,7 +2298,8 @@ async function viewSettings() {
       start_date: mondayOf(f.querySelector('[name=start]').value || today()),
       run_from_week: Math.max(1, int(f.querySelector('[name=run_from]').value) || 1),
     } : { ...st, equipment: [...f.querySelectorAll('[data-eq][aria-pressed=true]')].map((b) => b.dataset.eq) };
-    const needRun = (settings.equipment || []).includes('course');
+    if (isDuo() && !S.me.equipment?.length) return equipModal();
+    const needRun = (isDuo() ? (S.me.equipment || []) : (settings.equipment || [])).includes('course');
     if (!S.plan && (!S.me.fitness?.level || (needRun && S.me.fitness?.run == null))) return levelTestModal(() => f.requestSubmit(), needRun);
     const btn = f.querySelector('.btn.block'); btn.disabled = true; btn.textContent = 'Un instant…';
     if (capt) {
@@ -2240,7 +2308,7 @@ async function viewSettings() {
       S.tandem.settings = settings;
     }
     if (S.plan) { if (await regenerateFrom(addDays(today(), 1))) { toast('Programme mis à jour à partir de demain'); go('program'); } return; }
-    const data = generatePlan(settings, await freshMembers());
+    const data = generatePlan({ ...settings, mode: S.tandem.mode || 'couple' }, await freshMembers());
     const { data: id, error } = await sb.rpc('plan_create', { p_data: data });
     if (error) { btn.disabled = false; return fail(error, 'Création du programme impossible'); }
     S.plan = { id, tandem_id: S.tandem.id, start_date: data.start_date, weeks: data.weeks, data, active: true }; toast('Programme prêt'); go('program');
@@ -2255,7 +2323,7 @@ function viewProfile() {
     e.preventDefault(); const p = readProfile(f);
     if (S.partner && p.color === S.partner.color) return toast(`Couleur déjà prise par ${S.partner.first_name}`);
     if (!p.availability.days.length) return toast('Coche au moins un jour de sport');
-    const changedAvail = JSON.stringify(availOf(S.me)) !== JSON.stringify(availOf(p)) || JSON.stringify(p.health || {}) !== JSON.stringify(S.me.health || {});
+    const changedAvail = JSON.stringify(availOf(S.me)) !== JSON.stringify(availOf(p)) || JSON.stringify(p.health || {}) !== JSON.stringify(S.me.health || {}) || (p.equipment && JSON.stringify(p.equipment) !== JSON.stringify(S.me.equipment || []));
     const { error } = await sb.from('members').update(p).eq('id', S.me.id);
     if (error) return fail(error, 'Enregistrement impossible');
     Object.assign(S.me, p); setTheme();

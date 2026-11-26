@@ -1,5 +1,5 @@
 // Cache léger de l'application : réseau d'abord, cache en secours hors ligne.
-const CACHE = 'tandem-v23';
+const CACHE = 'tandem-v24';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/program.js', '/exercises.js', '/animations.js', '/frigo.js', '/breath.js', '/manifest.webmanifest', '/icons/icon.svg'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
