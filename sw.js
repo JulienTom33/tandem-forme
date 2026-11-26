@@ -1,5 +1,5 @@
 // Cache léger de l'application : réseau d'abord, cache en secours hors ligne.
-const CACHE = 'tandem-v22';
+const CACHE = 'tandem-v23';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/program.js', '/exercises.js', '/animations.js', '/frigo.js', '/breath.js', '/manifest.webmanifest', '/icons/icon.svg'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
@@ -9,7 +9,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  e.respondWith(fetch(e.request).then((res) => {
+  // Toujours demander la dernière version au serveur (sans passer par le cache du navigateur).
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then((res) => {
     const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res;
   }).catch(() => caches.match(e.request).then((r) => r || caches.match('/index.html'))));
 });

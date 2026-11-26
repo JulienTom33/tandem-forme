@@ -67,6 +67,9 @@ async function boot() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
     navigator.serviceWorker.addEventListener('message', (e) => { if (e.data?.go && S.me?.onboarded_at) go(e.data.go); });
+    // Un nouveau service worker a pris la main : on recharge une fois pour utiliser la nouvelle version.
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded && navigator.serviceWorker.controller) { reloaded = true; safeReload(); } });
   }
   route();
 }
@@ -81,6 +84,7 @@ async function route() {
   if (!meta.password_set) return viewSetPassword('create');
   if (resetting || new URLSearchParams(location.search).has('reinit')) return viewSetPassword('reset');
   if (!S.me.onboarded_at) { $tabs.hidden = true; return viewOnboarding(); }
+  try { const kept = sessionStorage.getItem('tf_view'); if (kept) { sessionStorage.removeItem('tf_view'); S.view = kept; } } catch {}
   const gq = new URLSearchParams(location.search).get('go');
   if (gq && ['today', 'meals', 'defis', 'track', 'more', 'notifs'].includes(gq)) { history.replaceState(null, '', location.pathname); S.view = gq; }
   const qp = new URLSearchParams(location.search).get('polar');
@@ -1613,6 +1617,72 @@ function weightChart(weights, people) {
     <text x="${W - 8}" y="${H - 6}" font-size="10" fill="#5E6573" text-anchor="end">${fmtDay(iso(new Date(x1)), { day: 'numeric', month: 'short' })}</text></svg>`;
 }
 
+// ---------- Mises à jour de l'appli (surtout quand elle est sur l'écran d'accueil) ----------
+// Une appli posée sur l'écran d'accueil reste en mémoire et ne se recharge pas quand on la rouvre :
+// à chaque retour au premier plan, on vérifie si une nouvelle version est en ligne et on rafraîchit les données.
+const VERSION_FILES = ['/app.js', '/style.css', '/program.js', '/sw.js'];
+let appVersion = null; let hiddenAt = 0; let pendingUpdate = false;
+async function remoteVersion() {
+  const tags = await Promise.all(VERSION_FILES.map((f) => fetch(f, { method: 'HEAD', cache: 'no-store' }).then((r) => r.headers.get('etag') || r.headers.get('last-modified') || '').catch(() => null)));
+  return tags.includes(null) ? null : tags.join('|');
+}
+function busy() { return !$modal.hidden || document.getElementById('tour') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName); }
+function safeReload() {
+  if (busy()) { pendingUpdate = true; showUpdateBar(); return; }
+  try { sessionStorage.setItem('tf_view', S.view || 'today'); } catch {}
+  location.reload();
+}
+function showUpdateBar() {
+  if (document.getElementById('updBar')) return;
+  document.body.insertAdjacentHTML('beforeend', '<button id="updBar" style="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;border:0;border-radius:99px;padding:12px 18px;background:var(--ink,#16181D);color:#fff;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.2);cursor:pointer">↻ Nouvelle version : appuie pour mettre à jour</button>');
+  document.getElementById('updBar').onclick = () => { try { sessionStorage.setItem('tf_view', S.view || 'today'); } catch {} location.reload(); };
+}
+async function checkForUpdate(force = false) {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration(); reg?.update().catch(() => {});
+    const v = await remoteVersion(); if (!v) return false;
+    if (appVersion === null) { appVersion = v; return false; }
+    if (v !== appVersion) { if (force) location.reload(); else safeReload(); return true; }
+  } catch { /* hors ligne */ }
+  return false;
+}
+async function hardRefresh() {
+  try { const keys = await caches.keys(); await Promise.all(keys.map((k) => caches.delete(k))); } catch {}
+  try { const reg = await navigator.serviceWorker?.getRegistration(); await reg?.update(); } catch {}
+  try { sessionStorage.setItem('tf_view', S.view || 'today'); } catch {}
+  location.reload();
+}
+checkForUpdate();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); S.wasToday = S.day === today(); return; }
+  checkForUpdate().then((updating) => {
+    // Revenu après plus de 30 s : on recharge les données de l'écran (séances cochées par l'autre, repas…).
+    if (!updating && S.me?.onboarded_at && hiddenAt && Date.now() - hiddenAt > 30000 && !busy()) { if (S.wasToday) S.day = today(); render(); }
+  });
+});
+setInterval(() => { if (document.visibilityState === 'visible') checkForUpdate(); }, 15 * 60 * 1000);
+// Le modal se ferme : si une mise à jour attendait, on la fait maintenant.
+new MutationObserver(() => { if (pendingUpdate && $modal.hidden) { pendingUpdate = false; safeReload(); } }).observe($modal, { attributes: true, attributeFilter: ['hidden'] });
+
+// Tirer vers le bas pour rafraîchir (l'appli en plein écran n'a pas de bouton de rechargement).
+(() => {
+  let y0 = null; let pulled = 0; const ind = document.createElement('div');
+  ind.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top) + 6px);left:50%;transform:translateX(-50%) scale(0);z-index:70;width:38px;height:38px;border-radius:99px;background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;font-size:20px;transition:transform .15s';
+  ind.textContent = '↻'; document.body.appendChild(ind);
+  addEventListener('touchstart', (e) => { y0 = window.scrollY <= 0 && $modal.hidden ? e.touches[0].clientY : null; pulled = 0; }, { passive: true });
+  addEventListener('touchmove', (e) => {
+    if (y0 == null) return; pulled = e.touches[0].clientY - y0;
+    const k = Math.max(0, Math.min(1, pulled / 90)); ind.style.transform = `translateX(-50%) scale(${k}) rotate(${k * 270}deg)`;
+  }, { passive: true });
+  addEventListener('touchend', async () => {
+    if (y0 != null && pulled > 90 && S.me) {
+      ind.style.transform = 'translateX(-50%) scale(1)';
+      if (!(await checkForUpdate(true))) { await render(); toast('À jour'); }
+    }
+    y0 = null; pulled = 0; ind.style.transform = 'translateX(-50%) scale(0)';
+  });
+})();
+
 // ---------- Respiration guidée ----------
 function breathModal(day = today()) {
   let pref = {}; try { pref = JSON.parse(localStorage.getItem('tf_breath') || '{}'); } catch {}
@@ -1757,6 +1827,8 @@ function viewMore() {
       .map(([v, t, s]) => `<button class="card" style="border:0;text-align:left;cursor:pointer" data-go="${v}"><span class="title">${t}</span><span class="muted">${s}</span></button>`).join('')}
   </div>`;
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => (b.dataset.go === 'breath' ? breathModal(today()) : go(b.dataset.go)));
+  $app.querySelector('.wrap').insertAdjacentHTML('beforeend', '<button class="btn ghost" id="hardUpd">↻ Mettre l\'appli à jour</button><span class="small muted" style="text-align:center">Astuce : tire l\'écran vers le bas pour rafraîchir.</span>');
+  document.getElementById('hardUpd').onclick = () => hardRefresh();
 }
 
 async function viewProgram() {
