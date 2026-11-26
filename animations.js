@@ -1,117 +1,184 @@
-// Petites animations maison des exercices (silhouette vue de profil), façon GIF, dessinées en SVG.
-// Une pose = des angles en degrés : 0 = vers le bas, 90 = vers l'avant (droite), -90 = vers l'arrière, 180 = vers le haut.
-// t : buste (de la hanche vers l'épaule), ua/fa : bras et avant-bras, th1/sh1 et th2/sh2 : cuisses et tibias.
-// anchor : 'feet' (pieds au sol) ou 'low' (le point le plus bas au sol, pour les exercices allongés).
+// Animations maison des exercices (silhouette vue de profil), dessinées en SVG.
+// Moteur v2 : les appuis (pieds, mains, épaules, genoux) sont fixés et les membres sont calculés
+// par cinématique inverse à deux segments : plus de pieds qui glissent ni de membres qui traversent le sol.
+// Angles : 0 = vers le bas, 90 = vers l'avant (droite), -90 = vers l'arrière, 180 = vers le haut.
 
-const L = { torso: 40, neck: 13, ua: 20, fa: 18, th: 25, sh: 25 };
+const LEN = { torso: 40, neck: 15, ua: 20, fa: 18, th: 25, sh: 25 };
 const W = 200, H = 130, GROUND = 118;
 const rad = (d) => (d * Math.PI) / 180;
 const vec = (p, a, len) => [p[0] + Math.sin(rad(a)) * len, p[1] + Math.cos(rad(a)) * len];
+const FWD = [1, 0], BACK = [-1, 0], UP = [0, -1], DOWN = [0, 1], UPBACK = [-0.7, -0.7];
 
-const STAND = { t: 180, ua: 0, fa: 0, th1: 0, sh1: 0, th2: 0, sh2: 0, anchor: 'feet' };
-const LIE = { anchor: 'low' };
+// Deux segments (l1, l2) de root vers target ; prefer = direction souhaitée du coude ou du genou.
+function ik(root, target, l1, l2, prefer) {
+  let dx = target[0] - root[0], dy = target[1] - root[1];
+  let d = Math.hypot(dx, dy) || 0.001;
+  const max = l1 + l2 - 0.05, min = Math.abs(l1 - l2) + 0.05;
+  const k = d > max ? max / d : d < min ? min / d : 1;
+  dx *= k; dy *= k; d *= k;
+  const end = [root[0] + dx, root[1] + dy];
+  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+  const ux = dx / d, uy = dy / d; const px = root[0] + ux * a, py = root[1] + uy * a;
+  const c1 = [px - uy * h, py + ux * h], c2 = [px + uy * h, py - ux * h];
+  const score = (c) => (c[0] - px) * prefer[0] + (c[1] - py) * prefer[1];
+  return { mid: score(c1) >= score(c2) ? c1 : c2, end };
+}
+const unit = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1]; const d = Math.hypot(dx, dy) || 1; return [dx / d, dy / d]; };
 
-// Pose de départ (a), pose d'arrivée (b), accessoires, mode « statique » (on respire seulement).
+// ---------- Poses ----------
+const S = (o) => ({ hip: [100, 68.4], t: 180, f1: [103, GROUND], f2: [97, GROUND], k1: FWD, k2: FWD, ua: 4, fa: 4, ...o });
+const BACKLIE = (o) => ({ sh: [58, 112], t: -91, f1: [128, GROUND], f2: [124, GROUND], k1: UP, k2: UP, ua: 92, fa: 92, ...o });
+// Corps gainé : une ligne droite depuis un appui (pieds ou genoux), inclinée de phi degrés au-dessus du sol.
+const LINE = (from, phi, o = {}) => ({ line: from, ang: 90 + phi, ...o });
+
 export const ANIMS = {
-  'Squat au poids du corps': { a: { ...STAND }, b: { ...STAND, t: 145, ua: 90, fa: 90, th1: 85, sh1: -20, th2: 85, sh2: -20 } },
-  'Goblet squat kettlebell': { a: { ...STAND, ua: 25, fa: 165 }, b: { ...STAND, t: 155, ua: 40, fa: 175, th1: 85, sh1: -20, th2: 85, sh2: -20 }, prop: 'kb' },
-  'Fentes arrière alternées': { a: { ...STAND }, b: { ...STAND, th1: 70, sh1: -5, th2: -25, sh2: -95 } },
-  'Pont fessier': { a: { ...LIE, t: -90, ua: 90, fa: 90, th1: 140, sh1: 15, th2: 140, sh2: 15 }, b: { ...LIE, t: -112, ua: 70, fa: 70, th1: 115, sh1: 5, th2: 115, sh2: 5 } },
-  'Pont fessier avec mini-band': { a: { ...LIE, t: -90, ua: 90, fa: 90, th1: 140, sh1: 15, th2: 140, sh2: 15 }, b: { ...LIE, t: -112, ua: 70, fa: 70, th1: 115, sh1: 5, th2: 115, sh2: 5 }, prop: 'miniband' },
-  'Soulevé de terre jambes tendues haltères': { a: { ...STAND }, b: { ...STAND, t: 100, ua: 0, fa: 0, th1: -12, sh1: 0, th2: -12, sh2: 0 }, prop: 'db' },
-  'Kettlebell swing': { a: { ...STAND, t: 115, ua: -15, fa: -20, th1: 25, sh1: -10, th2: 25, sh2: -10 }, b: { ...STAND, t: 182, ua: 95, fa: 95 }, prop: 'kb', speed: 1.6 },
-  'Montées sur step': { a: { ...STAND, lift: 0 }, b: { ...STAND, lift: 1 }, prop: 'step' },
-  'Chaise contre le mur': { a: { ...STAND, ua: 0, fa: 0, th1: 90, sh1: 0, th2: 90, sh2: 0 }, b: { ...STAND, ua: 0, fa: 0, th1: 90, sh1: 0, th2: 90, sh2: 0 }, prop: 'wall', still: true },
-  'Rowing TRX': { a: { ...STAND, t: 205, ua: 135, fa: 135, th1: 25, sh1: 25, th2: 25, sh2: 25 }, b: { ...STAND, t: 195, ua: -40, fa: 140, th1: 18, sh1: 18, th2: 18, sh2: 18 }, prop: 'trx' },
-  'Rowing haltère un bras': { a: { ...STAND, t: 98, ua: 0, fa: 0, th1: 10, sh1: 0, th2: 15, sh2: -5 }, b: { ...STAND, t: 98, ua: -140, fa: 0, th1: 10, sh1: 0, th2: 15, sh2: -5 }, prop: 'db' },
-  'Tirage élastique bras tendus': { a: { ...STAND, ua: 150, fa: 150 }, b: { ...STAND, ua: 15, fa: 15 }, prop: 'band-high' },
-  'Écartés élastique (face pull)': { a: { ...STAND, ua: 95, fa: 95 }, b: { ...STAND, ua: -110, fa: 150 }, prop: 'band-face' },
-  'Pompes inclinées (mains sur table)': { a: { ...STAND, anchor: 'feet', t: 125, ua: 20, fa: 20, th1: -55, sh1: -55, th2: -55, sh2: -55, rootBody: true }, b: { ...STAND, anchor: 'feet', t: 118, ua: -45, fa: 40, th1: -62, sh1: -62, th2: -62, sh2: -62, rootBody: true }, prop: 'table' },
-  'Développé couché haltères au sol': { a: { ...LIE, t: -90, ua: 180, fa: 180, th1: 150, sh1: 30, th2: 150, sh2: 30 }, b: { ...LIE, t: -90, ua: 2, fa: 178, th1: 150, sh1: 30, th2: 150, sh2: 30 }, prop: 'db' },
-  'Curl biceps haltères': { a: { ...STAND }, b: { ...STAND, ua: 5, fa: 160 }, prop: 'db' },
-  'Rotation externe élastique (épaule)': { a: { ...STAND, ua: 0, fa: 95 }, b: { ...STAND, ua: 0, fa: 40 }, prop: 'band-side' },
-  'Gainage sur les avant-bras': { a: { ...LIE, t: 93, ua: 0, fa: 90, th1: -87, sh1: -87, th2: -87, sh2: -87 }, b: { ...LIE, t: 95, ua: 0, fa: 90, th1: -85, sh1: -85, th2: -85, sh2: -85 }, still: true },
-  'Dead bug': { a: { ...LIE, t: -90, ua: 180, fa: 180, th1: 180, sh1: 90, th2: 180, sh2: 90 }, b: { ...LIE, t: -90, ua: -110, fa: -110, th1: 180, sh1: 90, th2: 100, sh2: 100 } },
-  'Bird dog (quadrupédie)': { a: { ...LIE, t: 90, ua: 0, fa: 0, th1: 0, sh1: -90, th2: 0, sh2: -90 }, b: { ...LIE, t: 90, ua: 0, fa: 0, th1: 0, sh1: -90, th2: -95, sh2: -95, arm2: 95 } },
-  'Gainage latéral sur les genoux': { a: { ...LIE, t: 110, ua: 0, fa: 90, th1: -70, sh1: -90, th2: -70, sh2: -90 }, b: { ...LIE, t: 112, ua: 0, fa: 90, th1: -68, sh1: -90, th2: -68, sh2: -90 }, still: true },
-  'Pallof press élastique': { a: { ...STAND, ua: 25, fa: 160, th1: 8, th2: -8 }, b: { ...STAND, ua: 92, fa: 92, th1: 8, th2: -8 }, prop: 'band-side' },
-  'Planche bras tendus': { a: { ...LIE, t: 100, ua: 0, fa: 0, th1: -80, sh1: -80, th2: -80, sh2: -80 }, b: { ...LIE, t: 101, ua: 0, fa: 0, th1: -79, sh1: -79, th2: -79, sh2: -79 }, still: true },
-  'Superman allongé sur le ventre': { a: { ...LIE, t: 90, ua: 90, fa: 90, th1: -90, sh1: -90, th2: -90, sh2: -90 }, b: { ...LIE, t: 82, ua: 100, fa: 100, th1: -82, sh1: -82, th2: -82, sh2: -82 } },
-  'Pompes sur les genoux': { a: { ...LIE, t: 110, ua: 0, fa: 0, th1: -70, sh1: -90, th2: -70, sh2: -90 }, b: { ...LIE, t: 100, ua: -60, fa: 40, th1: -80, sh1: -90, th2: -80, sh2: -90 } },
-  'Pompes classiques': { a: { ...LIE, t: 100, ua: 0, fa: 0, th1: -80, sh1: -80, th2: -80, sh2: -80 }, b: { ...LIE, t: 93, ua: -60, fa: 40, th1: -87, sh1: -87, th2: -87, sh2: -87 } },
-  'Squat sauté': { a: { ...STAND, jump: 0, t: 145, ua: -30, fa: -30, th1: 85, sh1: -20, th2: 85, sh2: -20 }, b: { ...STAND, ua: 170, fa: 170, jump: 1 }, speed: 1.3 },
-  'Gainage latéral': { a: { ...LIE, t: 110, ua: 0, fa: 90, th1: -70, sh1: -70, th2: -70, sh2: -70 }, b: { ...LIE, t: 112, ua: 0, fa: 90, th1: -68, sh1: -68, th2: -68, sh2: -68 }, still: true },
-  'Respiration ventrale allongé, jambes fléchies': { a: { ...LIE, t: -90, ua: 90, fa: 90, th1: 140, sh1: 15, th2: 140, sh2: 15, belly: 0 }, b: { ...LIE, t: -90, ua: 90, fa: 90, th1: 140, sh1: 15, th2: 140, sh2: 15, belly: 1 }, speed: 0.45, breath: true },
+  'Squat au poids du corps': { frames: [S({}), S({ hip: [80, 95], t: 145, ua: 90, fa: 90 })] },
+  'Goblet squat kettlebell': { frames: [S({ h1r: [12, 12], e1: DOWN }), S({ hip: [80, 95], t: 152, h1r: [12, 12], e1: DOWN })], prop: 'kb' },
+  'Fentes arrière alternées': { frames: [
+    S({ hip: [106, 69], f1: [112, GROUND], f2: [102, GROUND] }),
+    S({ hip: [98, 80], f1: [112, GROUND], f2: [80, 108], k2: DOWN }),
+    S({ hip: [88, 93], f1: [112, GROUND], f2: [54, GROUND], k2: DOWN }),
+  ] },
+  'Pont fessier': { frames: [BACKLIE({}), BACKLIE({ t: -62 })] },
+  'Pont fessier avec mini-band': { frames: [BACKLIE({}), BACKLIE({ t: -62 })], prop: 'miniband' },
+  'Soulevé de terre jambes tendues haltères': { frames: [S({ ua: 2, fa: 2 }), S({ hip: [84, 72], t: 100, ua: -18, fa: -18 })], prop: 'db' },
+  'Kettlebell swing': { frames: [S({ hip: [84, 74], t: 118, ua: -20, fa: -25 }), S({ ua: 95, fa: 95, t: 182 })], prop: 'kb', dur: 1.5, dwell: 0.02 },
+  'Montées sur step': { frames: [
+    S({ f1: [102, GROUND], f2: [97, GROUND] }),
+    S({ hip: [106, 70], f1: [128, 98], f2: [97, GROUND] }),
+    S({ hip: [124, 52], f1: [128, 98], f2: [118, 88] }),
+    S({ hip: [125, 49], f1: [128, 98], f2: [122, 98] }),
+  ], prop: 'step', dur: 4.4, scale: 0.8 },
+  'Chaise contre le mur': { frames: [S({ hip: [76, 93], f1: [101, GROUND], f2: [97, GROUND], k1: UP, k2: UP, ua: 10, fa: 60 })], prop: 'wall', still: true },
+  'Rowing TRX': { frames: [LINE([128, GROUND], 65 + 0, { ang: 205, h1a: [186, 6], e1: DOWN }), LINE([128, GROUND], 0, { ang: 195, h1r: [10, 12], e1: BACK })], prop: 'trx', anchor: [186, 6] },
+  'Rowing haltère un bras': { frames: [S({ hip: [86, 72], t: 100, f1: [106, GROUND], f2: [84, GROUND], h1r: [2, 37], e1: BACK, ua2: 25, fa2: 25 }), S({ hip: [86, 72], t: 100, f1: [106, GROUND], f2: [84, GROUND], h1r: [-8, 10], e1: UP, ua2: 25, fa2: 25 })], prop: 'db' },
+  'Tirage élastique bras tendus': { frames: [S({ t: 172, ua: 140, fa: 140 }), S({ t: 172, ua: 12, fa: 12 })], prop: 'band', anchor: [192, 8], scale: 0.9 },
+  'Écartés élastique (face pull)': { frames: [S({ hip: [96, 69], t: 178, h1a: [196, 32], e1: DOWN }), S({ hip: [96, 69], t: 178, h1r: [6, -4], e1: UPBACK })], prop: 'band', anchor: [196, 32] },
+  'Pompes inclinées (mains sur table)': { frames: [LINE([92, GROUND], 52, { h1: [160, 82], e1: UPBACK }), LINE([92, GROUND], 40, { h1: [160, 82], e1: UPBACK })], prop: 'table', feet: false },
+  'Développé couché haltères au sol': { frames: [BACKLIE({ t: -90, ua: 180, fa: 180 }), BACKLIE({ t: -90, ua: 92, fa: 180 })], prop: 'db' },
+  'Curl biceps haltères': { frames: [S({ ua: 6, fa: 6 }), S({ ua: 10, fa: 150 })], prop: 'db' },
+  'Rotation externe élastique (épaule)': { frames: [S({ ua: 2, fa: 95 }), S({ ua: 2, fa: 40 })], prop: 'band', anchor: [196, 96] },
+  'Gainage sur les avant-bras': { frames: [LINE([50, GROUND], 12.8, { h1: [156, GROUND], e1: DOWN })], still: true, feet: false },
+  'Dead bug': { frames: [
+    BACKLIE({ t: -90, f1: null, f2: null, ua: 180, fa: 180, ua2: 180, fa2: 180, th1: 180, sh1: 90, th2: 180, sh2: 90 }),
+    BACKLIE({ t: -90, f1: null, f2: null, ua: 262, fa: 262, ua2: 180, fa2: 180, th1: 180, sh1: 90, th2: 104, sh2: 98 }),
+  ], feet: false },
+  'Bird dog (quadrupédie)': { frames: [
+    { hip: [80, 93], t: 109, ua: 0, fa: 0, h2: [118, GROUND], e2: BACK, th1: 0, sh1: -90, th2: 0, sh2: -90 },
+    { hip: [80, 93], t: 109, ua: 98, fa: 98, h2: [118, GROUND], e2: BACK, th1: -92, sh1: -92, th2: 0, sh2: -90 },
+  ], feet: false },
+  'Gainage latéral sur les genoux': { frames: [LINE([70, GROUND], 17.9, { seg: 25, sh1: -90, sh2: -90, h1: [150, GROUND], e1: DOWN, h2: [96, 104], e2: UP })], still: true, feet: false },
+  'Pallof press élastique': { frames: [S({ h1r: [10, 12], e1: DOWN }), S({ h1r: [36, 8], e1: DOWN })], prop: 'band-side' },
+  'Planche bras tendus': { frames: [LINE([50, GROUND], 24, { h1: [131, GROUND], e1: BACK })], still: true, feet: false },
+  'Superman allongé sur le ventre': { frames: [
+    { hip: [96, 113], t: 90, ua: 90, fa: 90, th1: -90, sh1: -90, th2: -90, sh2: -90 },
+    { hip: [96, 113], t: 101, ua: 106, fa: 106, th1: -101, sh1: -101, th2: -99, sh2: -99 },
+  ], feet: false },
+  'Pompes sur les genoux': { frames: [LINE([70, GROUND], 35.8, { seg: 25, sh1: -125, sh2: -125, h1: [123, GROUND], e1: UPBACK }), LINE([70, GROUND], 16, { seg: 25, sh1: -125, sh2: -125, h1: [123, GROUND], e1: UPBACK })], feet: false },
+  'Pompes classiques': { frames: [LINE([40, GROUND], 25, { h1: [121.6, GROUND], e1: UPBACK }), LINE([40, GROUND], 12, { h1: [121.6, GROUND], e1: UPBACK })], feet: false },
+  'Squat sauté': { frames: [S({ hip: [80, 95], t: 145, ua: -30, fa: -30 }), S({ hip: [100, 58], f1: [103, 107], f2: [97, 107], ua: 172, fa: 172 })], dur: 1.8, dwell: 0.06, scale: 0.84 },
+  'Gainage latéral': { frames: [LINE([45, GROUND], 12.8, { h1: [151, GROUND], e1: DOWN, h2: [96, 100], e2: UP })], still: true, feet: false },
+  'Respiration ventrale allongé, jambes fléchies': { frames: [BACKLIE({ h1: [80, 104], e1: UP }), BACKLIE({ h1: [80, 104], e1: UP })], breath: true, dur: 9 },
 };
 
+// Squelette d'une pose.
 function solve(p) {
-  const hip = [100, 60];
-  const sh = vec(hip, p.t, L.torso);
-  const head = vec(sh, p.t, L.neck);
-  const el = vec(sh, p.ua, L.ua); const wr = vec(el, p.fa, L.fa);
-  const el2 = p.arm2 != null ? vec(sh, p.arm2, L.ua) : null; const wr2 = el2 ? vec(el2, p.arm2, L.fa) : null;
-  const k1 = vec(hip, p.th1, L.th); const a1 = vec(k1, p.sh1, L.sh);
-  const k2 = vec(hip, p.th2, L.th); const a2 = vec(k2, p.sh2, L.sh);
-  const pts = { hip, sh, head, el, wr, el2, wr2, k1, a1, k2, a2 };
-  // Ancrage au sol
-  let dx = 0, dy = 0;
-  if (p.anchor === 'feet') {
-    const lowFoot = Math.max(a1[1], a2[1] + (p.lift ? 0 : 0));
-    dy = GROUND - lowFoot; dx = 95 - (p.rootBody ? a2[0] - 40 : a2[0]);
-    if (p.rootBody) dx = 45 - a2[0];
+  let hip, sh, t = p.t, seg = p.seg || LEN.th + LEN.sh;
+  let k1, a1, k2, a2;
+  if (p.line) {
+    t = p.ang;
+    hip = vec(p.line, t, seg); sh = vec(hip, t, LEN.torso);
+    if (p.seg) { // appui sur les genoux : cuisses dans l'axe, tibias libres
+      k1 = p.line; k2 = [p.line[0] - 3, p.line[1]];
+      a1 = vec(k1, p.sh1 ?? -90, LEN.sh); a2 = vec(k2, p.sh2 ?? -90, LEN.sh);
+    } else {
+      k1 = vec(p.line, t, LEN.sh); a1 = p.line; k2 = [k1[0] - 3, k1[1] + 1]; a2 = [p.line[0] - 3, p.line[1]];
+    }
   } else {
-    const ys = [sh[1], head[1] + 8, el[1], wr[1], k1[1], a1[1], k2[1], a2[1], hip[1]];
-    dy = GROUND - Math.max(...ys); dx = 100 - hip[0];
+    if (p.sh) { sh = p.sh; hip = vec(sh, t + 180, LEN.torso); } else { hip = p.hip; sh = vec(hip, t, LEN.torso); }
+    const leg = (f, kp, th, shA) => {
+      if (f) { const r = ik(hip, f, LEN.th, LEN.sh, kp); return [r.mid, r.end]; }
+      const k = vec(hip, th ?? 0, LEN.th); return [k, vec(k, shA ?? 0, LEN.sh)];
+    };
+    [k1, a1] = leg(p.f1, p.k1 || FWD, p.th1, p.sh1);
+    [k2, a2] = p.f2 || p.th2 != null ? leg(p.f2, p.k2 || FWD, p.th2, p.sh2) : [[k1[0] - 3, k1[1]], [a1[0] - 3, a1[1]]];
   }
-  for (const k of Object.keys(pts)) if (pts[k]) pts[k] = [pts[k][0] + dx, pts[k][1] + dy];
-  if (p.jump) { const up = 22 * p.jump; for (const k of Object.keys(pts)) if (pts[k]) pts[k] = [pts[k][0], pts[k][1] - up]; }
-  if (p.lift) { // montée sur la marche : le pied avant se pose dessus et le corps s'élève
-    const f = p.lift; const rise = 16 * f;
-    for (const k of ['hip', 'sh', 'head', 'el', 'wr']) pts[k] = [pts[k][0] + 10 * f, pts[k][1] - rise];
-    pts.a1 = [pts.hip[0] + 14 * f, GROUND - 20 * f];
-    pts.k1 = [pts.hip[0] + 16 * f + 2, (pts.hip[1] + pts.a1[1]) / 2 - 2 * f];
-    pts.k2 = [(pts.hip[0] + pts.a2[0]) / 2 - 3 * f, (pts.hip[1] + pts.a2[1]) / 2];
-  }
-  return pts;
+  const head = vec(sh, t, LEN.neck);
+  const arm = (abs, rel, toward, ep, ua, fa) => {
+    let target = abs;
+    if (rel) target = [sh[0] + rel[0], sh[1] + rel[1]];
+    if (toward) { const u = unit(sh, toward); target = [sh[0] + u[0] * (LEN.ua + LEN.fa - 0.3), sh[1] + u[1] * (LEN.ua + LEN.fa - 0.3)]; }
+    if (target) { const r = ik(sh, target, LEN.ua, LEN.fa, ep || DOWN); return [r.mid, r.end]; }
+    const e = vec(sh, ua ?? 0, LEN.ua); return [e, vec(e, fa ?? 0, LEN.fa)];
+  };
+  const [el, wr] = arm(p.h1, p.h1r, p.h1a, p.e1, p.ua, p.fa);
+  const has2 = p.h2 || p.h2r || p.ua2 != null;
+  const [el2, wr2] = has2 ? arm(p.h2, p.h2r, null, p.e2, p.ua2, p.fa2) : [null, null];
+  return { hip, sh, head, el, wr, el2, wr2, k1, a1, k2, a2, t };
 }
 
-const lerp = (a, b, t) => a + (b - a) * t;
-function mix(a, b, t) {
+// Interpolation de deux poses de même forme (nombres et tableaux).
+function mix(a, b, e) {
   const o = { ...a };
-  for (const k of Object.keys(b)) if (typeof b[k] === 'number' && typeof a[k] === 'number') o[k] = lerp(a[k], b[k], t);
+  for (const k of Object.keys(a)) {
+    const x = a[k], y = b[k];
+    if (typeof x === 'number' && typeof y === 'number') o[k] = x + (y - x) * e;
+    else if (Array.isArray(x) && Array.isArray(y)) o[k] = x.map((v, i) => v + (y[i] - v) * e);
+  }
   return o;
+}
+// Courbe douce (départ et arrivée sans à-coup) avec un léger temps d'arrêt en fin de mouvement.
+const ease = (u) => u * u * u * (u * (u * 6 - 15) + 10);
+function poseAt(def, t) {
+  const F = def.frames;
+  if (def.still || F.length === 1) {
+    const base = F[0]; const s = Math.sin(t * Math.PI * 2);
+    if (base.line) return { ...base, ang: base.ang + 0.25 * s };
+    return { ...base, hip: base.hip ? [base.hip[0], base.hip[1] + 0.6 * s] : base.hip };
+  }
+  // Aller-retour : 0 → n-1 → 0
+  const segs = (F.length - 1) * 2; const x = t * segs; const i = Math.min(segs - 1, Math.floor(x)); let u = x - i;
+  const dwell = def.dwell ?? 0.12;
+  u = u < dwell ? 0 : (u - dwell) / (1 - dwell);
+  const e = ease(Math.min(1, Math.max(0, u)));
+  const [from, to] = i < F.length - 1 ? [F[i], F[i + 1]] : [F[segs - i], F[segs - i - 1]];
+  return mix(from, to, e);
 }
 
 function draw(name, t, color) {
   const def = ANIMS[name]; if (!def) return '';
-  const e = def.still ? 0.5 + 0.08 * Math.sin(t * Math.PI * 2) : (1 - Math.cos(t * Math.PI * 2)) / 2;
-  const p = mix(def.a, def.b, e);
+  const p = poseAt(def, t);
   const P = solve(p);
-  const line = (a, b, w = 7, c = color, op = 1) => `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
-  let s = `<line x1="0" y1="${GROUND + 4}" x2="${W}" y2="${GROUND + 4}" stroke="#D6DAE1" stroke-width="2"/>`;
-  // Accessoires fixes
-  if (def.prop === 'wall') s += `<line x1="${P.sh[0] - 6}" y1="10" x2="${P.sh[0] - 6}" y2="${GROUND + 4}" stroke="#A9B0BC" stroke-width="4"/>`;
-  if (def.prop === 'step') s += `<rect x="${P.hip[0] + 8}" y="${GROUND - 20}" width="44" height="24" rx="3" fill="#C5CAD3"/>`;
-  if (def.prop === 'table') s += `<rect x="${P.wr[0] - 6}" y="${P.wr[1] + 2}" width="60" height="6" fill="#A9B0BC"/><line x1="${P.wr[0] + 40}" y1="${P.wr[1] + 8}" x2="${P.wr[0] + 40}" y2="${GROUND + 4}" stroke="#A9B0BC" stroke-width="4"/>`;
-  if (def.prop === 'trx') s += line([186, 6], P.wr, 2, '#5E6573');
-  if (def.prop === 'band-high') s += line([190, 8], P.wr, 2.5, '#E5533D');
-  if (def.prop === 'band-face') s += line([196, P.head[1] + 6], P.wr, 2.5, '#E5533D');
-  if (def.prop === 'band-side') s += line([196, P.wr[1] + 2], P.wr, 2.5, '#E5533D');
-  // Silhouette : jambe et bras « du fond » plus clairs
-  s += line(P.hip, P.k2, 8, color, 0.45) + line(P.k2, P.a2, 7, color, 0.45);
+  const f = (n) => n.toFixed(1);
+  const line = (a, b, w = 7, c = color, op = 1) => `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
+  const ground = `<line x1="0" y1="${GROUND + 4}" x2="${W}" y2="${GROUND + 4}" stroke="#D6DAE1" stroke-width="2"/>`;
+  let s = '';
+  if (def.prop === 'wall') s += `<line x1="69" y1="10" x2="69" y2="${GROUND + 4}" stroke="#A9B0BC" stroke-width="4"/>`;
+  if (def.prop === 'step') s += `<rect x="110" y="${98 + 3}" width="44" height="${GROUND + 1 - 98}" rx="3" fill="#C5CAD3"/>`;
+  if (def.prop === 'table') s += `<rect x="140" y="85" width="58" height="6" rx="2" fill="#A9B0BC"/><line x1="190" y1="91" x2="190" y2="${GROUND + 4}" stroke="#A9B0BC" stroke-width="4"/><line x1="146" y1="91" x2="146" y2="${GROUND + 4}" stroke="#A9B0BC" stroke-width="4"/>`;
+  if (def.prop === 'trx') s += `<circle cx="${def.anchor[0]}" cy="${def.anchor[1]}" r="3" fill="#5E6573"/>` + line(def.anchor, P.wr, 2, '#5E6573');
+  if (def.prop === 'band') s += `<circle cx="${def.anchor[0]}" cy="${def.anchor[1]}" r="3" fill="#A9B0BC"/>` + line(def.anchor, P.wr, 2.5, '#E5533D');
+  if (def.prop === 'band-side') s += line([196, P.wr[1]], P.wr, 2.5, '#E5533D');
+  const foot = (a, k) => (def.feet === false ? '' : line(a, [a[0] + 8, Math.min(a[1] + 1, GROUND + 1)], 5, color, k));
+  // Membres « du fond » plus clairs
+  s += line(P.hip, P.k2, 8, color, 0.45) + line(P.k2, P.a2, 7, color, 0.45) + foot(P.a2, 0.45);
   if (P.el2) s += line(P.sh, P.el2, 6, color, 0.45) + line(P.el2, P.wr2, 5, color, 0.45);
-  s += line(P.hip, P.sh, 9) + line(P.hip, P.k1, 8) + line(P.k1, P.a1, 7);
+  s += line(P.hip, P.sh, 10) + line(P.hip, P.k1, 8) + line(P.k1, P.a1, 7) + foot(P.a1, 1);
   s += line(P.sh, P.el, 6) + line(P.el, P.wr, 5);
-  s += `<circle cx="${P.head[0].toFixed(1)}" cy="${P.head[1].toFixed(1)}" r="8" fill="${color}"/>`;
+  s += `<circle cx="${f(P.head[0])}" cy="${f(P.head[1])}" r="8" fill="${color}"/>`;
   if (def.breath) {
+    const e = (1 - Math.cos(t * Math.PI * 2)) / 2;
     const m = [(P.hip[0] + P.sh[0]) / 2, (P.hip[1] + P.sh[1]) / 2];
-    s += `<ellipse cx="${m[0].toFixed(1)}" cy="${(m[1] - 5 - 4 * e).toFixed(1)}" rx="${(10 + 2 * e).toFixed(1)}" ry="${(3 + 3 * e).toFixed(1)}" fill="${color}" opacity=".5"/>`;
+    s += `<ellipse cx="${f(m[0])}" cy="${f(m[1] - 5 - 4 * e)}" rx="${f(10 + 2 * e)}" ry="${f(3 + 3 * e)}" fill="${color}" opacity=".5"/>`;
     s += `<text x="${W / 2}" y="16" text-anchor="middle" font-size="12" font-weight="600" fill="#5E6573">${e > 0.5 ? 'Inspire… le ventre se gonfle' : 'Expire… le ventre se creuse'}</text>`;
   }
-  if (def.prop === 'kb') s += `<circle cx="${P.wr[0].toFixed(1)}" cy="${(P.wr[1] + 6).toFixed(1)}" r="7" fill="#16181D"/>`;
-  if (def.prop === 'db') s += `<rect x="${(P.wr[0] - 7).toFixed(1)}" y="${(P.wr[1] - 3).toFixed(1)}" width="14" height="6" rx="2" fill="#16181D"/>`;
-  if (def.prop === 'miniband') s += `<circle cx="${P.k1[0].toFixed(1)}" cy="${P.k1[1].toFixed(1)}" r="6" fill="none" stroke="#E5533D" stroke-width="2.5"/>`;
-  return s;
+  if (def.prop === 'kb') s += `<circle cx="${f(P.wr[0])}" cy="${f(P.wr[1] + 6)}" r="7" fill="#16181D"/>`;
+  if (def.prop === 'db') s += `<rect x="${f(P.wr[0] - 7)}" y="${f(P.wr[1] - 3)}" width="14" height="6" rx="2" fill="#16181D"/>`;
+  if (def.prop === 'miniband') s += `<circle cx="${f(P.k1[0])}" cy="${f(P.k1[1])}" r="6" fill="none" stroke="#E5533D" stroke-width="2.5"/>`;
+  // Les exercices qui montent haut (marche, saut, bras en l'air) sont dessinés un peu plus petits pour rester dans le cadre.
+  if (def.scale) s = `<g transform="translate(${W / 2} ${GROUND + 4}) scale(${def.scale}) translate(${-W / 2} ${-(GROUND + 4)})">${s}</g>`;
+  return ground + s;
 }
 
 export const hasAnim = (name) => !!ANIMS[name];
@@ -123,7 +190,6 @@ export function animSvg(name) {
 }
 let running = false;
 // Anime toutes les silhouettes présentes à l'écran ; s'arrête tout seul quand il n'y en a plus.
-// L'animation tourne toujours (c'est elle qui montre le geste) ; un bouton permet de la mettre en pause.
 export function startAnims(color = '#1F6FB2') {
   document.querySelectorAll('.anim-toggle').forEach((b) => {
     if (b.dataset.bound) return; b.dataset.bound = '1';
@@ -139,7 +205,8 @@ export function startAnims(color = '#1F6FB2') {
     els.forEach((el) => {
       const def = ANIMS[el.dataset.anim]; if (!def) return;
       if (el.dataset.paused === '1' && el.innerHTML) return;
-      const t = (((now - t0) / 1000) * 0.5 * (def.speed || 1)) % 1;
+      const dur = def.dur || (def.still ? 4 : (def.frames.length - 1) * 3.2);
+      const t = ((now - t0) / 1000 / dur) % 1;
       el.innerHTML = draw(el.dataset.anim, t, color);
     });
     requestAnimationFrame(tick);

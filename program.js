@@ -84,7 +84,9 @@ function zonesOf(member) {
 
 function pickExercises(member, eqSet, groups, seed, count) {
   const zones = zonesOf(member);
-  const ok = EX.filter((e) => (!e.eq || eqSet.has(e.eq)) && !e.avoid.some((z) => zones.includes(z)));
+  const excluded = new Set(member.fitness?.excluded || []);
+  let ok = EX.filter((e) => (!e.eq || eqSet.has(e.eq)) && !e.avoid.some((z) => zones.includes(z)));
+  if (ok.filter((e) => !excluded.has(e.n)).length >= count) ok = ok.filter((e) => !excluded.has(e.n));
   const out = [];
   for (const g of groups) {
     const pool = ok.filter((e) => e.g === g && !out.includes(e));
@@ -122,7 +124,7 @@ function spread(days, n) {
 }
 // Ordre des séances selon le nombre par semaine : on alterne renfo et cardio, la sortie longue en fin de semaine.
 const ROTATION = {
-  1: ['renfo'], 2: ['renfo', 'long'], 3: ['renfo', 'cardio', 'long'], 4: ['renfo', 'cardio', 'renfo', 'long'],
+  1: ['renfo'], 2: ['renfo', 'long'], 3: ['renfo', 'long', 'renfo'], 4: ['renfo', 'cardio', 'renfo', 'long'],
   5: ['renfo', 'cardio', 'renfo', 'cardio', 'long'], 6: ['renfo', 'cardio', 'renfo', 'cardio', 'renfo', 'long'],
 };
 
@@ -136,6 +138,7 @@ export function generatePlan(settings, members) {
   const canRun = eq.has('course');
   const canWalk = eq.has('marche') || !eq.size;
   const days = {};
+  const runCount = Object.fromEntries(members.map((m) => [m.id, 0]));
   for (let w = 1; w <= weeks; w++) {
     const phase = w <= Math.ceil(weeks / 3) ? 0 : w <= Math.ceil((2 * weeks) / 3) ? 1 : 2;
     const reps = ['10 à 12', '12', '12 à 15'][phase];
@@ -146,24 +149,26 @@ export function generatePlan(settings, members) {
       const kinds = ROTATION[chosen.length] || ROTATION[4];
       let renfoN = 0;
       chosen.forEach((dIdx, i) => {
+        const runNow = canRun && w >= runFrom && (kinds[i] === 'long' || (kinds[i] === 'cardio' && runCount[m.id] !== undefined && kinds.filter((k) => k !== 'renfo').length <= 3));
         const day = addDays(start, (w - 1) * 7 + dIdx);
         const kind = kinds[i];
         if (kind === 'renfo') {
           const letter = 'ABC'[renfoN++ % 3];
           const rounds = Math.max(2, Math.min(4, Math.round(M / 15) + (phase >= 1 ? 1 : 0) - 1));
-          const exercises = pickExercises(m, eq, ['bas', 'haut', 'tronc'], `${day}${letter}${m.id}`, M >= 45 ? 6 : 5).map((e) => e.n);
+          const exercises = pickExercises(m, eq, ['bas', 'haut', 'tronc', 'bas', 'haut'], `${day}${letter}${m.id}`, M >= 45 ? 8 : 6).map((e) => e.n);
           week[dIdx].push({ key: 'renfo', title: `Renfo maison ${letter}`, minutes: M, member: m.id, exercises,
             detail: `${hasBike ? `${M >= 45 ? 10 : 5} min de vélo tranquille pour s'échauffer, puis ` : '5 min d\'échauffement articulaire, puis '}${rounds} tours de ${reps} répétitions, 1 min de pause entre les exercices. Environ ${M} min.` });
+        } else if (runNow) {
+          const idx = runCount[m.id]++;
+          const c = c25kStep(idx, m);
+          week[dIdx].push({ key: 'course', title: 'Course · Couch to 5K', minutes: c.total, member: m.id, run: idx, detail: c.text });
         } else if (kind === 'cardio') {
           const mins = Math.min(M + phase * 5, M + 15);
           if (canWalk) week[dIdx].push({ key: 'marche', title: 'Marche active', minutes: mins, member: m.id, detail: `${mins} min de marche d'un bon pas.` });
           else if (hasBike) week[dIdx].push({ key: 'velo', title: 'Vélo et gainage', minutes: mins + 10, member: m.id, detail: `${mins} min de vélo à allure facile (tu peux parler), puis 10 min de gainage.` });
           else week[dIdx].push({ key: 'mobilite', title: 'Étirements et mobilité', minutes: 15, member: m.id, detail: '15 min de mobilité douce.' });
         } else {
-          if (canRun && w >= runFrom) {
-            const n = Math.min(4 + (w - runFrom), 10);
-            week[dIdx].push({ key: 'course', title: 'Course douce', minutes: n * 3 + 10, member: m.id, detail: `${n} × (1 min de course + 2 min de marche), à l'allure conversation. Aux sensations : si ça tire, on marche.` });
-          } else if (hasBike && !canWalk) {
+          if (hasBike && !canWalk) {
             week[dIdx].push({ key: 'velo', title: 'Vélo long', minutes: M + 15, member: m.id, detail: `${M + 15} min de vélo très facile.` });
           } else {
             const mins = Math.min(M + 15 + phase * 5, 75);
@@ -181,14 +186,14 @@ export function generatePlan(settings, members) {
       const list = [];
       for (const s of week[k]) {
         const twin = list.find((x) => x.key === s.key && x.title === s.title);
-        if (twin) { twin.for.push(s.member); if (s.exercises) twin.per[s.member] = s.exercises; if (members.length > 1 && twin.for.length > 1 && !/ensemble/.test(twin.title) && s.key !== 'renfo') twin.title += ' ensemble'; continue; }
-        list.push({ key: s.key, title: s.title, detail: s.detail, minutes: s.minutes, optional: s.optional || false, for: [s.member], ...(s.exercises ? { per: { [s.member]: s.exercises } } : {}) });
+        if (twin) { twin.for.push(s.member); if (s.exercises) twin.per[s.member] = s.exercises; if (s.run != null) twin.runs[s.member] = s.run; twin.mins[s.member] = s.minutes; if (members.length > 1 && twin.for.length > 1 && !/ensemble/.test(twin.title) && s.key !== 'renfo') twin.title += ' ensemble'; continue; }
+        list.push({ key: s.key, title: s.title, detail: s.detail, minutes: s.minutes, mins: { [s.member]: s.minutes }, optional: s.optional || false, for: [s.member], ...(s.exercises ? { per: { [s.member]: s.exercises } } : {}), ...(s.run != null ? { runs: { [s.member]: s.run } } : {}) });
       }
       list.push({ key: 'respiration', title: 'Respiration du soir', detail: 'Cohérence cardiaque : 5 min, inspirer 5 s, expirer 5 s.', for: members.map((m) => m.id), optional: true });
       days[day] = { week: w, sessions: list };
     }
   }
-  return { start_date: start, weeks, days, generated_at: new Date().toISOString(), version: 2 };
+  return { start_date: start, weeks, days, generated_at: new Date().toISOString(), version: 3 };
 }
 
 // ---------- Repas ----------
@@ -271,10 +276,12 @@ export function levelFromAnswers(ans) {
 }
 export const levelOf = (m) => Math.max(1, Math.min(4, Number(m?.fitness?.level) || 2));
 
-// Intensité d'une séance de renfo selon le niveau et l'avancée dans le programme (phase 0, 1, 2).
+// Intensité d'une séance de renfo selon le niveau et l'avancée (phase 0, 1, 2).
+// Repères ACSM (débutants) : 2 à 3 séances par semaine, 8 à 12 répétitions (10 à 15 pour débuter), 1 à 3 séries,
+// grands groupes musculaires, mouvement contrôlé (1 à 2 s à l'aller, 1 à 2 s au retour).
 export function renfoDose(level, phase = 0) {
-  const base = [null, { rounds: 2, reps: '8 à 10', rest: 90 }, { rounds: 2, reps: '10 à 12', rest: 60 }, { rounds: 3, reps: '12 à 15', rest: 45 }, { rounds: 4, reps: '15 à 20', rest: 30 }][level];
-  return { ...base, rounds: Math.min(5, base.rounds + (phase >= 1 ? 1 : 0)) };
+  const rounds = [null, [1, 2, 2], [2, 2, 3], [3, 3, 3], [3, 4, 4]][level][phase];
+  return { rounds, reps: level === 1 ? '10 à 15' : '8 à 12', rest: [0, 90, 75, 60, 60][level] };
 }
 export const holdSeconds = (level) => [0, 20, 30, 45, 60][level];
 
@@ -298,17 +305,63 @@ export function sessionText(s, member, week = 1, weeks = 6, runFrom = 1, hasBike
   const M = s.minutes || 30;
   if (s.key === 'renfo') {
     const d = renfoDose(level, phase);
-    return `${hasBike ? '5 à 10 min de vélo tranquille pour s\'échauffer' : '5 min d\'échauffement articulaire'}, puis ${d.rounds} tours de ${d.reps} répétitions (positions tenues : ${holdSeconds(level)} s), ${d.rest} s de pause entre les exercices.`;
+    return `${hasBike ? '5 à 10 min de vélo tranquille pour s\'échauffer' : '5 min d\'échauffement articulaire'}, puis ${d.rounds} tour${d.rounds > 1 ? 's' : ''} du circuit : ${d.reps} répétitions par exercice (positions tenues : ${holdSeconds(level)} s), ${d.rest} s de pause entre les exercices. Mouvements lents et contrôlés ; les 2 dernières répétitions doivent être difficiles mais propres.`;
   }
   if (s.key === 'marche') return `${M} min de ${['', 'marche d\'un bon pas', 'marche active', 'marche rapide, avec des côtes si possible', 'marche très rapide, ou alterne 5 min de marche et 5 min de footing léger'][level]}.`;
   if (s.key === 'velo') return `${Math.max(15, M - 10)} min de vélo ${['', 'à allure facile (tu peux parler)', 'à allure facile, avec 3 accélérations d\'1 min', 'avec 5 × (2 min soutenues + 2 min faciles)', 'avec 8 × (1 min intense + 1 min facile)'][level]}${/gainage/i.test(s.title) ? ', puis 10 min de gainage' : ''}.`;
   if (s.key === 'course') {
-    const k = Math.max(0, week - runFrom);
-    if (level <= 1) return `${Math.min(4 + k, 10)} × (1 min de course + 2 min de marche), à l'allure conversation. Si ça tire, on marche.`;
-    if (level === 2) return `${Math.min(5 + k, 10)} × (2 min de course + 1 min de marche), à l'allure conversation.`;
-    if (level === 3) return `${Math.min(3 + k, 6)} × (5 min de course + 1 min de marche), allure facile.`;
-    return `${Math.min(25 + k * 5, 50)} min de course continue en endurance, puis 4 lignes droites de 20 s plus rapides.`;
+    const idx = s.runs?.[member?.id] ?? s.run ?? Math.max(0, week - runFrom) * 2;
+    return c25kStep(idx, member).text;
   }
   if (s.key === 'balade') return `${M + 15} min de marche ${level >= 3 ? 'soutenue, avec du dénivelé si possible' : 'tranquille'}.`;
   return s.detail;
 }
+
+// ---------- Course : plan NHS « Couch to 5K » (9 semaines, 3 sorties par semaine) ----------
+// Chaque sortie : 5 min de marche d'échauffement, la séance, 5 min de marche pour récupérer.
+// [séance, durée de la séance en minutes] pour chaque sortie, semaine par semaine.
+const C25K = [
+  ...Array(3).fill(['7 × (1 min de course + 1 min 30 de marche), puis 1 min de course', 18.5]),
+  ...Array(3).fill(['5 × (1 min 30 de course + 2 min de marche), puis 1 min 30 de course', 19]),
+  ...Array(3).fill(['1 min 30 de course, 1 min 30 de marche, 3 min de course, 3 min de marche, 1 min 30 de course, 1 min 30 de marche, 3 min de course', 15]),
+  ...Array(3).fill(['3 min de course, 1 min 30 de marche, 5 min de course, 2 min 30 de marche, 3 min de course, 1 min 30 de marche, 5 min de course', 21.5]),
+  ['3 × (5 min de course + 3 min de marche), sans la dernière marche', 21],
+  ['8 min de course, 5 min de marche, 8 min de course', 21],
+  ['20 min de course sans t\'arrêter', 20],
+  ['5 min de course, 3 min de marche, 8 min de course, 3 min de marche, 5 min de course', 24],
+  ['10 min de course, 3 min de marche, 10 min de course', 23],
+  ['25 min de course sans t\'arrêter', 25],
+  ...Array(3).fill(['25 min de course sans t\'arrêter', 25]),
+  ...Array(3).fill(['28 min de course sans t\'arrêter', 28]),
+  ...Array(3).fill(['30 min de course sans t\'arrêter : c\'est le 5 km !', 30]),
+];
+// Point de départ selon le niveau (semaine 1, 3 ou 5 du plan, ou après le plan), décalé par les points hebdo.
+const C25K_START = [0, 0, 6, 12, 27];
+export function c25kStep(idx, member) {
+  const lvl = levelOf(member);
+  const c = Math.max(0, idx + C25K_START[lvl] + Number(member?.fitness?.run_shift || 0));
+  if (c < C25K.length) {
+    const [txt, mins] = C25K[c];
+    const wk = Math.floor(c / 3) + 1, run = (c % 3) + 1;
+    return { total: Math.round(mins + 10), week: wk, run, text: `Plan NHS Couch to 5K, semaine ${wk}, sortie ${run}. 5 min de marche rapide pour t'échauffer, puis ${txt}, et 5 min de marche pour récupérer. Allure « conversation » : tu dois pouvoir parler.` };
+  }
+  const mins = Math.min(45, 30 + 2 * (c - C25K.length + 1));
+  return { total: mins + 10, week: null, run: null, text: `Après le plan Couch to 5K : 5 min de marche, ${mins} min de course continue en endurance (allure conversation), 5 min de marche. On n'augmente pas le temps de course de plus d'environ 10 % par semaine.` };
+}
+
+// Minutes d'endurance et séances de renfo prévues pour quelqu'un sur une semaine (repères OMS).
+export function weekLoad(days, memberId, allIds) {
+  let aerobic = 0, renfo = 0;
+  for (const d of days) for (const s of d.sessions || []) {
+    if (!(s.for || allIds).includes(memberId) || s.optional) continue;
+    if (['marche', 'velo', 'course', 'balade'].includes(s.key)) aerobic += s.mins?.[memberId] ?? s.minutes ?? 0;
+    if (s.key === 'renfo') renfo++;
+  }
+  return { aerobic: Math.round(aerobic), renfo };
+}
+
+export const SOURCES = [
+  ['Organisation mondiale de la Santé (2020)', 'Lignes directrices sur l\'activité physique : 150 à 300 min d\'activité d\'endurance modérée par semaine, et du renforcement musculaire au moins 2 jours par semaine.', 'https://www.who.int/publications/i/item/9789240015128'],
+  ['NHS (Royaume-Uni) : Couch to 5K', 'Le plan de course pour débutants : 9 semaines, 3 sorties par semaine, en alternant course et marche jusqu\'à 30 min de course continue.', 'https://www.nhs.uk/better-health/get-active/get-running-with-couch-to-5k/couch-to-5k-running-plan/'],
+  ['American College of Sports Medicine (2009)', 'Renforcement pour débutants : 2 à 3 jours par semaine, 8 à 12 répétitions, mouvements contrôlés, progression graduelle.', 'https://pubmed.ncbi.nlm.nih.gov/19204579/'],
+];

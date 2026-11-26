@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import {
   COLORS, colorHex, ALLERGENS, DIETS, ZONES, ZONE_TYPES, EQUIPMENT,
   iso, parseDay, addDays, mondayOf, generatePlan, eligibleRecipes, mealChoices, courseChoices,
-  WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds,
+  WEEKDAYS, availOf, allowedFor, LEVELS, LEVEL_QUESTIONS, levelFromAnswers, levelOf, sessionText, variantFor, holdSeconds, weekLoad, SOURCES,
 } from './program.js';
 import { EXERCISES, SESSIONS, GAINAGE, videoUrl } from './exercises.js';
 import { animSvg, hasAnim, startAnims } from './animations.js';
@@ -612,7 +612,8 @@ function viewGuide() {
     ${sec('Les repas', `<p>Pour chaque midi et chaque soir : 3 idées de la même famille (même viande ou poisson, même type de plat). Le midi privilégie les plats qui se transportent en gamelle. Le vendredi soir, un plat plaisir fait maison.</p><p>« C'est mangé » valide le repas. « On a mangé autre chose » demande ce que vous avez mangé (pour vous deux ou pour toi seul). Un joker par semaine et par personne pour un repas plaisir, sans culpabilité.</p><p>Les recettes sont prévues pour 4 portions (2 repas pour vous deux, ou 1 repas et 2 gamelles) ; le sélecteur de portions recalcule les quantités.</p>`)}
     ${sec('Frigo, entrées et desserts', `<p><b>🧊 Avec ce qu'on a dans le frigo</b> (sous chaque repas) : coche tes ingrédients, l'appli te propose les recettes de la base qui collent le mieux (avec ce qu'il manque) et compose une recette minute pas à pas. « On fait ça » l'enregistre pour le repas.</p><p><b>Entrée et dessert</b> : totalement facultatifs, dans « ＋ Entrée et dessert » sous chaque repas. Des idées légères qui changent chaque jour, avec la recette et les calories.</p>`)}
     ${sec('Le journal', `<p>Verres d'alcool, verres d'eau, écarts et une note libre, chaque jour. Il est privé par défaut : coche « Partager » si tu veux que ton ou ta partenaire le voie.</p>`)}
-    ${sec('Le suivi', `<p>Onglet Suivi : trois mesures, les <b>pas</b>, le <b>sport</b> et le <b>sommeil</b>, en Jour, Semaine ou Mois, avec des courbes et la comparaison à la période précédente.</p><p>Chaque jour : « Saisir mes pas et mon sommeil » (le nombre de pas est dans l'appli Santé de l'iPhone ou Google Fit / Samsung Health sur Android). Les séances du programme cochées comptent automatiquement en minutes de sport ; « + Activité » sert pour le reste (marche, vélo, piscine…).</p><p>La connexion automatique aux montres (Garmin, Polar, Apple Watch) arrive plus tard.</p>`)}
+    ${sec('Le suivi', `<p>Onglet Suivi : les <b>pas</b>, le <b>sport</b>, le <b>sommeil</b> et le <b>poids</b>, en Jour, Semaine ou Mois, avec des courbes et la comparaison à la période précédente.</p><p>Chaque jour : « Saisir pas et sommeil » (le nombre de pas est dans l'appli Santé de l'iPhone ou Google Fit / Samsung Health sur Android), « Pesée » pour le poids. Les séances du programme cochées comptent automatiquement en minutes de sport ; « + Activité » sert pour le reste : le sport, la durée, la FC moyenne et ton ressenti de 1 (c'était dur) à 5 (très fort).</p><p>La connexion automatique aux montres (Garmin, Polar, Apple Watch) arrive plus tard.</p>`)}
+    ${sec('Le programme évolue avec vous', `<p><b>Le point de la semaine</b> (du vendredi au lundi, sur Aujourd'hui ou dans Programme) : quelques questions sur la difficulté, la forme, la durée, le nombre de séances, la course, les exercices à changer et les douleurs. L'appli propose les changements, tu valides, et tes séances s'adaptent à partir de lundi.</p><p><b>Changer la durée ou le nombre de séances</b> à tout moment : Programme › « Changer durée et nombre de séances ».</p><p><b>Recommencer</b> avec un nouveau programme : Programme › en bas. Le programme est commun, donc ton binôme doit accepter. Les séances faites restent enregistrées.</p><p><b>D'où viennent les séances ?</b> Des recommandations de l'OMS (endurance et renforcement par semaine), du plan Couch to 5K du NHS pour la course, et des repères de l'American College of Sports Medicine pour le renforcement.</p>`)}
     ${sec('Les défis et les points', `<p>Jauge du jour à 4 paliers (2 500, 5 000, 7 500, 10 000 pas), marche rapide de 10 ou 20 min, séries de jours à 7 500 pas, défis à deux (20 000 pas par jour, 120 000 par semaine), points du mois et badges.</p><p>Barème : 1 pt par palier de pas · marche rapide 10 min +1, 20 min +2 · séance du programme +3 · respiration +1 · autre activité +2 (2 max par jour) · repas suivi +1 · journal +1 · journée sans alcool +1 · nuit de 7 h +1 · défi du jour à deux +2.</p>`)}
     ${sec('Les notifications', `<p>Plus › Notifications › « Activer ». Sur iPhone, ajoute d'abord l'appli à l'écran d'accueil et ouvre-la depuis l'icône : c'est obligatoire chez Apple (iOS 16.4 minimum). Safari : Partager en bas › Sur l'écran d'accueil. Chrome : Partager en haut à droite dans la barre d'adresse › Sur l'écran d'accueil. Brave ou autre : Partager › Sur l'écran d'accueil ; si l'option manque, fais-le une fois depuis Safari. Reconnecte-toi une fois dans l'icône. Sur Android, ça marche directement dans Chrome.</p><p>Tu choisis : rappel de séance (à ton heure), séance terminée par ton partenaire, repas à choisir (10 h), défi à deux (20 h), bilan du dimanche (19 h). Un rappel n'est envoyé que s'il sert : pas de rappel séance si elle est déjà faite.</p>`)}
     ${sec('Vos données', `<p>Elles sont hébergées en Europe (Supabase, Francfort) et ne sont visibles que par vous deux. Le journal est privé sauf si vous le partagez. Dans « Mon compte » : export de toutes tes données, changement de mot de passe et suppression définitive du compte.</p>`)}
@@ -651,7 +652,7 @@ const ICONS = {
 const TABS = [['today', 'Aujourd\'hui'], ['meals', 'Repas'], ['defis', 'Défis'], ['track', 'Suivi'], ['more', 'Plus']];
 function renderTabs() {
   $tabs.hidden = false;
-  $tabs.innerHTML = TABS.map(([id, l]) => `<button data-tab="${id}" ${S.view === id || (id === 'more' && ['program', 'settings', 'profile', 'account', 'sources', 'journal', 'guide'].includes(S.view)) ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="${id === 'more' ? 'currentColor' : 'none'}" stroke="currentColor">${ICONS[id]}</svg>${l}</button>`).join('');
+  $tabs.innerHTML = TABS.map(([id, l]) => `<button data-tab="${id}" ${S.view === id || (id === 'more' && ['program', 'settings', 'profile', 'account', 'sources', 'journal', 'guide', 'notifs'].includes(S.view)) ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" fill="${id === 'more' ? 'currentColor' : 'none'}" stroke="currentColor">${ICONS[id]}</svg>${l}</button>`).join('');
   $tabs.querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.tab));
 }
 function go(view) { S.view = view; renderTabs(); render(); window.scrollTo(0, 0); }
@@ -714,6 +715,15 @@ async function levelSuggestion() {
   if (fit.assessed_at && Date.now() - new Date(fit.assessed_at).getTime() > 28 * 86400000) return { retest: true, why: 'Ça fait 4 semaines : refais le test pour voir tes progrès.' };
   return null;
 }
+// Point hebdo à proposer du vendredi au lundi, s'il n'a pas encore été fait pour la semaine concernée.
+async function reviewDue() {
+  const wd = (parseDay(today()).getDay() + 6) % 7;
+  if (!(wd >= 4 || wd === 0)) return false;
+  const week = reviewWeek();
+  if (!planDay(week) && !planDay(addDays(week, 6))) return false;
+  const { data } = await sb.from('weekly_reviews').select('id').eq('member_id', S.me.id).eq('week_start', week).maybeSingle();
+  return !data;
+}
 async function setLevel(lvl, by) {
   const prev = S.me.fitness || {};
   const fitness = { ...prev, level: lvl, assessed_at: new Date().toISOString(), history: [...(prev.history || []), { level: lvl, at: new Date().toISOString(), by }].slice(-20) };
@@ -735,8 +745,11 @@ async function viewToday() {
   const weekTotal = Math.max(...[S.me, S.partner].filter(Boolean).map((p) => plannedFor(p.id, monday)), 0);
   const doneBy = (mid) => (checks || []).filter((c) => c.member_id === mid && c.session_key !== 'respiration' && c.session_key !== 'mobilite').length;
   const people = [S.me, S.partner].filter(Boolean);
+  const [req, rv] = await Promise.all([pendingRequest().catch(() => null), S.plan ? reviewDue().catch(() => null) : null]);
   $app.innerHTML = header(`Bonjour ${S.me.first_name}`, esc(weekLabel(d)), true) + `
   <div class="wrap">
+    ${requestBanner(req)}
+    ${rv ? `<div class="card white" style="border:2px solid var(--me)"><span class="title">📝 Le point de la semaine</span><span class="small">1 minute pour dire ce qui va et ce qui ne va pas : le programme s'adapte (niveau, durée, exercices).</span><button class="btn sm" id="doReview">Faire le point</button></div>` : ''}
     ${S.partner && !S.partner.user_id ? `<div class="notice row between"><span>${esc(S.partner.first_name)} n'a pas encore rejoint le tandem.</span><button class="btn ghost sm" id="resend">Renvoyer le code</button></div>` : ''}
     ${weekTotal ? `<div class="grid2">${people.map((p) => { const tot = plannedFor(p.id, monday) || 1; return `<div class="card"><span class="small">${esc(p.first_name)} · ${Math.min(doneBy(p.id), tot)} / ${tot} séances cette semaine</span><div class="bar" style="background:var(--line)"><div style="width:${Math.round(Math.min(1, doneBy(p.id) / tot) * 100)}%;background:${colorHex(p.color)}"></div></div></div>`; }).join('')}</div>` : ''}
     ${sugg ? `<div class="card white" style="border:2px solid var(--me)"><span class="title">${sugg.retest ? 'Refaire le test de niveau ?' : sugg.to > levelOf(S.me) ? `Passer au niveau ${esc(LEVELS[sugg.to - 1].name)} ?` : `Revenir au niveau ${esc(LEVELS[sugg.to - 1].name)} ?`}</span>
@@ -769,6 +782,8 @@ async function viewToday() {
     <button class="card" style="border:0;text-align:left;cursor:pointer" data-go="defis"><span class="title">Défis et badges</span><span class="muted">Paliers de pas, séries, points du mois.</span></button>
   </div>`;
   bindDayNav();
+  bindRequest(req);
+  document.getElementById('doReview')?.addEventListener('click', () => reviewModal(reviewWeek()));
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
   document.getElementById('pushLater')?.addEventListener('click', () => { try { localStorage.setItem('tf_push_later', String(Date.now())); } catch {} document.getElementById('pushInvite')?.remove(); });
   $app.querySelectorAll('[data-ex]').forEach((b) => b.onclick = () => showExercise(b.dataset.ex));
@@ -1058,7 +1073,10 @@ const METRICS = {
   pas: { label: 'Pas', unit: 'pas par jour', key: 'steps', agg: 'mean', total: true, goal: 8000, goalLabel: '8 000', short: (v) => (v >= 1000 ? `${nf(v / 1000, 1)}k` : nf(v)), fmt: (v) => nf(v) },
   sport: { label: 'Sport', unit: 'minutes de sport', key: 'sport', agg: 'sum', total: false, goal: null, short: (v) => nf(v), fmt: (v) => (v >= 60 ? `${Math.floor(v / 60)} h ${String(Math.round(v % 60)).padStart(2, '0')}` : `${nf(v)} min`) },
   sommeil: { label: 'Sommeil', unit: 'heures par nuit', key: 'sleep', agg: 'mean', goal: 7, goalLabel: '7 h', short: (v) => nf(v, 1), fmt: hmFmt },
+  poids: { label: 'Poids', unit: 'kg', key: 'kg', agg: 'last', lowerBetter: true, goal: null, short: (v) => nf(v, 1), fmt: (v) => `${nf(v, 1)} kg` },
 };
+const FEEL = [[1, '😫', 'C\'était très dur'], [2, '😓', 'Dur'], [3, '🙂', 'Correct'], [4, '😀', 'Bien'], [5, '💪', 'Je me sentais très fort']];
+const feelTxt = (n) => { const f = FEEL.find((x) => x[0] === n); return f ? `${f[1]} ${f[2]}` : ''; };
 // Connexions montres et Apple Santé : désactivées pour l'instant, saisie à la main uniquement.
 const WATCHES_ENABLED = false;
 const DAILY_DUO_GOAL = 20000;
@@ -1096,7 +1114,7 @@ async function loadTrackData(from, to) {
     const ch = (checks || []).filter((c) => c.member_id === mid && c.day === day && c.session_key !== 'respiration').length;
     o.sessions = o.acts.length || ch ? Math.max(o.acts.length, ch) : null;
     o.progMin = (checks || []).filter((c) => c.member_id === mid && c.day === day && c.session_key !== 'respiration')
-      .reduce((t, c) => t + ((planDay(day)?.sessions || []).find((x) => x.key === c.session_key)?.minutes || 0), 0);
+      .reduce((t, c) => t + (((s) => s?.mins?.[mid] ?? s?.minutes ?? 0)((planDay(day)?.sessions || []).find((x) => x.key === c.session_key))), 0);
     o.sport = o.acts.length || o.progMin ? actMin + o.progMin : null;
     o.sleep = o.sleep_min == null ? null : o.sleep_min / 60;
     const w = (weights || []).find((x) => x.member_id === mid && x.day === day && x.kg != null);
@@ -1160,6 +1178,7 @@ function bindTrackNav(step) {
   $app.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => { S.day = addDays(S.day, Number(b.dataset.shift) * step); viewTrack(); });
   document.getElementById('manual')?.addEventListener('click', () => manualDayForm(S.day));
   document.getElementById('addAct')?.addEventListener('click', () => activityForm(null, S.day));
+  document.getElementById('addW')?.addEventListener('click', () => weightForm());
 }
 
 async function viewTrackDay(people) {
@@ -1173,8 +1192,9 @@ async function viewTrackDay(people) {
     <div class="grid2">${people.map((p, i) => `<div class="card stat" style="border-top:3px solid ${colorHex(p.color)};gap:6px"><span class="small" style="font-weight:600;color:${colorHex(p.color)}">${esc(p.first_name)}</span>
       <span class="small muted">👟 Pas</span><b>${v[i].steps != null ? nf(v[i].steps) : '—'}</b>
       <span class="small muted">🏃 Sport</span><b>${sportTxt(v[i])}</b>
-      <span class="small muted">😴 Sommeil</span><b>${v[i].sleep != null ? hmFmt(v[i].sleep) : '—'}</b></div>`).join('')}</div>
-    <button class="btn block" id="manual">${mine.steps != null || mine.sleep != null ? 'Modifier mes pas et mon sommeil' : 'Saisir mes pas et mon sommeil'}</button>
+      <span class="small muted">😴 Sommeil</span><b>${v[i].sleep != null ? hmFmt(v[i].sleep) : '—'}</b>
+      <span class="small muted">⚖️ Poids</span><b>${v[i].kg != null ? `${nf(v[i].kg, 1)} kg` : '—'}</b></div>`).join('')}</div>
+    <div class="row" style="flex-wrap:wrap"><button class="btn" id="manual" style="flex:1">${mine.steps != null || mine.sleep != null ? 'Modifier pas et sommeil' : 'Saisir pas et sommeil'}</button><button class="btn ghost" id="addW">⚖️ Pesée</button></div>
     <div class="row between"><h2>Sport du jour</h2><button class="btn ghost sm" id="addAct">+ Activité</button></div>
     ${actList(people, v.flatMap((x) => x.acts))}
     ${v.some((x) => x.progMin) ? `<span class="small muted">Séances du programme cochées : ${people.map((p, i) => `${esc(p.first_name)} ${v[i].progMin} min`).join(' · ')}. Elles comptent automatiquement, n'ajoute que le sport en plus.</span>` : '<span class="small muted">Les séances du programme cochées comptent automatiquement. Ajoute ici le reste : marche, vélo, piscine, foot…</span>'}
@@ -1183,7 +1203,7 @@ async function viewTrackDay(people) {
   bindActs(v.flatMap((x) => x.acts));
 }
 function actList(people, acts) {
-  return acts.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${nf(a.distance_km, 1)} km` : ''}</span>${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité ajoutée.</span>';
+  return acts.map((a) => { const p = people.find((x) => x.id === a.member_id); const mine = a.member_id === S.me.id; return `<${mine ? `button data-act="${a.id}" style="border:0;text-align:left;cursor:pointer"` : 'div'} class="card"><span class="title">${esc(a.type)}</span><span class="muted">${esc(p?.first_name)} · ${esc(fmtDay(iso(new Date(a.start_at)), { weekday: 'short', day: 'numeric' }))}${a.duration_min ? ` · ${a.duration_min} min` : ''}${a.distance_km ? ` · ${nf(a.distance_km, 1)} km` : ''}${a.hr_avg ? ` · FC moy. ${a.hr_avg}` : ''}</span>${a.feeling ? `<span class="small">${esc(feelTxt(a.feeling))}</span>` : ''}${a.note ? `<span class="small">${esc(a.note)}</span>` : ''}</${mine ? 'button' : 'div'}>`; }).join('') || '<span class="muted">Aucune activité ajoutée.</span>';
 }
 function bindActs(acts) {
   $app.querySelectorAll('[data-act]').forEach((el) => el.onclick = () => activityForm(acts.find((x) => x.id === el.dataset.act), S.day));
@@ -1193,7 +1213,10 @@ async function viewTrackWeek(people) {
   const monday = mondayOf(S.day); const sunday = addDays(monday, 6); const prevMon = addDays(monday, -7);
   const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i));
   const M = METRICS[S.trackMetric];
-  const { merged, acts, checks } = await loadTrackData(prevMon, sunday);
+  const { merged, acts, weights, checks } = await loadTrackData(prevMon, sunday);
+  const lastW = (mid) => [...weights].filter((w) => w.member_id === mid && w.kg != null).pop();
+  const d60 = Array.from({ length: 56 }, (_, i) => addDays(sunday, i - 55));
+  if (M.key === 'kg') people.forEach((p, i) => { cur[i] = d60.slice(28).map((x) => merged(p.id, x).kg); prev[i] = d60.slice(0, 28).map((x) => merged(p.id, x).kg); });
   const cur = people.map((p) => days.map((x) => merged(p.id, x)[M.key]));
   const prev = people.map((p) => days.map((x) => merged(p.id, addDays(x, -7))[M.key]));
   const planned = (mid) => plannedFor(mid, monday);
@@ -1203,16 +1226,19 @@ async function viewTrackWeek(people) {
   const weekActs = acts.filter((a) => a.start_at >= new Date(`${monday}T00:00:00`).toISOString());
   $app.innerHTML = trackHeader('Suivi', `${pd ? `Semaine ${pd.week} · ` : ''}${fmtDay(monday, { day: 'numeric', month: 'short' })} au ${fmtDay(sunday, { day: 'numeric', month: 'short' })}`) + `<div class="wrap">
     ${metricTabs()}
-    <div class="card white">${barChart(people.map((p, i) => ({ color: colorHex(p.color), values: cur[i] })), days, M.fmt, M.goal, M.goalLabel)}
-      <div class="row between">${legend(people)}<span class="small muted">${esc(M.unit)}</span></div></div>
+    <div class="card white">${M.key === 'kg' ? lineChart(people.map((p) => ({ color: colorHex(p.color), values: d60.map((x) => merged(p.id, x).kg) })), d60, M) : barChart(people.map((p, i) => ({ color: colorHex(p.color), values: cur[i] })), days, M.fmt, M.goal, M.goalLabel)}
+      <div class="row between">${legend(people)}<span class="small muted">${M.key === 'kg' ? 'kg · 8 dernières semaines' : esc(M.unit)}</span></div></div>
     ${statCards(M, people, cur, prev, 'semaine', (p) => (planned(p.id) ? `<span class="small">Séances du programme : ${Math.min(done(p.id), planned(p.id))} / ${planned(p.id)}</span>` : ''))}
     ${people.length === 2 ? duoBar(`Défi à deux : ${nf(WEEKLY_DUO_GOAL)} pas`, WEEKLY_DUO_GOAL, stepsWeek, people) : ''}
     <div class="row" style="flex-wrap:wrap"><button class="btn sm" id="manual">Saisir pas et sommeil</button><button class="btn ghost sm" id="addAct">+ Activité</button></div>
     <h2>Sport de la semaine</h2>
     ${actList(people, weekActs)}
+    <div class="row between"><h2>Poids</h2><div class="row"><button class="btn ghost sm" id="histW">Historique</button><button class="btn ghost sm" id="addW">+ Pesée</button></div></div>
+    <div class="grid2">${people.map((p) => { const w = lastW(p.id); const diff = w && p.start_weight ? (w.kg - p.start_weight) : null; return `<div class="card stat"><span class="small" style="color:${colorHex(p.color)};font-weight:600">${esc(p.first_name)}</span><b>${w ? `${nf(w.kg, 1)} kg` : '—'}</b><span class="muted small">${diff != null ? `${diff > 0 ? '+' : ''}${nf(diff, 1)} kg depuis le départ` : ''}${p.goal_weight ? ` · objectif ${nf(p.goal_weight, 1)}` : ''}</span></div>`; }).join('')}</div>
   </div>`;
   bindTrackNav(7);
   bindActs(weekActs);
+  document.getElementById('histW').onclick = () => weightHistory(weights);
 }
 
 async function viewTrackMonth(people) {
@@ -1405,44 +1431,53 @@ async function viewChallenges() {
   bindDayNav();
 }
 
-const ACT_TYPES = ['Vélo d\'appartement', 'Marche', 'Course', 'Renfo', 'Kettlebell', 'TRX', 'Respiration', 'Étirements', 'Yoga', 'Natation', 'Vélo dehors', 'Randonnée', 'Autre'];
+const ACT_TYPES = ['Marche', 'Course', 'Vélo d\'appartement', 'Vélo dehors', 'Renfo', 'Natation', 'Yoga', 'Étirements', 'Randonnée', 'Autre'];
 function activityForm(a, day) {
   const isNew = !a;
   const start = a ? new Date(a.start_at) : null;
   const date = a ? iso(start) : day;
   const time = a ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}` : '18:00';
   const known = !a || ACT_TYPES.includes(a.type);
+  const typ = a ? (known ? a.type : 'Autre') : '';
   openModal(`
-    <div class="row between"><h2>${isNew ? 'Nouvelle activité' : 'Modifier l\'activité'}</h2></div>
-    <form id="a" style="display:flex;flex-direction:column;gap:12px" novalidate>
-      <label>Type<select name="type">${ACT_TYPES.map((t) => `<option ${(a?.type === t || (!known && t === 'Autre')) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
-      <label>Précision (facultatif)<input name="label" value="${esc(known ? '' : a.type)}" placeholder="ex. sortie longue, circuit jambes"></label>
-      <div class="grid2"><label>Date<input name="date" type="date" value="${date}"></label><label>Heure<input name="time" type="time" value="${time}"></label></div>
-      <div class="grid2"><label>Durée (min)<input name="duration" inputmode="numeric" value="${esc(a?.duration_min)}"></label><label>Distance (km)<input name="distance" inputmode="decimal" value="${esc(a?.distance_km)}"></label></div>
-      <div class="grid2"><label>FC moyenne<input name="hr" inputmode="numeric" value="${esc(a?.hr_avg)}"></label><label>FC max<input name="hrmax" inputmode="numeric" value="${esc(a?.hr_max)}"></label></div>
-      <div class="grid2"><label>Calories<input name="kcal" inputmode="numeric" value="${esc(a?.kcal)}"></label>
-      <label>Ressenti<select name="feeling"><option value="">—</option>${[[1, '1 · très dur'], [2, '2 · dur'], [3, '3 · correct'], [4, '4 · bien'], [5, '5 · super']].map(([n, l]) => `<option value="${n}" ${a?.feeling === n ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
-      <label>Note<textarea name="note">${esc(a?.note)}</textarea></label>
+    <h2>${isNew ? 'Mon activité' : 'Modifier l\'activité'}</h2>
+    <form id="a" style="display:flex;flex-direction:column;gap:14px" novalidate>
+      <div><span class="small" style="font-weight:600">Quel sport ?</span><div class="chips" style="margin-top:6px">${ACT_TYPES.map((t) => `<button type="button" class="chip" data-type="${esc(t)}" aria-pressed="${typ === t}">${esc(t)}</button>`).join('')}</div></div>
+      <label id="lblWrap" ${typ === 'Autre' ? '' : 'hidden'}>Lequel ?<input name="label" value="${esc(known ? '' : a.type)}" placeholder="ex. padel, piscine"></label>
+      <div class="grid2"><label>Durée (min)<input name="duration" inputmode="numeric" placeholder="ex. 30" value="${esc(a?.duration_min)}"></label><label>FC moyenne<input name="hr" inputmode="numeric" placeholder="ex. 135" value="${esc(a?.hr_avg)}"></label></div>
+      <div><span class="small" style="font-weight:600">Comment je me suis senti ?</span>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px">${FEEL.map(([n, e, l]) => `<button type="button" class="chip" data-feel="${n}" aria-pressed="${a?.feeling === n}" style="height:auto;min-height:64px;flex-direction:column;display:flex;align-items:center;justify-content:center;gap:2px;padding:6px 2px;border-radius:12px"><span style="font-size:22px">${e}</span><span style="font-size:10px;line-height:1.15;text-align:center">${l}</span></button>`).join('')}</div>
+        <div class="row between small muted" style="margin-top:4px"><span>1 · c'était dur</span><span>5 · très fort</span></div></div>
+      <details><summary class="small" style="cursor:pointer;color:var(--me);font-weight:600">Plus de détails (facultatif)</summary>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+          <div class="grid2"><label>Date<input name="date" type="date" value="${date}"></label><label>Heure<input name="time" type="time" value="${time}"></label></div>
+          <div class="grid2"><label>Distance (km)<input name="distance" inputmode="decimal" value="${esc(a?.distance_km)}"></label><label>FC max<input name="hrmax" inputmode="numeric" value="${esc(a?.hr_max)}"></label></div>
+          <label>Note<textarea name="note">${esc(a?.note)}</textarea></label></div></details>
       <p class="err" id="aerr" role="alert" style="margin:0"></p>
-      <button class="btn">${isNew ? 'Ajouter' : 'Enregistrer'}</button>
+      <button class="btn">${isNew ? 'Enregistrer' : 'Enregistrer les changements'}</button>
       ${isNew ? '' : '<button type="button" class="btn ghost" id="delAct" style="color:var(--danger)">Supprimer cette activité</button>'}
     </form>`, (root) => {
+    let type = typ; let feel = a?.feeling || null;
+    root.querySelectorAll('[data-type]').forEach((b) => b.onclick = () => { type = b.dataset.type; root.querySelectorAll('[data-type]').forEach((x) => x.setAttribute('aria-pressed', x === b)); root.querySelector('#lblWrap').hidden = type !== 'Autre'; });
+    root.querySelectorAll('[data-feel]').forEach((b) => b.onclick = () => { feel = Number(b.dataset.feel); root.querySelectorAll('[data-feel]').forEach((x) => x.setAttribute('aria-pressed', x === b)); });
     root.querySelector('#a').onsubmit = async (e) => {
       e.preventDefault(); const v = formData(e.target); const $e = root.querySelector('#aerr');
-      if (!v.date) return ($e.textContent = 'Indique la date.');
+      if (!type) return ($e.textContent = 'Choisis le sport.');
+      if (type === 'Autre' && !v.label.trim()) return ($e.textContent = 'Indique le sport.');
       const dur = int(v.duration);
-      if (dur != null && (dur < 0 || dur > 1440)) return ($e.textContent = 'Durée entre 0 et 1440 minutes.');
-      const startAt = new Date(`${v.date}T${v.time || '12:00'}:00`);
+      if (dur == null || Number.isNaN(dur) || dur < 1 || dur > 1440) return ($e.textContent = 'Indique la durée (en minutes).');
+      const hr = int(v.hr);
+      if (hr != null && (Number.isNaN(hr) || hr < 40 || hr > 230)) return ($e.textContent = 'FC moyenne : entre 40 et 230.');
+      const startAt = new Date(`${v.date || day}T${v.time || '12:00'}:00`);
       const row = {
-        type: (v.label.trim() || v.type).slice(0, 60), start_at: startAt.toISOString(),
-        duration_min: dur, distance_km: num(v.distance), hr_avg: int(v.hr), hr_max: int(v.hrmax), kcal: int(v.kcal),
-        feeling: int(v.feeling), note: v.note.trim() || null,
+        type: (type === 'Autre' ? v.label.trim() : type).slice(0, 60), start_at: startAt.toISOString(),
+        duration_min: dur, distance_km: num(v.distance), hr_avg: hr, hr_max: int(v.hrmax), feeling: feel, note: v.note.trim() || null,
       };
       const { error } = isNew
         ? await sb.from('activities').insert({ ...row, member_id: S.me.id, tandem_id: S.me.tandem_id, source: 'manuel' })
         : await sb.from('activities').update(row).eq('id', a.id);
       if (error) return ($e.textContent = `Enregistrement impossible : ${error.message}`);
-      closeModal(); viewTrack();
+      closeModal(); toast('Activité enregistrée'); viewTrack();
     };
     root.querySelector('#delAct')?.addEventListener('click', async () => {
       if (!confirm('Supprimer cette activité ?')) return;
@@ -1513,7 +1548,7 @@ function weightChart(weights, people) {
 }
 
 // ---------- Notifications ----------
-const NOTIF_DEFAULT = { seance: true, seance_hour: 18, repas: true, partenaire: true, duo: true, pesee: false, bilan: true };
+const NOTIF_DEFAULT = { seance: true, seance_hour: 18, repas: true, partenaire: true, duo: true, pesee: true, bilan: true };
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -1575,7 +1610,7 @@ async function viewNotifs() {
   else if (perm === 'denied') status = `<div class="notice">Les notifications sont bloquées pour Tandem Forme. ${isIOS() ? 'Va dans Réglages › Notifications › Tandem Forme et autorise-les.' : 'Appuie sur le cadenas à côté de l\'adresse (ou Paramètres du téléphone › Applis › Tandem Forme) et autorise les notifications.'}</div>`;
   else if (sub) status = '<div class="card"><span class="title">✅ Activées sur ce téléphone</span><div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" id="pTest">Envoyer un test</button><button class="btn ghost sm" id="pOff">Désactiver ici</button></div></div>';
   else status = '<div class="card white"><span class="title">Pas encore activées sur ce téléphone</span><span class="small">Ton téléphone va te demander l\'autorisation : réponds « Autoriser ».</span><button class="btn" id="pOn">Activer les notifications</button></div>';
-  const ROWS = [['seance', 'Séance du jour', 'Un rappel à l\'heure choisie, seulement s\'il reste une séance à faire.'], ['partenaire', 'Séance de ton partenaire', `Quand ${esc(S.partner?.first_name || 'ton partenaire')} termine sa séance.`], ['repas', 'Repas à choisir', 'À 10 h, si le midi ou le soir n\'est pas encore choisi.'], ['duo', 'Défi à deux', 'À 20 h, si les 20 000 pas à deux ne sont pas encore atteints.'], ['bilan', 'Bilan de la semaine', 'Le dimanche à 19 h.']];
+  const ROWS = [['seance', 'Séance du jour', 'Un rappel à l\'heure choisie, seulement s\'il reste une séance à faire.'], ['partenaire', 'Séance de ton partenaire', `Quand ${esc(S.partner?.first_name || 'ton partenaire')} termine sa séance.`], ['repas', 'Repas à choisir', 'À 10 h, si le midi ou le soir n\'est pas encore choisi.'], ['duo', 'Défi à deux', 'À 20 h, si les 20 000 pas à deux ne sont pas encore atteints.'], ['pesee', 'Pesée du lundi', 'Le lundi à 8 h.'], ['bilan', 'Bilan de la semaine', 'Le dimanche à 19 h.']];
   $app.innerHTML = header('Notifications', 'Des rappels utiles, jamais plus de quelques-uns par jour') + `<div class="wrap">
     ${status}
     <h2>Ce que tu reçois</h2>
@@ -1613,17 +1648,246 @@ function viewMore() {
   $app.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
 }
 
-function viewProgram() {
-  if (!S.plan) { $app.innerHTML = header('Programme') + '<div class="wrap"><span class="muted">Pas encore de programme.</span></div>'; return; }
+async function viewProgram() {
+  const req = await pendingRequest();
+  if (!S.plan) {
+    $app.innerHTML = header('Programme') + `<div class="wrap"><div class="card white"><span class="title">Pas de programme en cours</span><span class="small">Choisissez votre matériel et la durée, puis créez le programme : il s'adapte aux disponibilités et au niveau de chacun.</span><button class="btn" data-go="settings">Créer le programme</button></div>${sourcesHtml()}</div>`;
+    $app.querySelector('[data-go]').onclick = () => go('settings'); return;
+  }
   const p = S.plan.data; const weeks = [];
   for (let w = 1; w <= p.weeks; w++) weeks.push(Object.entries(p.days).filter(([, v]) => v.week === w));
   const DN = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-  $app.innerHTML = header('Programme', `${p.weeks} semaines à partir du ${fmtDay(p.start_date, { day: 'numeric', month: 'long' })}`) + `<div class="wrap">
+  const people = [S.me, S.partner].filter(Boolean); const ids = people.map((x) => x.id);
+  const mon = mondayOf(today());
+  const thisWeek = [0, 1, 2, 3, 4, 5, 6].map((i) => planDay(addDays(mon, i))).filter(Boolean);
+  const load = weekLoad(thisWeek, S.me.id, ids);
+  $app.innerHTML = header('Programme', `${p.weeks} semaines à partir du ${fmtDay(p.start_date, { day: 'numeric', month: 'long' })} · niveau ${esc(LEVELS[levelOf(S.me) - 1].name)}`) + `<div class="wrap">
+    ${requestBanner(req)}
+    ${thisWeek.length ? `<div class="card white"><span class="title">Ta semaine</span>
+      <span class="small">🏃 ${load.aerobic} min d'endurance prévues <span class="muted">(repère OMS : 150 à 300 min par semaine ; tes pas du quotidien complètent)</span></span>
+      <span class="small">💪 ${load.renfo} séance${load.renfo > 1 ? 's' : ''} de renforcement <span class="muted">(repère : 2 ou plus)</span></span></div>` : ''}
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <button class="btn sm" id="pReview">📝 Faire le point de la semaine</button>
+      <button class="btn ghost sm" id="pAvail">⏱️ Changer durée et nombre de séances</button>
+    </div>
     ${weeks.map((days, i) => `<details class="card white" ${days.some(([d]) => d === today()) ? 'open' : ''}><summary class="title" style="cursor:pointer">Semaine ${i + 1}</summary>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${days.map(([d, v], k) => `<button class="card" data-pday="${d}" style="border:0;text-align:left;cursor:pointer;padding:10px 12px"><span class="small muted">${DN[k]} ${esc(fmtDay(d, { day: 'numeric', month: 'short' }))}</span><span style="font-weight:600">${v.sessions.filter((s) => s.key !== 'respiration').map((s) => `${esc(s.title)}${forOf(s).length < [S.me, S.partner].filter(Boolean).length ? ` (${esc([S.me, S.partner].filter((p) => p && forOf(s).includes(p.id)).map((p) => p.first_name).join(', '))})` : ''}`).join(' · ') || 'Repos'}</span><span class="small" style="color:var(--me)">Voir le détail ›</span></button>`).join('')}</div></details>`).join('')}
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${days.map(([d, v], k) => `<button class="card" data-pday="${d}" style="border:0;text-align:left;cursor:pointer;padding:10px 12px"><span class="small muted">${DN[k]} ${esc(fmtDay(d, { day: 'numeric', month: 'short' }))}</span><span style="font-weight:600">${v.sessions.filter((s) => s.key !== 'respiration').map((s) => `${esc(s.title)}${forOf(s).length < people.length ? ` (${esc(people.filter((x) => forOf(s).includes(x.id)).map((x) => x.first_name).join(', '))})` : ''}`).join(' · ') || 'Repos'}</span><span class="small" style="color:var(--me)">Voir le détail ›</span></button>`).join('')}</div></details>`).join('')}
+    ${sourcesHtml()}
+    <button class="btn ghost" id="pRestart" style="color:var(--danger)">Recommencer avec un nouveau programme</button>
+    <span class="small muted">${people.length > 1 ? `Il faut l'accord de ${esc(S.partner.first_name)} : le programme est commun.` : ''}</span>
   </div>`;
   $app.querySelectorAll('[data-pday]').forEach((b) => b.onclick = () => showDay(b.dataset.pday));
+  document.getElementById('pReview').onclick = () => reviewModal(reviewWeek());
+  document.getElementById('pAvail').onclick = () => availModal();
+  document.getElementById('pRestart').onclick = () => restartModal(req);
+  bindRequest(req);
 }
+function sourcesHtml() {
+  return `<details class="card"><summary class="title" style="cursor:pointer">D'où viennent les séances ?</summary>
+    <div class="small" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <span>Le programme est construit par l'appli à partir de recommandations reconnues, puis adapté à votre matériel, vos disponibilités, votre niveau et vos zones fragiles :</span>
+      ${SOURCES.map(([t, d, u]) => `<span><b>${esc(t)}</b> : ${esc(d)} <a class="link" href="${u}" target="_blank" rel="noopener">Source ›</a></span>`).join('')}
+      <span class="muted">Ce n'est pas un avis médical. En cas de problème de santé, de douleur ou de doute, demande l'avis de ton médecin avant de commencer.</span>
+    </div></details>`;
+}
+
+// ---------- Adapter le programme en cours ----------
+async function freshMembers() {
+  const { data } = await sb.from('members').select('*').eq('tandem_id', S.me.tandem_id);
+  const me = (data || []).find((m) => m.id === S.me.id); const pa = (data || []).find((m) => m.id !== S.me.id);
+  if (me) Object.assign(S.me, me); if (pa && S.partner) Object.assign(S.partner, pa);
+  return [S.me, S.partner].filter(Boolean);
+}
+// Recalcule les séances à partir d'un jour donné ; le passé (et les séances cochées) ne bouge pas.
+async function regenerateFrom(fromDay) {
+  const members = await freshMembers();
+  const old = S.plan.data; const st = S.tandem.settings || {};
+  const fresh = generatePlan({ ...st, start_date: old.start_date, weeks: old.weeks }, members);
+  const days = {};
+  for (const [d, v] of Object.entries(old.days)) if (d < fromDay) days[d] = v;
+  for (const [d, v] of Object.entries(fresh.days)) if (d >= fromDay) days[d] = v;
+  const data = { ...old, days, version: 3, updated_at: new Date().toISOString() };
+  const { error } = await sb.rpc('plan_update_data', { p_data: data });
+  if (error) { fail(error, 'Mise à jour du programme impossible'); return false; }
+  S.plan.data = data; return true;
+}
+function availModal() {
+  const a = availOf(S.me);
+  openModal(`<h2>Mes séances</h2>
+    <span class="small muted">Le changement s'applique à tes séances à venir ; ${S.partner ? `celles de ${esc(S.partner.first_name)} ne bougent pas, et ` : ''}ce qui est déjà fait reste enregistré.</span>
+    <div><b class="small">Durée d'une séance</b><div class="chips" style="margin-top:6px">${[20, 30, 45, 60].map((m) => `<button type="button" class="chip" data-min="${m}" aria-pressed="${a.minutes === m}">${m} min</button>`).join('')}</div></div>
+    <div><b class="small">Séances par semaine</b><div class="chips" style="margin-top:6px">${[1, 2, 3, 4, 5, 6].map((n) => `<button type="button" class="chip" data-ses="${n}" aria-pressed="${a.sessions === n}">${n}</button>`).join('')}</div></div>
+    <div><b class="small">Jours possibles</b><div class="chips" style="margin-top:6px">${WEEKDAYS.map((d, i) => `<button type="button" class="chip" data-wd="${i}" aria-pressed="${a.days.includes(i)}">${d}</button>`).join('')}</div></div>
+    <div><b class="small">À partir de</b><div class="chips" style="margin-top:6px"><button type="button" class="chip" data-from="tomorrow" aria-pressed="true">Demain</button><button type="button" class="chip" data-from="monday" aria-pressed="false">Lundi prochain</button></div></div>
+    <p class="err" id="avErr" role="alert" style="margin:0"></p>
+    <button class="btn" id="avSave">Mettre à jour mon programme</button>`, (root) => {
+    const single = (sel) => root.querySelectorAll(sel).forEach((b) => b.onclick = () => root.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x === b)));
+    single('[data-min]'); single('[data-ses]'); single('[data-from]');
+    root.querySelectorAll('[data-wd]').forEach((b) => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
+    root.querySelector('#avSave').onclick = async (e) => {
+      const days = [...root.querySelectorAll('[data-wd][aria-pressed=true]')].map((b) => Number(b.dataset.wd));
+      const sessions = Number(root.querySelector('[data-ses][aria-pressed=true]').dataset.ses);
+      if (!days.length) return (root.querySelector('#avErr').textContent = 'Coche au moins un jour.');
+      if (sessions > days.length) return (root.querySelector('#avErr').textContent = `${sessions} séances demandent au moins ${sessions} jours possibles.`);
+      e.target.disabled = true;
+      const availability = { days, sessions, minutes: Number(root.querySelector('[data-min][aria-pressed=true]').dataset.min) };
+      const { error } = await sb.from('members').update({ availability }).eq('id', S.me.id);
+      if (error) { e.target.disabled = false; return fail(error, 'Enregistrement impossible'); }
+      S.me.availability = availability;
+      const from = root.querySelector('[data-from][aria-pressed=true]').dataset.from === 'monday' ? addDays(mondayOf(today()), 7) : addDays(today(), 1);
+      if (S.plan && await regenerateFrom(from)) { closeModal(); toast('Programme mis à jour'); render(); }
+    };
+  });
+}
+
+// ---------- Point hebdomadaire ----------
+// Le point porte sur la semaine en cours à partir du vendredi, sinon sur la semaine précédente.
+function reviewWeek() { const wd = (parseDay(today()).getDay() + 6) % 7; const w = wd >= 4 ? mondayOf(today()) : addDays(mondayOf(today()), -7); return planDay(w) ? w : mondayOf(today()); }
+const RQ = [
+  ['global', 'Les séances de la semaine étaient…', ['Trop faciles', 'Bien dosées', 'Un peu dures', 'Trop dures']],
+  ['forme', 'Ta forme et ta récupération ?', ['En pleine forme', 'Un peu fatigué·e', 'Très fatigué·e, grosses courbatures']],
+  ['duree', 'La durée des séances ?', ['Trop courte', 'Parfaite', 'Trop longue']],
+  ['nombre', 'Le nombre de séances par semaine ?', ['Pas assez', 'Parfait', 'Trop']],
+];
+async function reviewModal(week) {
+  const end = addDays(week, 6);
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(week, i));
+  const [{ data: checks }, { data: prev }] = await Promise.all([
+    sb.from('checks').select('day,session_key,feeling').eq('member_id', S.me.id).gte('day', week).lte('day', end),
+    sb.from('weekly_reviews').select('*').eq('member_id', S.me.id).eq('week_start', week).maybeSingle(),
+  ]);
+  const mine = days.flatMap((d) => (planDay(d)?.sessions || []).filter((s) => forOf(s).includes(S.me.id) && s.key !== 'respiration' && !s.optional).map((s) => ({ ...s, day: d })));
+  const done = mine.filter((s) => (checks || []).some((c) => c.day === s.day && c.session_key === s.key)).length;
+  const exos = [...new Set(mine.flatMap((s) => s.per?.[S.me.id] || []))];
+  const hasRun = mine.some((s) => s.key === 'course');
+  const ans = { ...(prev?.answers || {}) };
+  const a = availOf(S.me); const fit = S.me.fitness || {}; const excluded = new Set(fit.excluded || []);
+  openModal(`<h2>Le point de la semaine</h2>
+    <span class="small muted">Semaine du ${esc(fmtDay(week, { day: 'numeric', month: 'long' }))} · ${done} séance${done > 1 ? 's' : ''} faite${done > 1 ? 's' : ''} sur ${mine.length}. Réponds en 1 minute : le programme s'adapte à partir de lundi.</span>
+    ${RQ.map(([id, q, opts]) => `<div><b class="small">${q}</b><div class="chips" style="margin-top:6px">${opts.map((o, i) => `<button type="button" class="chip" data-q="${id}" data-v="${i}" aria-pressed="${ans[id] === i}">${o}</button>`).join('')}</div>
+      ${id === 'duree' ? `<div class="chips" id="dureeNew" style="margin-top:6px" hidden>${[20, 30, 45, 60].map((m) => `<button type="button" class="chip" data-nmin="${m}" aria-pressed="${a.minutes === m}">${m} min</button>`).join('')}</div>` : ''}
+      ${id === 'nombre' ? `<div class="chips" id="nombreNew" style="margin-top:6px" hidden>${[1, 2, 3, 4, 5, 6].map((n) => `<button type="button" class="chip" data-nses="${n}" aria-pressed="${a.sessions === n}">${n} par semaine</button>`).join('')}</div>` : ''}</div>`).join('')}
+    ${hasRun ? `<div><b class="small">La course (plan Couch to 5K) ?</b><div class="chips" style="margin-top:6px">${['Trop facile', 'Bien', 'Trop dure'].map((o, i) => `<button type="button" class="chip" data-q="course" data-v="${i}" aria-pressed="${ans.course === i}">${o}</button>`).join('')}</div></div>` : ''}
+    ${exos.length ? `<div><b class="small">Les exercices de renfo : lesquels changer ?</b><span class="small muted" style="display:block">Touche ceux que tu n'aimes pas ou qui ne te vont pas : ils seront remplacés.</span><div class="chips" style="margin-top:6px">${exos.map((n) => `<button type="button" class="chip" data-ex="${esc(n)}" aria-pressed="${excluded.has(n)}">👎 ${esc(variantFor(n, levelOf(S.me), S.me))}</button>`).join('')}</div></div>` : ''}
+    <div><b class="small">Une douleur ou une gêne pendant le sport ?</b><div class="chips" style="margin-top:6px">${ZONES.map(([z, l]) => `<button type="button" class="chip" data-zone="${z}" aria-pressed="false">${l}</button>`).join('')}</div></div>
+    <label class="small">Ce qui va, ce qui ne va pas (facultatif)<textarea id="rvNote" placeholder="ex. le mardi c'est compliqué, j'adore le vélo">${esc(ans.note || '')}</textarea></label>
+    <button class="btn" id="rvNext">Voir ce qui va changer</button>`, (root) => {
+    root.querySelectorAll('[data-q]').forEach((b) => b.onclick = () => {
+      ans[b.dataset.q] = Number(b.dataset.v);
+      root.querySelectorAll(`[data-q="${b.dataset.q}"]`).forEach((x) => x.setAttribute('aria-pressed', x === b));
+      if (b.dataset.q === 'duree') root.querySelector('#dureeNew').hidden = ans.duree === 1;
+      if (b.dataset.q === 'nombre') root.querySelector('#nombreNew').hidden = ans.nombre === 1;
+    });
+    if (ans.duree != null && ans.duree !== 1) root.querySelector('#dureeNew').hidden = false;
+    if (ans.nombre != null && ans.nombre !== 1) root.querySelector('#nombreNew').hidden = false;
+    const single = (sel) => root.querySelectorAll(sel).forEach((b) => b.onclick = () => root.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x === b)));
+    single('[data-nmin]'); single('[data-nses]');
+    root.querySelectorAll('[data-ex],[data-zone]').forEach((b) => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
+    root.querySelector('#rvNext').onclick = () => {
+      if (ans.global == null || ans.forme == null) return toast('Réponds au moins aux deux premières questions');
+      ans.note = root.querySelector('#rvNote').value.trim().slice(0, 1000);
+      ans.excluded = [...root.querySelectorAll('[data-ex][aria-pressed=true]')].map((b) => b.dataset.ex);
+      ans.kept = exos.filter((n) => !ans.excluded.includes(n));
+      ans.zones = [...root.querySelectorAll('[data-zone][aria-pressed=true]')].map((b) => b.dataset.zone);
+      ans.minutes = ans.duree != null && ans.duree !== 1 ? Number(root.querySelector('[data-nmin][aria-pressed=true]')?.dataset.nmin || a.minutes) : a.minutes;
+      ans.sessions = ans.nombre != null && ans.nombre !== 1 ? Number(root.querySelector('[data-nses][aria-pressed=true]')?.dataset.nses || a.sessions) : a.sessions;
+      reviewSummary(week, ans);
+    };
+  });
+}
+// Ce que le point propose de changer ; chaque changement peut être décoché.
+function reviewChanges(ans) {
+  const lvl = levelOf(S.me); const a = availOf(S.me); const fit = S.me.fitness || {}; const out = [];
+  if (ans.global === 0 && ans.forme !== 2 && lvl < 4) out.push({ id: 'level', to: lvl + 1, txt: `Passer au niveau ${LEVELS[lvl].name} : plus de séries, des variantes plus dures.` });
+  else if ((ans.global === 3 || ans.forme === 2) && lvl > 1) out.push({ id: 'level', to: lvl - 1, txt: `Revenir au niveau ${LEVELS[lvl - 2].name} : moins de séries, plus de récupération.` });
+  if (ans.minutes !== a.minutes) out.push({ id: 'minutes', to: ans.minutes, txt: `Séances de ${ans.minutes} min au lieu de ${a.minutes}.` });
+  if (ans.sessions !== a.sessions) out.push({ id: 'sessions', to: Math.min(ans.sessions, a.days.length), txt: `${Math.min(ans.sessions, a.days.length)} séance(s) par semaine au lieu de ${a.sessions}${ans.sessions > a.days.length ? ` (limité à tes ${a.days.length} jours possibles)` : ''}.` });
+  if (ans.course === 0) out.push({ id: 'run', to: 3, txt: 'Course : sauter une semaine du plan Couch to 5K.' });
+  if (ans.course === 2) out.push({ id: 'run', to: -3, txt: 'Course : refaire la semaine précédente du plan, sans culpabiliser, c\'est prévu.' });
+  const newEx = ans.excluded.filter((n) => !(fit.excluded || []).includes(n)); const back = (fit.excluded || []).filter((n) => ans.kept.includes(n));
+  if (newEx.length) out.push({ id: 'exclude', txt: `Remplacer : ${newEx.join(', ')}.` });
+  if (back.length) out.push({ id: 'include', txt: `Remettre : ${back.join(', ')}.` });
+  if (ans.zones.length) out.push({ id: 'zones', txt: `Ménager : ${ans.zones.map((z) => ZONES.find((x) => x[0] === z)[1].toLowerCase()).join(', ')} (exercices à risque retirés). Si la douleur dure, parles-en à un médecin.` });
+  if (ans.global === 2 && !out.some((c) => c.id === 'level')) out.push({ id: 'info', txt: 'Un peu dur, c\'est normal en progressant : on garde le niveau.' });
+  return out;
+}
+function reviewSummary(week, ans) {
+  const changes = reviewChanges(ans);
+  const real = changes.filter((c) => c.id !== 'info');
+  openModal(`<h2>Ce qui va changer</h2>
+    ${real.length ? `<span class="small muted">Décoche ce que tu ne veux pas. Ça s'applique à tes séances à partir de lundi.</span>` : '<div class="notice">Tout roule : on continue comme ça 👍</div>'}
+    ${changes.map((c, i) => c.id === 'info' ? `<span class="small">${esc(c.txt)}</span>` : `<label style="display:flex;flex-direction:row;gap:10px;align-items:flex-start"><input type="checkbox" data-ch="${i}" checked style="width:22px;height:22px;flex:none"><span class="small">${esc(c.txt)}</span></label>`).join('')}
+    <button class="btn" id="rvApply">${real.length ? 'Appliquer' : 'Enregistrer le point'}</button>
+    <button class="btn ghost" id="rvBack">Revenir aux questions</button>`, (root) => {
+    root.querySelector('#rvBack').onclick = () => reviewModal(week);
+    root.querySelector('#rvApply').onclick = async (e) => {
+      e.target.disabled = true;
+      const keep = changes.filter((c, i) => c.id !== 'info' && root.querySelector(`[data-ch="${i}"]`)?.checked);
+      const fit = { ...(S.me.fitness || {}) }; const av = { ...availOf(S.me) }; const health = { ...(S.me.health || {}), zones: [...((S.me.health || {}).zones || [])] };
+      for (const c of keep) {
+        if (c.id === 'level') { fit.level = c.to; fit.history = [...(fit.history || []), { level: c.to, at: new Date().toISOString(), by: 'point hebdo' }].slice(-20); }
+        if (c.id === 'minutes') av.minutes = c.to;
+        if (c.id === 'sessions') av.sessions = c.to;
+        if (c.id === 'run') fit.run_shift = Number(fit.run_shift || 0) + c.to;
+        if (c.id === 'exclude') fit.excluded = [...new Set([...(fit.excluded || []), ...ans.excluded])];
+        if (c.id === 'include') fit.excluded = (fit.excluded || []).filter((n) => !ans.kept.includes(n));
+        if (c.id === 'zones') for (const z of ans.zones) if (!health.zones.some((x) => x.zone === z)) health.zones.push({ zone: z, type: 'douleur', note: 'Signalé au point hebdo' });
+      }
+      const patch = keep.length ? { fitness: fit, availability: av, health } : {};
+      if (keep.length) {
+        const { error } = await sb.from('members').update(patch).eq('id', S.me.id);
+        if (error) { e.target.disabled = false; return fail(error, 'Enregistrement impossible'); }
+        Object.assign(S.me, patch);
+      }
+      await sb.from('weekly_reviews').upsert({ member_id: S.me.id, tandem_id: S.me.tandem_id, week_start: week, answers: ans, changes: { applied: keep.map((c) => c.txt) } }, { onConflict: 'member_id,week_start' });
+      const nextMon = addDays(week, 7);
+      if (keep.length && S.plan) await regenerateFrom(nextMon > today() ? nextMon : addDays(today(), 1));
+      closeModal(); toast(keep.length ? 'Programme adapté' : 'Point enregistré, merci !'); render();
+    };
+  });
+}
+
+// ---------- Recommencer le programme (accord du binôme) ----------
+async function pendingRequest() {
+  const { data } = await sb.from('plan_requests').select('*').eq('tandem_id', S.me.tandem_id).eq('status', 'pending').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  return data || null;
+}
+function requestBanner(req) {
+  if (!req) return '';
+  const mineReq = req.requested_by === S.me.id;
+  return `<div class="notice" style="display:flex;flex-direction:column;gap:8px">${mineReq
+    ? `<span>Tu as proposé de recommencer le programme. En attente de l'accord de ${esc(S.partner?.first_name || 'ton binôme')}.</span><button class="btn ghost sm" data-req="cancel">Annuler ma demande</button>`
+    : `<span><b>${esc(S.partner?.first_name || 'Ton binôme')} propose de recommencer le programme.</b>${req.reason ? ` « ${esc(req.reason)} »` : ''}</span><span class="small">Si tu acceptes, le programme actuel s'arrête (les séances faites restent enregistrées) et vous en créez un nouveau.</span><div class="row"><button class="btn sm" data-req="ok">J'accepte</button><button class="btn ghost sm" data-req="no">Je refuse</button></div>`}</div>`;
+}
+function bindRequest(req) {
+  if (!req) return;
+  $app.querySelectorAll('[data-req]').forEach((b) => b.onclick = async () => {
+    const ok = b.dataset.req === 'ok';
+    const { data, error } = await sb.rpc('plan_decide', { p_id: req.id, p_ok: ok });
+    if (error) return fail(error, 'Action impossible');
+    if (data === 'deleted') { S.plan = null; toast('Programme arrêté : créez le nouveau'); return go('settings'); }
+    toast(data === 'refused' ? 'Demande refusée' : 'Demande annulée'); render();
+  });
+}
+function restartModal(req) {
+  if (req) return toast('Une demande est déjà en cours');
+  const solo = !S.partner?.user_id;
+  openModal(`<h2>Recommencer le programme ?</h2>
+    <span class="small">Le programme actuel s'arrête. Les séances déjà faites, le suivi et les défis restent enregistrés. Vous choisirez ensuite le matériel, la durée et la date de départ du nouveau.</span>
+    ${solo ? '' : `<div class="notice small">${esc(S.partner.first_name)} doit d'abord accepter : le programme est commun.</div>`}
+    <label class="small">Pourquoi ? (facultatif, ${solo ? 'pour toi' : `visible par ${esc(S.partner.first_name)}`})<textarea id="rsWhy" placeholder="ex. on a acheté un vélo, on veut repartir sur 8 semaines"></textarea></label>
+    <button class="btn" id="rsGo" style="background:var(--danger)">${solo ? 'Arrêter le programme' : `Demander à ${esc(S.partner.first_name)}`}</button>`, (root) => {
+    root.querySelector('#rsGo').onclick = async (e) => {
+      e.target.disabled = true;
+      const { data, error } = await sb.rpc('plan_request_delete', { p_reason: root.querySelector('#rsWhy').value.trim() || null });
+      if (error) { e.target.disabled = false; return fail(error, 'Demande impossible'); }
+      closeModal();
+      if (data === 'deleted') { S.plan = null; toast('Programme arrêté'); return go('settings'); }
+      toast(data === 'pending' ? 'Une demande est déjà en cours' : `Demande envoyée à ${S.partner.first_name}`); render();
+    };
+  });
+}
+
 // Détail d'une journée du programme : chaque séance avec ses exercices.
 function showDay(day) {
   const pd = planDay(day); if (!pd) return;
@@ -1682,6 +1946,7 @@ async function viewSettings() {
   const eq = new Set(st.equipment || []);
   const capt = isCaptain();
   const captainName = capt ? 'toi' : (S.partner?.first_name || 'le capitaine');
+  const canPlan = capt || !S.plan;
   const { data: sugg } = await sb.from('suggestions').select('*').eq('tandem_id', S.me.tandem_id).eq('done', false).order('created_at', { ascending: false });
   $app.innerHTML = header('Matériel et programme', capt ? 'Tu es le capitaine : tes réglages valent pour vous deux.' : `Réglé par ${esc(captainName)}. Tu peux lui faire des suggestions.`) + `
   <form id="s" class="wrap">
@@ -1693,7 +1958,7 @@ async function viewSettings() {
         <li><b>Course</b> : si « Course dehors » est cochée, choisis la semaine où elle reprend. Avant, le samedi reste une grande balade.</li>
         <li><b>Disponibilités</b> : chacun choisit ses jours, son nombre de séances et leur durée dans « Mon profil ». Le programme s'y adapte pour chacun.</li>
         <li><b>Santé</b> : les zones fragiles de chacun (dans « Mon profil ») retirent les exercices à risque, pour lui ou elle seulement.</li>
-        <li>Tu peux <b>régénérer</b> le programme à tout moment : les séances déjà cochées restent enregistrées.</li>
+        <li>Programme en cours : un changement de matériel s'applique <b>à partir de demain</b>, le passé ne bouge pas. Pour changer de durée ou de date de départ, il faut <b>recommencer</b> le programme (dans Programme), avec l'accord de ton binôme.</li>
       </ul></details>
     <div class="card white"><h3>Disponibilités</h3>
       ${[S.me, S.partner].filter(Boolean).map((p) => { const a = availOf(p); return `<span class="small"><b style="color:${colorHex(p.color)}">${esc(p.first_name)}</b> : ${a.sessions} séance(s) de ${a.minutes} min par semaine, le ${a.days.map((d) => WEEKDAYS[d].toLowerCase()).join(', ')}.</span>`; }).join('')}
@@ -1701,10 +1966,10 @@ async function viewSettings() {
     ${EQUIPMENT.map(([g, items]) => `<div class="card white"><h3>${g}</h3><div class="chips">${items.map(([v, l]) => `<button type="button" class="chip" data-eq="${v}" aria-pressed="${eq.has(v)}" ${capt ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>`).join('')}
     <div class="card white"><h3>Programme</h3>
       <span class="muted">Durée</span>
-      <div class="chips">${[2, 4, 6, 8, 12].map((w) => `<button type="button" class="chip" data-weeks="${w}" aria-pressed="${(st.weeks || 6) === w}" ${capt ? '' : 'disabled'}>${w} semaines</button>`).join('')}</div>
-      <div class="grid2"><label>Début (lundi)<input type="date" name="start" value="${esc(st.start_date || mondayOf(today()))}" ${capt ? '' : 'disabled'}></label>
-      <label>Course à partir de la semaine<input name="run_from" inputmode="numeric" value="${esc(st.run_from_week || 1)}" ${capt ? '' : 'disabled'}></label></div>
-      ${capt ? `<button class="btn block">${S.plan ? 'Régénérer le programme' : 'Générer le programme'}</button>${S.plan ? '<span class="muted small">Les séances déjà cochées restent enregistrées.</span>' : ''}` : ''}
+      <div class="chips">${[4, 6, 8, 9, 12].map((w) => `<button type="button" class="chip" data-weeks="${w}" aria-pressed="${(st.weeks || 6) === w}" ${canPlan && !S.plan ? '' : 'disabled'}>${w} semaines${w === 9 ? ' (Couch to 5K)' : ''}</button>`).join('')}</div>
+      <div class="grid2"><label>Début (lundi)<input type="date" name="start" value="${esc(S.plan ? S.plan.data.start_date : (st.start_date && st.start_date >= mondayOf(today()) ? st.start_date : addDays(mondayOf(today()), 7)))}" ${canPlan && !S.plan ? '' : 'disabled'}></label>
+      <label>Course à partir de la semaine<input name="run_from" inputmode="numeric" value="${esc(st.run_from_week || 1)}" ${canPlan && !S.plan ? '' : 'disabled'}></label></div>
+      ${!S.plan ? '<button class="btn block">Créer le programme</button>' : capt ? '<button class="btn block">Appliquer le matériel à partir de demain</button><span class="muted small">Le passé et les séances cochées ne bougent pas. Pour changer la durée ou la date, recommence le programme (dans Programme).</span>' : ''}
     </div>
     ${capt ? '' : `<div class="card white"><h3>Une suggestion pour ${esc(captainName)} ?</h3><textarea id="sg" placeholder="ex. on a acheté un step"></textarea><button type="button" class="btn" id="sendSg">Envoyer</button></div>`}
     ${(sugg || []).length ? `<div class="card"><h3>Suggestions</h3>${sugg.map((x) => `<div class="row between"><span>${esc(x.text)}</span>${capt ? `<button type="button" class="btn ghost sm" data-sg="${x.id}">Vu</button>` : ''}</div>`).join('')}</div>` : ''}
@@ -1719,38 +1984,42 @@ async function viewSettings() {
     if (error) return fail(error, 'Envoi impossible'); toast('Suggestion envoyée'); viewSettings();
   });
   f.onsubmit = async (e) => {
-    e.preventDefault(); if (!capt) return;
-    const settings = {
+    e.preventDefault(); if (!canPlan) return;
+    const settings = !S.plan ? {
       ...st,
-      equipment: [...f.querySelectorAll('[data-eq][aria-pressed=true]')].map((b) => b.dataset.eq),
+      equipment: capt ? [...f.querySelectorAll('[data-eq][aria-pressed=true]')].map((b) => b.dataset.eq) : (st.equipment || []),
       weeks: Number(f.querySelector('[data-weeks][aria-pressed=true]')?.dataset.weeks || 6),
       start_date: mondayOf(f.querySelector('[name=start]').value || today()),
       run_from_week: Math.max(1, int(f.querySelector('[name=run_from]').value) || 1),
-    };
-    const btn = f.querySelector('.btn.block'); btn.disabled = true; btn.textContent = 'Génération…';
-    const data = generatePlan(settings, [S.me, S.partner].filter(Boolean));
-    const r1 = await sb.from('tandems').update({ settings }).eq('id', S.tandem.id);
-    if (r1.error) return fail(r1.error, 'Enregistrement impossible');
-    await sb.from('plans').update({ active: false }).eq('tandem_id', S.tandem.id).eq('active', true);
-    const r2 = await sb.from('plans').insert({ tandem_id: S.tandem.id, start_date: data.start_date, weeks: data.weeks, data, active: true }).select().single();
-    if (r2.error) return fail(r2.error, 'Création du programme impossible');
-    S.tandem.settings = settings; S.plan = r2.data; toast('Programme prêt'); go('program');
+    } : { ...st, equipment: [...f.querySelectorAll('[data-eq][aria-pressed=true]')].map((b) => b.dataset.eq) };
+    const btn = f.querySelector('.btn.block'); btn.disabled = true; btn.textContent = 'Un instant…';
+    if (capt) {
+      const r1 = await sb.from('tandems').update({ settings }).eq('id', S.tandem.id);
+      if (r1.error) { btn.disabled = false; return fail(r1.error, 'Enregistrement impossible'); }
+      S.tandem.settings = settings;
+    }
+    if (S.plan) { if (await regenerateFrom(addDays(today(), 1))) { toast('Programme mis à jour à partir de demain'); go('program'); } return; }
+    const data = generatePlan(settings, await freshMembers());
+    const { data: id, error } = await sb.rpc('plan_create', { p_data: data });
+    if (error) { btn.disabled = false; return fail(error, 'Création du programme impossible'); }
+    S.plan = { id, tandem_id: S.tandem.id, start_date: data.start_date, weeks: data.weeks, data, active: true }; toast('Programme prêt'); go('program');
   };
 }
 
 function viewProfile() {
   $app.innerHTML = header('Mon profil') + `<form id="f" class="wrap">${profileForm(S.me, S.partner?.color)}<button class="btn block">Enregistrer</button>
-    <span class="muted small">Pour que le programme tienne compte d'un changement de santé, le capitaine doit le régénérer.</span></form>`;
+    <span class="muted small">Un changement de disponibilités ou de santé met à jour tes séances à partir de demain.</span></form>`;
   const f = document.getElementById('f'); bindProfile(f);
   f.onsubmit = async (e) => {
     e.preventDefault(); const p = readProfile(f);
     if (S.partner && p.color === S.partner.color) return toast(`Couleur déjà prise par ${S.partner.first_name}`);
     if (!p.availability.days.length) return toast('Coche au moins un jour de sport');
-    const changedAvail = JSON.stringify(availOf(S.me)) !== JSON.stringify(availOf(p));
+    const changedAvail = JSON.stringify(availOf(S.me)) !== JSON.stringify(availOf(p)) || JSON.stringify(p.health || {}) !== JSON.stringify(S.me.health || {});
     const { error } = await sb.from('members').update(p).eq('id', S.me.id);
     if (error) return fail(error, 'Enregistrement impossible');
     Object.assign(S.me, p); setTheme();
-    toast(changedAvail ? (isCaptain() ? 'Profil enregistré. Régénère le programme pour appliquer tes nouvelles disponibilités.' : 'Profil enregistré. Demande au capitaine de régénérer le programme.') : 'Profil enregistré');
+    if (changedAvail && S.plan) { await regenerateFrom(addDays(today(), 1)); toast('Profil enregistré, programme mis à jour à partir de demain'); return; }
+    toast('Profil enregistré');
   };
 }
 
